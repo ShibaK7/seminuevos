@@ -6,7 +6,7 @@ El presente archivo README se presenta información correspondiente al proyecto 
 
 * Version x.x.x.x
 * [Jira](https://seminuevos.atlassian.net/jira/software/projects/ALEA/boards/1)
-* [Confluence] (https://seminuevos.atlassian.net/wiki/spaces/ALEA/overview?homepageId=360626)
+* [Confluence](https://seminuevos.atlassian.net/jira/software/projects/ALEA/boards/1)
 
 ### Adicionales ###
 
