@@ -1,26 +1,2 @@
-# README #
-
-El presente archivo README se presenta información correspondiente al proyecto seminuevos.
-
-### Información del proyecto ###
-
-* Version x.x.x.x
-* [Jira](https://seminuevos.atlassian.net/jira/software/projects/ALEA/boards/1)
-* [Confluence](https://seminuevos.atlassian.net/jira/software/projects/ALEA/boards/1)
-
-### Adicionales ###
-
-* Lenguaje: C++
-* Base de Datos: SQL
-* TODO
-
-### Para la ejecución del proyecto ###
-
-* TODO
-
-### Autores ###
-
-* Rosa Laura Villarreal Onofre
-* Jorge Alberto López Aragón
-* Alan Cardiel Tafolla
-* Esteban Calixto Cruz
+# desktop-win-car-dealership
+Aplicación concesionaria para Windows Desktop
