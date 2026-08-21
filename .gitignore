@@ -39,3 +39,13 @@
 
 # debug information files
 *.dwo
+
+# Local dev config / build output
+.env
+build/
+build-*/
+
+# Config local de Qt Creator (rutas/kit de cada máquina, no se comparte)
+.qtcreator/*.user
+.qtcreator/*.user.*
+

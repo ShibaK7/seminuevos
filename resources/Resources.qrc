@@ -2,4 +2,7 @@
   <qresource prefix="/resources/images/">
     <file>images/background.png</file>
   </qresource>
+  <qresource prefix="/db/">
+    <file alias="001_init_schema.sql">../db/001_init_schema.sql</file>
+  </qresource>
 </RCC>
