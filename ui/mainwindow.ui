@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,4">
+   <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,4">
     <item>
      <widget class="QFrame" name="frame">
       <property name="styleSheet">
@@ -48,6 +48,15 @@
          <property name="text">
           <string>Inventario</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
+         </property>
         </widget>
        </item>
        <item>
@@ -60,6 +69,12 @@
          </property>
          <property name="text">
           <string>Ventas</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
          </property>
         </widget>
        </item>
@@ -74,6 +89,12 @@
          <property name="text">
           <string>Finanzas</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
+         </property>
         </widget>
        </item>
        <item>
@@ -86,6 +107,12 @@
          </property>
          <property name="text">
           <string>Reportes</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
          </property>
         </widget>
        </item>
@@ -200,6 +227,9 @@
                <property name="text">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:16pt;&quot;&gt;Inventario de Vehículos&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
+               <property name="class" stdset="0">
+                <string>h1</string>
+               </property>
               </widget>
              </item>
              <item>
@@ -223,8 +253,14 @@
                  <height>0</height>
                 </size>
                </property>
+               <property name="styleSheet">
+                <string notr="true"/>
+               </property>
                <property name="text">
                 <string>Agregar Vehiculo</string>
+               </property>
+               <property name="class" stdset="0">
+                <string>primary</string>
                </property>
               </widget>
              </item>
@@ -290,12 +326,12 @@
               <widget class="QDateEdit" name="dateEdit">
                <property name="minimumDateTime">
                 <datetime>
-                 <hour>6</hour>
+                 <hour>0</hour>
                  <minute>0</minute>
                  <second>0</second>
                  <year>2015</year>
                  <month>1</month>
-                 <day>1</day>
+                 <day>2</day>
                 </datetime>
                </property>
                <property name="calendarPopup">
@@ -327,12 +363,12 @@
               <widget class="QDateEdit" name="dateEdit_2">
                <property name="minimumDateTime">
                 <datetime>
-                 <hour>6</hour>
+                 <hour>0</hour>
                  <minute>0</minute>
                  <second>0</second>
                  <year>2015</year>
                  <month>1</month>
-                 <day>1</day>
+                 <day>2</day>
                 </datetime>
                </property>
                <property name="calendarPopup">
@@ -380,7 +416,7 @@
      <x>0</x>
      <y>0</y>
      <width>1064</width>
-     <height>25</height>
+     <height>30</height>
     </rect>
    </property>
   </widget>

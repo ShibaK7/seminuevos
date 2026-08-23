@@ -1,0 +1,206 @@
+/* ===========================================================================
+   DE LA HOZ AUTOS SEMINUEVOS - GLOBAL APPLICATION STYLESHEET
+   =========================================================================== */
+
+/* 1. GLOBAL RESET & BASE TYPOGRAPHY
+   --------------------------------------------------------------------------- */
+QWidget {
+    font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    font-size: 12pt;
+    font-weight: 400;
+    color: #212529;               /* Primary Dark Charcoal */
+    background-color: #FFFFFF;     /* Light Surface Canvas */
+}
+
+/* 2. TYPOGRAPHY HEADERS & LABELS
+   --------------------------------------------------------------------------- */
+/* H1 - Main Screen Header */
+QLabel[class="h1"] {
+    font-size: 20pt;
+    font-weight: 700;
+    color: #212529;
+}
+
+/* H2 - Section Header / Modal Title */
+QLabel[class="h2"] {
+    font-size: 15pt;
+    font-weight: 700;
+    color: #212529;
+}
+
+/* H3 - Subsection / Card Title */
+QLabel[class="h3"] {
+    font-size: 13pt;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Input Form Field Label */
+QLabel[class="form-label"] {
+    font-size: 9.5pt;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Financial & Numerical Highlights (Monospace fallback) */
+QLabel[class="currency-display"] {
+    font-family: "Consolas", "Monaco", "Segoe UI", sans-serif;
+    font-size: 16pt;
+    font-weight: 800;
+    color: #0A25C9;               /* DE LA HOZ Royal Blue */
+}
+
+/* 3. INPUT CONTROLS & PLACEHOLDERS
+   --------------------------------------------------------------------------- */
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QTextEdit {
+    font-size: 10pt;
+    font-weight: 400;
+    color: #212529;
+    background-color: #FFFFFF;
+    border: 1px solid #CED4DA;
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-height: 22px;
+}
+
+/* Input Focused State */
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus, QTextEdit:focus {
+    border: 1.5px solid #0A25C9;   /* DE LA HOZ Royal Blue */
+    background-color: #FFFFFF;
+}
+
+/* Input Hover State */
+QLineEdit:hover, QComboBox:hover, QSpinBox:hover, QDateEdit:hover {
+    border-color: #ADB5BD;
+}
+
+/* Combo Box Dropdown Styling */
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+/* 4. ERROR & VALIDATION STATES
+   --------------------------------------------------------------------------- */
+/* Applied dynamically when field validation fails */
+QLineEdit[hasError="true"], QComboBox[hasError="true"], QDateEdit[hasError="true"] {
+    border: 1.5px solid #D90429;   /* DE LA HOZ Crimson Red */
+    background-color: #FFF5F5;
+}
+
+/* Helper Error Text Label */
+QLabel[class="error-text"] {
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #D90429;               /* DE LA HOZ Crimson Red */
+}
+
+/* 5. BUTTONS & ACTIONS
+   --------------------------------------------------------------------------- */
+/* Side Menu Bar Button */
+QPushButton[class="menu-bar"] {
+    background-color: #FFFFFF;
+    border: none;
+    color: #495057;
+    font-size: 12pt;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 8px 8px;
+}
+
+QPushButton[class="menu-bar"]:hover {
+    background-color: #F4F6F9;
+    color: #0A25C9;
+}
+
+QPushButton[class="menu-bar"]:checked {
+    background-color: rgba(10, 37, 201, 0.10);
+    color: #0A25C9;
+    font-weight: 700;
+    border-radius: 6px;
+
+    /* The thick blue accent bar on the left edge */
+    border-left: 4px solid #0A25C9;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+/* Primary Brand Action Button */
+QPushButton[class="primary"] {
+    background-color: #0A25C9;   /* DE LA HOZ Royal Blue */
+    border: none;
+    color: #FFFFFF;
+    font-size: 12pt;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 8px 18px;
+}
+
+QPushButton[class="primary"]:hover {
+    background-color: #081CA2;
+}
+
+QPushButton[class="primary"]:pressed {
+    background-color: #06157B;
+}
+
+/* Secondary Button (Detalles, Cancelar) */
+QPushButton[class="secondary"] {
+    background-color: #FFFFFF;
+    color: #495057;
+    font-size: 10pt;
+    font-weight: 600;
+    border: 1px solid #6C757D;    /* Metallic Slate Grey */
+    border-radius: 6px;
+    padding: 7px 16px;
+}
+
+QPushButton[class="secondary"]:hover {
+    background-color: #0A25C9;
+    color: #FFFFFF;
+    border-color: #0A25C9;
+}
+
+/* Danger / Delete Action Button */
+QPushButton[class="danger"] {
+    background-color: #D90429;   /* DE LA HOZ Crimson Red */
+    color: #FFFFFF;
+    font-size: 10pt;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+}
+
+QPushButton[class="danger"]:hover {
+    background-color: #B80322;
+}
+
+/* 6. STATUS BADGES & PILLS
+   --------------------------------------------------------------------------- */
+QLabel[status="available"] {
+    background-color: #D1E7DD;
+    color: #0F5132;
+    font-size: 8.5pt;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 3px 8px;
+}
+
+QLabel[status="reserved"] {
+    background-color: #FFE6E6;
+    color: #D90429;
+    border: 1px solid #FFB3B3;
+    font-size: 8.5pt;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 3px 8px;
+}
+
+/* 7. CARDS & CONTAINERS
+   --------------------------------------------------------------------------- */
+QFrame#cardPanel, QWidget#cardPanel {
+    background-color: #FFFFFF;
+    border: 1px solid #DEE2E6;
+    border-radius: 10px;
+}

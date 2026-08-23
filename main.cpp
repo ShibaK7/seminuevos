@@ -6,6 +6,8 @@
 #include "include/auth/loginworker.h"
 
 #include <QApplication>
+#include <QFile>
+#include <QTextStream>
 #include <QTimer>
 #include <QTranslator>
 #include <QPropertyAnimation>
@@ -58,10 +60,22 @@ QMap<QString, QString> loadDatabaseEnv()
 
 } // namespace
 
+void applyGlobalStyle(QApplication &app) {
+    QFile styleFile(":/resourcess/styles/styles/global-style.qss");
+    if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
+        printf("Loading style sheet...");
+        QTextStream stream(&styleFile);
+        app.setStyleSheet(stream.readAll());
+        styleFile.close();
+    }
+}
+
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setApplicationName("Seminuevos");
+
+    //applyGlobalStyle(app);
 
     const QMap<QString, QString> env = loadDatabaseEnv();
 

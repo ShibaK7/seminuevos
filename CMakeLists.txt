@@ -39,6 +39,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
             resources/Resources.qrc
             include/mainwindow.h src/mainwindow.cpp ui/mainwindow.ui
             include/vehicleitemlist.h src/vehicleitemlist.cpp ui/vehicleitemlist.ui
+
     )
 
 target_include_directories(desktop-win-car-dealership PRIVATE

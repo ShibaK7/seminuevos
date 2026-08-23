@@ -1,4 +1,11 @@
 <RCC>
+    <qresource prefix="/resources/images">
+        <file>images/background.png</file>
+    </qresource>
+    <qresource prefix="/resources/styles"/>
+    <qresource prefix="/resourcess/styles">
+        <file>styles/global-style.qss</file>
+    </qresource>
   <qresource prefix="/resources/images/">
     <file>images/background.png</file>
   </qresource>
