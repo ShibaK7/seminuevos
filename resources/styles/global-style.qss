@@ -12,6 +12,32 @@ QWidget {
     background-color: #FFFFFF;     /* Light Surface Canvas */
 }
 
+QFrame[class='right-content'] {
+    background-color: #FFFFFF;
+    border-right: none;
+    border-bottom: 1px solid #212529;
+    border-top: none;
+    border-left: none;
+}
+
+QFrame[class='side-bar'] {
+    border: 1px solid #212529;
+}
+
+QFrame[class='top-bar'] {
+    border-bottom: 1px solid #212529;
+    border-top: 1px solid #212529;
+    border-left: none;
+    border-right: 1px solid #212529;
+}
+
+QFrame[class='main-content'] {
+    border-right: 1px solid #212529;
+    border-top: none;
+    border-left: none;
+    border-bottom: none;
+}
+
 /* 2. TYPOGRAPHY HEADERS & LABELS
    --------------------------------------------------------------------------- */
 /* H1 - Main Screen Header */
@@ -99,17 +125,17 @@ QLabel[class="error-text"] {
    --------------------------------------------------------------------------- */
 /* Side Menu Bar Button */
 QPushButton[class="menu-bar"] {
-    background-color: #FFFFFF;
+    background-color: #F4F6F9;
     border: none;
     color: #495057;
-    font-size: 12pt;
+    font-size: 13pt;
     font-weight: 600;
-    border-radius: 6px;
-    padding: 8px 8px;
+    padding: 12px 16px;
+    text-align: center;
 }
 
 QPushButton[class="menu-bar"]:hover {
-    background-color: #F4F6F9;
+    background-color: rgba(10, 37, 201, 0.10);
     color: #0A25C9;
 }
 
@@ -117,12 +143,11 @@ QPushButton[class="menu-bar"]:checked {
     background-color: rgba(10, 37, 201, 0.10);
     color: #0A25C9;
     font-weight: 700;
-    border-radius: 6px;
-
     /* The thick blue accent bar on the left edge */
     border-left: 4px solid #0A25C9;
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
+    border-top: none;
+    border-bottom: none;
+    border-right: none;
 }
 
 /* Primary Brand Action Button */
@@ -131,7 +156,7 @@ QPushButton[class="primary"] {
     border: none;
     color: #FFFFFF;
     font-size: 12pt;
-    font-weight: 700;
+    font-weight: 600;
     border-radius: 6px;
     padding: 8px 18px;
 }

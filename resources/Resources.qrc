@@ -1,10 +1,20 @@
 <RCC>
     <qresource prefix="/resources/images">
         <file>images/background.png</file>
+        <file>images/logo-seminuevos.jpeg</file>
     </qresource>
     <qresource prefix="/resources/styles"/>
     <qresource prefix="/resourcess/styles">
         <file>styles/global-style.qss</file>
+    </qresource>
+    <qresource prefix="/resources/icons"/>
+    <qresource prefix="/">
+        <file>icons/bank.png</file>
+        <file>icons/bar-chart.png</file>
+        <file>icons/billing.png</file>
+        <file>icons/car.png</file>
+        <file>icons/dollar.png</file>
+        <file>icons/plus.png</file>
     </qresource>
   <qresource prefix="/resources/images/">
     <file>images/background.png</file>

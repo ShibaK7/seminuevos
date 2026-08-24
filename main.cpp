@@ -12,12 +12,10 @@
 #include <QTranslator>
 #include <QPropertyAnimation>
 #include <QGraphicsOpacityEffect>
-#include <QFile>
 #include <QMap>
 #include <QMessageBox>
 #include <QSqlDatabase>
 #include <QSqlError>
-#include <QTextStream>
 
 namespace {
 
@@ -75,7 +73,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName("Seminuevos");
 
-    //applyGlobalStyle(app);
+    applyGlobalStyle(app);
 
     const QMap<QString, QString> env = loadDatabaseEnv();
 
@@ -124,6 +122,10 @@ int main(int argc, char *argv[])
     }
 
     LoginWindow login;
+    MainWindow w;
+    w.showMaximized();
+
+    /*LoginWindow login;
 
     // Conectar login exitoso con animación
     QObject::connect(&login, &LoginWindow::loginRequested, [&login, &app](const QString &user, const QString &pass) {
@@ -177,6 +179,6 @@ int main(int argc, char *argv[])
         worker->start();
     });
 
-    login.show();
+    login.show();*/
     return app.exec();
 }
