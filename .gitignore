@@ -40,6 +40,27 @@
 # debug information files
 *.dwo
 
+# macOS System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+**/_DS_Store
+
+# Qt Creator & User Specific Files
+*.user
+*.user.*
+.qtcreator/
+*.autosave
+
+# Build & Output Directories
+build/
+build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+*.cmake.in
+!CMakeLists.txt
+
 # Local dev config / build output
 .env
 build/

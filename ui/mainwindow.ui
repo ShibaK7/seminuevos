@@ -10,13 +10,43 @@
     <height>822</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>16777215</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,4">
+   <property name="layoutDirection">
+    <enum>Qt::LayoutDirection::LeftToRight</enum>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,6">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
-     <widget class="QFrame" name="frame">
+     <widget class="QFrame" name="sidebarFrame">
       <property name="styleSheet">
        <string notr="true"/>
       </property>
@@ -26,14 +56,56 @@
       <property name="frameShadow">
        <enum>QFrame::Shadow::Raised</enum>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,0,0,0,0,4">
+      <property name="lineWidth">
+       <number>0</number>
+      </property>
+      <property name="class" stdset="0">
+       <string>side-bar</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,0,4">
+       <property name="spacing">
+        <number>12</number>
+       </property>
+       <property name="sizeConstraint">
+        <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>12</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>12</number>
+       </property>
        <item>
-        <widget class="QFrame" name="frame_5">
-         <property name="frameShape">
-          <enum>QFrame::Shape::StyledPanel</enum>
+        <widget class="QLabel" name="label_6">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
-         <property name="frameShadow">
-          <enum>QFrame::Shadow::Raised</enum>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>90</height>
+          </size>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="pixmap">
+          <pixmap resource="../resources/Resources.qrc">:/resources/images/images/logo-seminuevos.jpeg</pixmap>
+         </property>
+         <property name="scaledContents">
+          <bool>true</bool>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -42,11 +114,42 @@
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>50</height>
+           <height>60</height>
           </size>
+         </property>
+         <property name="contextMenuPolicy">
+          <enum>Qt::ContextMenuPolicy::DefaultContextMenu</enum>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::LayoutDirection::LeftToRight</enum>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
          </property>
          <property name="text">
           <string>Inventario</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../resources/Resources.qrc">
+           <normaloff>:/icons/car.png</normaloff>:/icons/car.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <property name="autoDefault">
+          <bool>false</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
          </property>
         </widget>
        </item>
@@ -55,11 +158,27 @@
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>50</height>
+           <height>60</height>
           </size>
          </property>
          <property name="text">
-          <string>Ventas</string>
+          <string>Comercial</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../resources/Resources.qrc">
+           <normaloff>:/icons/dollar.png</normaloff>:/icons/dollar.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
          </property>
         </widget>
        </item>
@@ -68,11 +187,27 @@
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>50</height>
+           <height>60</height>
           </size>
          </property>
          <property name="text">
           <string>Finanzas</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../resources/Resources.qrc">
+           <normaloff>:/icons/bank.png</normaloff>:/icons/bank.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
          </property>
         </widget>
        </item>
@@ -81,11 +216,27 @@
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>50</height>
+           <height>60</height>
           </size>
          </property>
          <property name="text">
           <string>Reportes</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../resources/Resources.qrc">
+           <normaloff>:/icons/bar-chart.png</normaloff>:/icons/bar-chart.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="class" stdset="0">
+          <string>menu-bar</string>
          </property>
         </widget>
        </item>
@@ -93,6 +244,9 @@
         <spacer name="verticalSpacer">
          <property name="orientation">
           <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Policy::Expanding</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -106,23 +260,56 @@
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="frame_2">
+     <widget class="QFrame" name="rightContentFrame">
       <property name="frameShape">
        <enum>QFrame::Shape::StyledPanel</enum>
       </property>
       <property name="frameShadow">
        <enum>QFrame::Shadow::Raised</enum>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout" stretch="1,12">
+      <property name="class" stdset="0">
+       <string>right-content</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout" stretch="1,15">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
-        <widget class="QFrame" name="frame_3">
+        <widget class="QFrame" name="topBarFrame">
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
          <property name="frameShadow">
           <enum>QFrame::Shadow::Raised</enum>
          </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <property name="class" stdset="0">
+          <string>top-bar</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0">
+          <property name="spacing">
+           <number>-1</number>
+          </property>
+          <property name="sizeConstraint">
+           <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+          </property>
+          <property name="topMargin">
+           <number>12</number>
+          </property>
+          <property name="rightMargin">
+           <number>12</number>
+          </property>
           <item>
            <spacer name="horizontalSpacer_5">
             <property name="orientation">
@@ -172,14 +359,26 @@
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="frame_4">
+        <widget class="QFrame" name="mainContentFrame">
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
          <property name="frameShadow">
           <enum>QFrame::Shadow::Raised</enum>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,1,12">
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="class" stdset="0">
+          <string>main-content</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
+          <property name="spacing">
+           <number>-1</number>
+          </property>
           <item>
            <widget class="QFrame" name="frame_6">
             <property name="frameShape">
@@ -190,15 +389,18 @@
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <property name="topMargin">
-              <number>0</number>
+              <number>12</number>
              </property>
              <property name="bottomMargin">
-              <number>0</number>
+              <number>12</number>
              </property>
              <item>
               <widget class="QLabel" name="label">
                <property name="text">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:16pt;&quot;&gt;Inventario de Vehículos&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="class" stdset="0">
+                <string>h1</string>
                </property>
               </widget>
              </item>
@@ -223,8 +425,18 @@
                  <height>0</height>
                 </size>
                </property>
+               <property name="styleSheet">
+                <string notr="true"/>
+               </property>
                <property name="text">
                 <string>Agregar Vehiculo</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../resources/Resources.qrc">
+                 <normaloff>:/icons/plus.png</normaloff>:/icons/plus.png</iconset>
+               </property>
+               <property name="class" stdset="0">
+                <string>primary</string>
                </property>
               </widget>
              </item>
@@ -290,12 +502,12 @@
               <widget class="QDateEdit" name="dateEdit">
                <property name="minimumDateTime">
                 <datetime>
-                 <hour>6</hour>
+                 <hour>0</hour>
                  <minute>0</minute>
                  <second>0</second>
                  <year>2015</year>
                  <month>1</month>
-                 <day>1</day>
+                 <day>4</day>
                 </datetime>
                </property>
                <property name="calendarPopup">
@@ -327,12 +539,12 @@
               <widget class="QDateEdit" name="dateEdit_2">
                <property name="minimumDateTime">
                 <datetime>
-                 <hour>6</hour>
+                 <hour>0</hour>
                  <minute>0</minute>
                  <second>0</second>
                  <year>2015</year>
                  <month>1</month>
-                 <day>1</day>
+                 <day>4</day>
                 </datetime>
                </property>
                <property name="calendarPopup">
@@ -380,12 +592,14 @@
      <x>0</x>
      <y>0</y>
      <width>1064</width>
-     <height>25</height>
+     <height>30</height>
     </rect>
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <resources/>
+ <resources>
+  <include location="../resources/Resources.qrc"/>
+ </resources>
  <connections/>
 </ui>
