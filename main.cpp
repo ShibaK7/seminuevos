@@ -73,8 +73,6 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName("Seminuevos");
 
-    applyGlobalStyle(app);
-
     const QMap<QString, QString> env = loadDatabaseEnv();
 
     DatabaseConfig dbConfig;
@@ -122,10 +120,6 @@ int main(int argc, char *argv[])
     }
 
     LoginWindow login;
-    MainWindow w;
-    w.showMaximized();
-
-    /*LoginWindow login;
 
     // Conectar login exitoso con animación
     QObject::connect(&login, &LoginWindow::loginRequested, [&login, &app](const QString &user, const QString &pass) {
@@ -151,6 +145,7 @@ int main(int argc, char *argv[])
                 QObject::connect(anim, &QPropertyAnimation::finished, [&]() {
                     login.hide();
                     // Crear MainWindow solo después del login exitoso
+                    applyGlobalStyle(app);
                     MainWindow *mainWin = new MainWindow();
                     mainWin->showMaximized(); // ← Aquí se maximiza automáticamente
 
@@ -179,6 +174,6 @@ int main(int argc, char *argv[])
         worker->start();
     });
 
-    login.show();*/
+    login.show();
     return app.exec();
 }

@@ -16,6 +16,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  #  pgadmin:
+  #    image: dpage/pgadmin4:latest
+  #    restart: always
+  #    environment:
+  #      - PGADMIN_DEFAULT_EMAIL=admin@admin.com  # Correo ficticio para iniciar sesión
+  #      - PGADMIN_DEFAULT_PASSWORD=admin         # Contraseña para iniciar sesión
+  #    ports:
+  #      - "5050:80" # <-- Puerto para entrar desde el navegador
+  adminer:
+    image: adminer:latest
+    restart: always
+    ports:
+      - "8080:8080"
 
 volumes:
   seminuevos_pgdata:
