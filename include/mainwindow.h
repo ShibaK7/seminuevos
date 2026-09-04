@@ -4,6 +4,9 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QStandardItemModel>
+#include <QStandardItem>
+#include <QListWidget>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -18,6 +21,13 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
+
+private slots:
+    // Left Bar Buttons
+    void on_inventoryButton_clicked();
+    void on_commercialButton_clicked();
+    void on_financeButton_clicked();
+    void on_reportButton_clicked();
 
 private:
     Ui::MainWindow *ui;
