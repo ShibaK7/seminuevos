@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1064</width>
-    <height>822</height>
+    <width>1060</width>
+    <height>814</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -24,6 +24,9 @@
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="layoutDirection">
@@ -110,7 +113,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="inventoryButton">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -145,6 +148,9 @@
          <property name="checked">
           <bool>false</bool>
          </property>
+         <property name="autoExclusive">
+          <bool>true</bool>
+         </property>
          <property name="autoDefault">
           <bool>false</bool>
          </property>
@@ -154,7 +160,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_2">
+        <widget class="QPushButton" name="commercialButton">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -177,13 +183,16 @@
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <property name="autoExclusive">
+          <bool>true</bool>
+         </property>
          <property name="class" stdset="0">
           <string>menu-bar</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_3">
+        <widget class="QPushButton" name="financeButton">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -206,13 +215,16 @@
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <property name="autoExclusive">
+          <bool>true</bool>
+         </property>
          <property name="class" stdset="0">
           <string>menu-bar</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_4">
+        <widget class="QPushButton" name="reportButton">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -233,6 +245,9 @@
           </size>
          </property>
          <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
           <bool>true</bool>
          </property>
          <property name="class" stdset="0">
@@ -299,7 +314,7 @@
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0">
           <property name="spacing">
-           <number>-1</number>
+           <number>6</number>
           </property>
           <property name="sizeConstraint">
            <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
@@ -359,7 +374,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="mainContentFrame">
+        <widget class="QFrame" name="inventarioFrame">
          <property name="styleSheet">
           <string notr="true"/>
          </property>
@@ -377,30 +392,106 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
           <property name="spacing">
-           <number>-1</number>
+           <number>6</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
           </property>
           <item>
-           <widget class="QFrame" name="frame_6">
+           <widget class="QFrame" name="navBar">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
             <property name="frameShape">
              <enum>QFrame::Shape::StyledPanel</enum>
             </property>
             <property name="frameShadow">
              <enum>QFrame::Shadow::Raised</enum>
             </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <property name="class" stdset="0">
+             <string>navBar</string>
+            </property>
+            <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="2,2,9">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
              <property name="topMargin">
-              <number>12</number>
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
              </property>
              <property name="bottomMargin">
-              <number>12</number>
+              <number>0</number>
              </property>
              <item>
-              <widget class="QLabel" name="label">
+              <widget class="QPushButton" name="acquisitionButton">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="autoFillBackground">
+                <bool>false</bool>
+               </property>
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:16pt;&quot;&gt;Inventario de Vehículos&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>Adquisición</string>
+               </property>
+               <property name="checkable">
+                <bool>true</bool>
+               </property>
+               <property name="autoExclusive">
+                <bool>true</bool>
+               </property>
+               <property name="flat">
+                <bool>false</bool>
                </property>
                <property name="class" stdset="0">
-                <string>h1</string>
+                <string>navButton</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="consignmentButton">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Consignación</string>
+               </property>
+               <property name="checkable">
+                <bool>true</bool>
+               </property>
+               <property name="autoExclusive">
+                <bool>true</bool>
+               </property>
+               <property name="flat">
+                <bool>true</bool>
+               </property>
+               <property name="class" stdset="0">
+                <string>navButton</string>
                </property>
               </widget>
              </item>
@@ -417,8 +508,143 @@
                </property>
               </spacer>
              </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QFrame" name="filterBar">
+            <property name="frameShape">
+             <enum>QFrame::Shape::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Shadow::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,3,0,3,0,3,4,0">
+             <property name="spacing">
+              <number>7</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>11</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
              <item>
-              <widget class="QPushButton" name="pushButton_5">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Estado:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="estado">
+               <property name="editable">
+                <bool>false</bool>
+               </property>
+               <property name="insertPolicy">
+                <enum>QComboBox::InsertPolicy::InsertAtBottom</enum>
+               </property>
+               <property name="minimumContentsLength">
+                <number>0</number>
+               </property>
+               <property name="placeholderText">
+                <string>Todos</string>
+               </property>
+               <property name="class" stdset="0">
+                <string>filterCombo</string>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Todos</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Prueba</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Otro Elemento</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Fecha Inicio:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QDateEdit" name="fechaInicio">
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
+               </property>
+               <property name="minimumDateTime">
+                <datetime>
+                 <hour>12</hour>
+                 <minute>0</minute>
+                 <second>0</second>
+                 <year>2015</year>
+                 <month>1</month>
+                 <day>11</day>
+                </datetime>
+               </property>
+               <property name="calendarPopup">
+                <bool>true</bool>
+               </property>
+               <property name="class" stdset="0">
+                <string>dateFilter</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>Fecha Fin:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QDateEdit" name="fechaFin">
+               <property name="minimumDateTime">
+                <datetime>
+                 <hour>12</hour>
+                 <minute>0</minute>
+                 <second>0</second>
+                 <year>2015</year>
+                 <month>1</month>
+                 <day>11</day>
+                </datetime>
+               </property>
+               <property name="calendarPopup">
+                <bool>true</bool>
+               </property>
+               <property name="class" stdset="0">
+                <string>dateFilter</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>23</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="addVehicleButton">
                <property name="minimumSize">
                 <size>
                  <width>0</width>
@@ -444,139 +670,17 @@
            </widget>
           </item>
           <item>
-           <widget class="QFrame" name="frame_7">
-            <property name="frameShape">
-             <enum>QFrame::Shape::StyledPanel</enum>
+           <widget class="QListWidget" name="vehicleList">
+            <property name="autoFillBackground">
+             <bool>false</bool>
             </property>
-            <property name="frameShadow">
-             <enum>QFrame::Shadow::Raised</enum>
+            <property name="selectionMode">
+             <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
             </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <property name="spacing">
-              <number>7</number>
-             </property>
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <property name="rightMargin">
-              <number>11</number>
-             </property>
-             <property name="bottomMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>Estado:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="comboBox">
-               <property name="placeholderText">
-                <string>Todos</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_4">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>23</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>Fecha Inicio:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDateEdit" name="dateEdit">
-               <property name="minimumDateTime">
-                <datetime>
-                 <hour>0</hour>
-                 <minute>0</minute>
-                 <second>0</second>
-                 <year>2015</year>
-                 <month>1</month>
-                 <day>4</day>
-                </datetime>
-               </property>
-               <property name="calendarPopup">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_3">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>24</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_4">
-               <property name="text">
-                <string>Fecha Fin:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDateEdit" name="dateEdit_2">
-               <property name="minimumDateTime">
-                <datetime>
-                 <hour>0</hour>
-                 <minute>0</minute>
-                 <second>0</second>
-                 <year>2015</year>
-                 <month>1</month>
-                 <day>4</day>
-                </datetime>
-               </property>
-               <property name="calendarPopup">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_2">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>23</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit">
-               <property name="placeholderText">
-                <string>Buscar</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
+            <property name="class" stdset="0">
+             <string>vehicleList</string>
+            </property>
            </widget>
-          </item>
-          <item>
-           <widget class="QListView" name="listView"/>
           </item>
          </layout>
         </widget>
@@ -591,8 +695,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1064</width>
-     <height>30</height>
+     <width>1060</width>
+     <height>33</height>
     </rect>
    </property>
   </widget>

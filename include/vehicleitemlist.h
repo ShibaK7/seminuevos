@@ -15,6 +15,18 @@ public:
     explicit VehicleItemList(QWidget *parent = nullptr);
     ~VehicleItemList();
 
+    // Métodos para setear datos
+    void setImage(const QPixmap& pix);
+    void setModel(const QString& model);
+    void setStatus(const QString& status);
+    void setPrice(const QString& price);
+    void setYear(const QString& year);
+    void setColor(const QString& color);
+    void setKm(const QString& km);
+    void setTransmission(const QString& transmission);
+    void setMotor(const QString& motor);
+    void setDate(const QString& date);
+
 private:
     Ui::VehicleItemList *ui;
 };

@@ -45,6 +45,8 @@ DevSeeder::Result DevSeeder::run(QSqlDatabase &db)
     Result result;
 
     static const QList<SeedUser> seedUsers = {
+        {QStringLiteral("a"), QStringLiteral("a"),
+         QStringLiteral("Administrador"), QStringLiteral("Administrador")},
         {QStringLiteral("admin"), QStringLiteral("Admin123!"),
          QStringLiteral("Administrador"), QStringLiteral("Administrador")},
         {QStringLiteral("vendedor"), QStringLiteral("Vendedor123!"),

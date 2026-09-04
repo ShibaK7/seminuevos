@@ -1,9 +1,3 @@
-/* ===========================================================================
-   DE LA HOZ AUTOS SEMINUEVOS - GLOBAL APPLICATION STYLESHEET
-   =========================================================================== */
-
-/* 1. GLOBAL RESET & BASE TYPOGRAPHY
-   --------------------------------------------------------------------------- */
 QWidget {
     font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
     font-size: 12pt;
@@ -140,7 +134,7 @@ QPushButton[class="menu-bar"]:hover {
 }
 
 QPushButton[class="menu-bar"]:checked {
-    background-color: rgba(10, 37, 201, 0.10);
+    background-color: #c3cbdb;
     color: #0A25C9;
     font-weight: 700;
     /* The thick blue accent bar on the left edge */
@@ -228,4 +222,215 @@ QFrame#cardPanel, QWidget#cardPanel {
     background-color: #FFFFFF;
     border: 1px solid #DEE2E6;
     border-radius: 10px;
+}
+
+/* =====================================================================
+   Inventario QCSS Estilos
+   ===================================================================== */
+
+/* ======== CONTENEDOR DE LA BARRA ======== */
+QFrame[class="navBar"] {
+    background-color: #c3cbdb;
+    border-bottom: 1px solid #212529;
+    align-items: stretch;
+}
+
+/* ======== BOTONES DE NAVEGACIÓN DEL NAVBAR ======== */
+QPushButton[class="navButton"] {
+	background-color: transparent;
+    color: #46527a;
+    border: none;
+    margin: 0px;
+    padding: 10px 28px;
+    font-size: 12pt;
+    font-weight: 600;
+}
+
+/* Hover */
+QPushButton[class="navButton"]:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+	border-top-right-radius: 10px;
+	border-top-left-radius: 10px;
+}
+
+/* Activo (checked) */
+QPushButton[class="navButton"]:checked {
+    background-color: #081ca2;
+    color: #ffffff;
+    border-top-right-radius: 10px;
+	border-top-left-radius: 10px;
+}
+
+/* Presionado momentáneo */
+QPushButton[class="navButton"]:pressed {
+   border-top-right-radius: 10px;
+	border-top-left-radius: 10px;
+    background-color: #0056b3;
+    color: #FFFFFF;
+}
+
+
+/* ======== BARRA DE FILTROS (Estado, Fecha inicio, Agregar Vehiculo) ======== */
+#filterBar {
+    background-color: transparent;
+    padding: 0px -10px 0px 0px;
+	border-right: none;
+    border-bottom: 1px solid #212529;
+    border-top: none;
+    border-left: none;
+	padding-bottom: 5px;
+}
+
+#filterBar QLabel {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3856;
+}
+
+QComboBox[class="filterCombo"] {
+    background-color: #ffffff;
+    border: 1px solid #c2c9d6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-width: 120px;
+    font-size: 14px;
+    color: #2c3856;
+}
+
+QComboBox[class="filterCombo"]:hover {
+    border: 1px solid #2f6fed;
+}
+
+QComboBox[class="filterCombo"]::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox[class="filterCombo"]::down-arrow {
+    image: url(:/icons/chevron_down.png);
+    width: 12px;
+    height: 12px;
+}
+
+/* Cada opción de la lista */
+QComboBox QAbstractItemView::item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #2c3856;
+    min-height: 26px;
+}
+
+/* Hover al pasar el mouse sobre una opción */
+QComboBox QAbstractItemView::item:hover {
+    background-color: #c3cbdb;
+    color: #46527a;
+}
+
+/* Opción seleccionada (con o sin mouse encima) */
+QComboBox QAbstractItemView::item:selected {
+    background-color: #081ca2;
+    color: #ffffff;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    border: 1px solid #c2c9d6;
+    outline: none;
+    padding: 4px;
+}
+
+/* ---------- QDateEdit (mismo look que QComboBox, sin botón cuadrado) ---------- */
+QDateEdit[class="dateFilter"] {
+    background-color: #ffffff;
+    border: 1px solid #c2c9d6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-width: 120px;
+    font-size: 14px;
+    color: #2c3856;
+}
+
+QDateEdit[class="dateFilter"]:hover {
+    border: 1px solid #2f6fed;
+}
+
+/* Elimina el relieve/recuadro del botón de flecha */
+QDateEdit[class="dateFilter"]::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 24px;
+    border: none;         /* sin borde propio */
+    background: transparent;  /* sin fondo/recuadro que sobresalga */
+}
+
+/* Mismo ícono que usa el QComboBox */
+QDateEdit[class="dateFilter"]::down-arrow {
+    image: url(:/icons/chevron_down.png);
+    width: 12px;
+    height: 12px;
+}
+
+
+/* Quita el botón nativo de subir/bajar (spin buttons) que Qt agrega por defecto */
+QDateEdit[class="dateFilter"]::up-button,
+QDateEdit[class="dateFilter"]::down-button {
+    width: 0px;
+    border: none;
+    background: transparent;
+}
+
+/* Popup del calendario */
+QCalendarWidget QWidget {
+    background-color: #ffffff;
+    color: #2c3856;
+}
+
+QCalendarWidget QAbstractItemView:enabled {
+    selection-background-color: #081ca2;
+    selection-color: #ffffff;
+    outline: none;
+}
+
+QCalendarWidget QAbstractItemView::item:selected {
+    background-color: #081ca2;
+    color: #ffffff;
+    border-radius: 6px;
+}
+
+/*=========================== LISTA TARJETAS ==========================*/
+/* ---------- QListWidget contenedor de las tarjetas ---------- */
+
+/* Scrollbar del QListWidget */
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #a9b3c7;
+    border-radius: 5px;
+    min-height: 30px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background: #a9b3c7;
+    border-radius: 5px;
+    min-width: 30px;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
 }
