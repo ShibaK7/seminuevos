@@ -162,11 +162,15 @@ const QString &Counterparty::phone() const
 
 bool Counterparty::setPhone(const QString &value)
 {
-    const QString digits = digitsOnly(value);
-    if (digits.isEmpty()) {
+    // Vaciar el campo es una operación legítima; escribir algo que no es un
+    // teléfono, no. Sin esta distinción, pasar "abc" borraría el número que
+    // ya estaba guardado y devolvería éxito.
+    if (value.trimmed().isEmpty()) {
         m_phone = QString();
         return true;
     }
+
+    const QString digits = digitsOnly(value);
     if (digits.length() != kPhoneDigits)
         return false;
     m_phone = digits;

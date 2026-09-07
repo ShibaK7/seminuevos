@@ -65,6 +65,17 @@ ValidationResult Vehicle::validate() const
                         QStringLiteral("Selecciona el tipo de vehículo."));
     }
 
+    // El valor por omisión de m_invoiceType no puede ser válido para las dos
+    // ramas a la vez, porque sus CHECK son conjuntos disjuntos: una
+    // consignación recién construida arranca con un tipo que le corresponde a
+    // una adquisición. Comprobarlo aquí evita que ese valor llegue a la base
+    // y reviente la restricción desde el hilo de guardado, ya con los
+    // archivos copiados a disco.
+    if (!acceptsInvoiceType(m_invoiceType)) {
+        result.addError(QStringLiteral("invoiceType"),
+                        QStringLiteral("Selecciona el tipo de factura."));
+    }
+
     result.merge(m_counterparty.validate(), QStringLiteral("counterparty"));
 
     // Aquí entra lo propio de cada rama: precios, forma de pago, comisión.
