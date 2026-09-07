@@ -9,8 +9,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Sql Network)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql Network)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport)
 
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
@@ -25,10 +25,39 @@ set(PROJECT_SOURCES
         src/db/schemainitializer.cpp
         include/db/devseeder.h
         src/db/devseeder.cpp
+        include/db/catalogseeder.h
+        src/db/catalogseeder.cpp
         include/auth/passwordhasher.h
         src/auth/passwordhasher.cpp
         include/auth/loginworker.h
         src/auth/loginworker.cpp
+        include/vehiclewizard/vehicledraft.h
+        include/vehiclewizard/vehiclewizardview.h
+        src/vehiclewizard/vehiclewizardview.cpp
+        include/vehiclewizard/components/conditionchecklistitems.h
+        include/vehiclewizard/components/conditionchecklistrow.h
+        src/vehiclewizard/components/conditionchecklistrow.cpp
+        include/vehiclewizard/components/wizardstepper.h
+        src/vehiclewizard/components/wizardstepper.cpp
+        include/vehiclewizard/components/aspectratioimagelabel.h
+        src/vehiclewizard/components/aspectratioimagelabel.cpp
+        include/vehiclewizard/steps/step1detailsview.h
+        src/vehiclewizard/steps/step1detailsview.cpp
+        include/vehiclewizard/steps/step2conditionview.h
+        src/vehiclewizard/steps/step2conditionview.cpp
+        include/vehiclewizard/steps/step3filesview.h
+        src/vehiclewizard/steps/step3filesview.cpp
+        include/storage/localfilestoragemanager.h
+        src/storage/localfilestoragemanager.cpp
+        include/db/vehicleregistrationservice.h
+        src/db/vehicleregistrationservice.cpp
+        include/db/vehicleregistrationworker.h
+        src/db/vehicleregistrationworker.cpp
+        include/contract/numbertowordses.h
+        src/contract/numbertowordses.cpp
+        include/contract/companyprofile.h
+        include/contract/contractpdfgenerator.h
+        src/contract/contractpdfgenerator.cpp
         ${TS_FILES}
 )
 
@@ -73,6 +102,7 @@ target_link_libraries(desktop-win-car-dealership PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Sql
     Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::PrintSupport
 )
 
 # Le da a main.cpp la ruta raíz del repo en tiempo de compilación, para poder

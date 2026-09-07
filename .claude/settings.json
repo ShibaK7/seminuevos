@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake --version)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(docker exec *)",
+      "Bash(taskkill //F //IM desktop-win-car-dealership.exe)",
+      "Bash(mkdir -p include/vehiclewizard/steps include/vehiclewizard/components src/vehiclewizard/steps src/vehiclewizard/components)",
+      "Bash(mv include/vehiclewizard/step1detailsview.h include/vehiclewizard/steps/)",
+      "Bash(mv include/vehiclewizard/step2conditionview.h include/vehiclewizard/steps/)",
+      "Bash(mv include/vehiclewizard/step3filesview.h include/vehiclewizard/steps/)",
+      "Bash(mv src/vehiclewizard/step1detailsview.cpp src/vehiclewizard/steps/)",
+      "Bash(python -c \"import xml.etree.ElementTree as ET; ET.parse\\('ui/mainwindow.ui'\\); print\\('OK: well-formed XML'\\)\")",
+      "Bash(git mv *)",
+      "Bash(mv include/vehiclewizard/vehiclewizarddialog.h include/vehiclewizard/vehiclewizardview.h)",
+      "Bash(mv src/vehiclewizard/vehiclewizarddialog.cpp src/vehiclewizard/vehiclewizardview.cpp)",
+      "Read(//d/Qt/6.11.2/**)",
+      "Read(//d/Qt/6.11.2/mingw_64/plugins/sqldrivers/**)",
+      "PowerShell($env:PATH -split ';' | Where-Object { $_ } | ForEach-Object { $_ })",
+      "Bash(cd \"c:/Users/dande/academy-project/seminuevos\" && ls \"C:/Users/dande/.claude/projects/c--Users-dande-academy-project-seminuevos/memory/\" 2>/dev/null || echo \"memory dir listing failed\")",
+      "Read(//c/Users/dande/.claude/projects/c--Users-dande-academy-project-seminuevos/memory/**)",
+      "Bash(git checkout *)",
+      "Bash(git add *)"
+    ]
+  }
+}

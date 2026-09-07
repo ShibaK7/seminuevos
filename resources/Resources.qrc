@@ -15,11 +15,16 @@
         <file>icons/car.png</file>
         <file>icons/dollar.png</file>
         <file>icons/plus.png</file>
+        <file>icons/checkmark.png</file>
+        <file>icons/check-badge-green.png</file>
     </qresource>
   <qresource prefix="/resources/images/">
     <file>images/background.png</file>
   </qresource>
   <qresource prefix="/db/">
     <file alias="001_init_schema.sql">../db/001_init_schema.sql</file>
+  </qresource>
+  <qresource prefix="/templates/">
+    <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
   </qresource>
 </RCC>

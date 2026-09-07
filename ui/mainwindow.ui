@@ -375,12 +375,34 @@
          <property name="class" stdset="0">
           <string>main-content</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_3">
           <property name="spacing">
-           <number>-1</number>
+           <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
           </property>
           <item>
-           <widget class="QFrame" name="frame_6">
+           <widget class="QStackedWidget" name="mainContentStack">
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="inventoryPage">
+             <layout class="QVBoxLayout" name="inventoryPageLayout" stretch="0,0,0">
+              <property name="spacing">
+               <number>-1</number>
+              </property>
+              <item>
+               <widget class="QFrame" name="frame_6">
             <property name="frameShape">
              <enum>QFrame::Shape::StyledPanel</enum>
             </property>
@@ -577,6 +599,10 @@
           </item>
           <item>
            <widget class="QListView" name="listView"/>
+          </item>
+             </layout>
+            </widget>
+           </widget>
           </item>
          </layout>
         </widget>

@@ -40,6 +40,26 @@ QStringList splitStatements(const QString &script)
     return statements;
 }
 
+// UMA vigente usada por la regla de validación de pagos en efectivo (Paso 1
+// del wizard de vehículos: Contado bloqueado si el precio >= 3210 * UMA). Se
+// siembra aquí (no en DevSeeder) porque es dato de negocio, no de prueba, y
+// debe existir también en producción. ON CONFLICT DO NOTHING la deja intacta
+// si ya fue ajustada manualmente en la base.
+bool seedUmaConfig(QSqlDatabase &db, QString &errorMessage)
+{
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "INSERT INTO global_configurations (key_param, value_param) "
+        "VALUES ('UMA_DIARIA', 108.57) "
+        "ON CONFLICT (key_param) DO NOTHING"));
+
+    if (!query.exec()) {
+        errorMessage = query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db)
@@ -76,6 +96,13 @@ SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db)
             db.rollback();
             return result;
         }
+    }
+
+    QString seedError;
+    if (!seedUmaConfig(db, seedError)) {
+        result.errorMessage = QStringLiteral("Error sembrando configuración UMA_DIARIA: %1").arg(seedError);
+        db.rollback();
+        return result;
     }
 
     if (!db.commit()) {

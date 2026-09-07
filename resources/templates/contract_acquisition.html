@@ -1,0 +1,97 @@
+<html>
+<head>
+<style>
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 10pt; color: #000000; }
+  h1 { text-align: center; font-size: 16pt; text-decoration: underline; margin-bottom: 18px; }
+  table.data { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  table.data td { border: 1px solid #000000; padding: 4px 6px; }
+  td.label { width: 22%; font-weight: bold; background-color: #F0F0F0; }
+  p.section-title { font-weight: bold; text-align: center; margin: 14px 0 6px 0; }
+  p.clause { text-align: justify; margin: 8px 0; }
+  p.clause b { font-weight: bold; }
+  ul.docs { margin: 4px 0 10px 0; }
+  table.signatures { width: 100%; margin-top: 40px; }
+  table.signatures td { text-align: center; border: none; padding-top: 30px; }
+  table.signatures td.line { border-top: 1px solid #000000; padding-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>COMPRA - VENTA AUTOMOTRIZ</h1>
+
+<p class="section-title">VENDEDOR</p>
+<table class="data">
+  <tr><td class="label">NOMBRE</td><td>{{vendedor_nombre}}</td></tr>
+  <tr><td class="label">DOMICILIO</td><td>{{vendedor_domicilio}}</td></tr>
+  <tr><td class="label">IDENTIFICACION</td><td>{{vendedor_identificacion}}</td></tr>
+</table>
+
+<p class="section-title">COMPRADOR</p>
+<table class="data">
+  <tr><td class="label">NOMBRE</td><td>{{comprador_nombre}}</td></tr>
+  <tr><td class="label">DOMICILIO</td><td>{{comprador_domicilio}}</td></tr>
+  <tr><td class="label">IDENTIFICACION</td><td>{{comprador_identificacion}}</td></tr>
+</table>
+
+<p class="section-title">DECLARA EL VENDEDOR SER PROPIETARIO DE UN VEHICULO CON LAS SIGUIENTES CARACTERISTICAS</p>
+<table class="data">
+  <tr>
+    <td class="label">MARCA:</td><td>{{marca}}</td>
+    <td class="label">MODELO:</td><td>{{modelo_anio}}</td>
+    <td class="label">TIPO:</td><td>{{tipo}}</td>
+  </tr>
+  <tr>
+    <td class="label">No. SERIE:</td><td>{{no_serie}}</td>
+    <td class="label">No. MOTOR:</td><td>{{no_motor}}</td>
+    <td class="label">No. PLACAS:</td><td>{{no_placas}}</td>
+  </tr>
+  <tr>
+    <td class="label">COLOR:</td><td colspan="5">{{color}}</td>
+  </tr>
+</table>
+
+<p class="section-title">CLAUSULAS</p>
+
+<p class="clause"><b>PRIMERA:</b> EL PRECIO DEL VEHICULO ESTIPULADO DE MANERA CONVENCIONAL POR AMBAS PARTES ES DE:
+$ {{precio_numero}} ({{precio_letras}})</p>
+
+<p class="clause"><b>SEGUNDA:</b> EL VENDEDOR VENDE Y EL COMPRADOR COMPRA BAJO LAS SIGUIENTES CONDICIONES DE PAGO:</p>
+<table class="data"><tr><td>{{condiciones_pago}}</td></tr></table>
+
+<p class="clause"><b>TERCERA.-</b> EL VENDEDOR VENDE EL PRESENTE VEHICULO EN LAS CONDICIONES FISICAS MECANICAS, DE
+DOCUMENTACION Y ORDEN EN QUE ACTUALMENTE SE ENCUENTRA Y UNA VEZ QUE HA SIDO REVISADO POR EL COMPRADOR ESTE
+MANIFIESTA SU CONFORMIDAD Y LO ADQUIERE, DE BUENA FE, PARA USARLO Y DISPONER DE EL COMO DE COSA BIEN ADQUIRIDA.</p>
+
+<p class="clause"><b>CUARTA.-</b> EL VENDEDOR SE RESPONSABILIZA A PARTIR DE ESTA FECHA PARA EL CASO DE LA
+PROCEDENCIA ILEGAL DEL VEHICULO, ASI COMO DE LOS DAÑOS ILICITOS Y DE INFRACCIONES QUE SE HUBIEREN COMETIDO POR EL
+USO Y TRANSITO DE DICHO VEHICULO, DESLINDANDO DE TODA RESPONSABILIDAD AL COMPRADOR. POR SU PARTE EL COMPRADOR SE
+RESPONSABILIZA A PARTIR DE ESTA FECHA DE LOS DAÑOS, ILICITOS Y DE INFRACCIONES QUE SE COMETAN POR EL USO Y TRANSITO
+DE DICHO VEHICULO, DESLINDANDO DE TODA RESPONSABILIDAD AL VENDEDOR.</p>
+
+<p class="clause"><b>QUINTA.-</b> EN EL ACTO EL VENDEDOR RECIBE EL IMPORTE CONVENIDO COMO PRECIO DEL VEHICULO, EN
+LAS CONDICIONES PACTADAS, ENTREGANDO AL COMPRADOR LA DOCUMENTACION QUE SE ESPECIFICA EN LAS CONDICIONES DE PAGO.</p>
+
+<p class="clause"><b>SEXTA.-</b> COMPRADOR Y VENDEDOR RATIFICAN ESTE CONTRATO, LA OPERACIÓN CONTENIDA Y MANIFIESTAN
+QUE OBRAN DE BUENA FE SIN VIOLENCIA NI INTIMIDACION, FIRMANDOLO EN ESTA FECHA.</p>
+
+<p class="clause"><b>SEPTIMA.-</b> EL VENDEDOR ENTREGA AL COMPRADOR LA DOCUMENTACIÓN DEL VEHÍCULO QUE A CONTINUACIÓN
+SE DEFINE:</p>
+<ul class="docs">
+{{documentos_lista}}
+</ul>
+
+<table class="data"><tr><td class="label">FECHA:</td><td>{{fecha}}</td></tr></table>
+
+<table class="signatures">
+  <tr>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr>
+    <td class="line">{{vendedor_nombre}}<br/>VENDEDOR</td>
+    <td class="line">{{comprador_nombre}}<br/>COMPRADOR</td>
+  </tr>
+</table>
+
+</body>
+</html>

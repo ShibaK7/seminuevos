@@ -1,6 +1,7 @@
 #include "include/loginwindow.h"
 #include "include/mainwindow.h"
 #include "include/db/connectionpool.h"
+#include "include/db/catalogseeder.h"
 #include "include/db/devseeder.h"
 #include "include/db/schemainitializer.h"
 #include "include/auth/loginworker.h"
@@ -114,6 +115,16 @@ int main(int argc, char *argv[])
             if (!seedResult.ok) {
                 QMessageBox::critical(nullptr, QStringLiteral("Error al crear usuarios de prueba"),
                     seedResult.errorMessage);
+                return 1;
+            }
+
+            // Catálogos dummy (tipos/subtipos de vehículo, marcas, combustibles)
+            // para que los combos del wizard de registro no queden vacíos --
+            // ver comentario en catalogseeder.h.
+            const CatalogSeeder::Result catalogResult = CatalogSeeder::run(db);
+            if (!catalogResult.ok) {
+                QMessageBox::critical(nullptr, QStringLiteral("Error al crear catálogos de prueba"),
+                    catalogResult.errorMessage);
                 return 1;
             }
         }

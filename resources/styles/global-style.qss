@@ -229,3 +229,103 @@ QFrame#cardPanel, QWidget#cardPanel {
     border: 1px solid #DEE2E6;
     border-radius: 10px;
 }
+
+/* 8. VEHICLE WIZARD (US-03.2)
+   --------------------------------------------------------------------------- */
+/* Stepper (Detalles / Condición / Archivos). stepState is a dynamic property
+   set at runtime by WizardStepper: "pending" | "current" | "done". */
+QPushButton[class="wizard-step"] {
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    /* El padding real lo da innerLayout->setContentsMargins() en
+       WizardStepper (el botón usa un layout hijo con QLabels en vez de
+       QPushButton::setText/setIcon, así que su sizeHint ignora el
+       "padding" de QSS -- ver StepButton::sizeHint). */
+}
+
+QPushButton[class="wizard-step"][stepState="current"] {
+    border-bottom: 3px solid #0A25C9;
+}
+
+/* Texto del paso -- separado del QPushButton (que ahora solo pinta fondo/
+   subrayado) para poder controlar el espacio contra el ícono de la
+   palomita y su alineación vertical desde WizardStepper. */
+QLabel[class="wizard-step-text"] {
+    background-color: transparent;
+    color: #6C757D;
+    font-size: 13pt;
+    font-weight: 600;
+}
+
+QLabel[class="wizard-step-text"][stepState="current"],
+QLabel[class="wizard-step-text"][stepState="done"] {
+    /* El verde va solo en el ícono de la palomita (check-badge-green.png),
+       no en el texto. */
+    color: #212529;
+}
+
+/* Small flat icon buttons (galería de fotos: quitar / marcar portada). */
+QPushButton[class="icon-flat"] {
+    background-color: transparent;
+    border: none;
+    padding: 4px;
+}
+
+QPushButton[class="icon-flat"]:hover {
+    background-color: rgba(10, 37, 201, 0.08);
+    border-radius: 4px;
+}
+
+/* Fila del checklist de condición: se atenúa cuando el ítem no está marcado. */
+QWidget[class="condition-row"][itemChecked="false"] QLabel,
+QWidget[class="condition-row"][itemChecked="false"] QRadioButton {
+    color: #ADB5BD;
+}
+
+/* Checkbox ("¿tiene luces delanteras?") y radio buttons circulares (Estado
+   óptimo / Con fallas) del checklist de condición. IMPORTANTE: en cuanto
+   una regla QSS toca ::indicator, Qt deja de pintar el indicador nativo del
+   sistema operativo (aunque sea solo width/height) -- hay que dar border y
+   fondo explícitos o el control queda invisible. Checked se distingue por
+   palomita/punto azul sobre fondo blanco, no por relleno sólido. */
+QCheckBox, QRadioButton {
+    spacing: 8px;
+}
+
+QCheckBox::indicator, QRadioButton::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid #ADB5BD;
+    background-color: #FFFFFF;
+}
+
+QCheckBox::indicator:hover, QRadioButton::indicator:hover {
+    border-color: #0A25C9;
+}
+
+QCheckBox::indicator {
+    border-radius: 4px;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #FFFFFF;
+    border-color: #0A25C9;
+    image: url(:/icons/checkmark.png);
+}
+
+QRadioButton::indicator {
+    border-radius: 7px;
+}
+
+QRadioButton::indicator:checked {
+    border-color: #0A25C9;
+    background-color: qradialgradient(
+        cx:0.5, cy:0.5, radius:0.5, fx:0.5, fy:0.5,
+        stop:0 #0A25C9, stop:0.45 #0A25C9, stop:0.55 #FFFFFF, stop:1 #FFFFFF);
+}
+
+QCheckBox::indicator:disabled, QRadioButton::indicator:disabled {
+    border-color: #DEE2E6;
+    background-color: #F4F6F9;
+}

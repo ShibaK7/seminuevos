@@ -20,6 +20,9 @@ public:
     ~MainWindow() override;
 
 private:
+    void openVehicleWizard();
+    void closeVehicleWizard();
+
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
