@@ -29,6 +29,10 @@ set(PROJECT_SOURCES
         src/db/catalogseeder.cpp
         include/db/conditioncatalog.h
         src/db/conditioncatalog.cpp
+        include/db/vehicleinventoryquery.h
+        src/db/vehicleinventoryquery.cpp
+        include/app/appconfig.h
+        src/app/appconfig.cpp
         include/db/conditioncatalogseeder.h
         src/db/conditioncatalogseeder.cpp
         include/auth/passwordhasher.h

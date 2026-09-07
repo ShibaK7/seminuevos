@@ -1,4 +1,5 @@
 #include "../../include/vehiclewizard/vehiclewizardview.h"
+#include "../../include/app/appconfig.h"
 #include "../../include/contract/contractpdfgenerator.h"
 #include "../../include/db/vehicleregistrationworker.h"
 #include "../../include/vehiclewizard/steps/step1detailsview.h"
@@ -22,37 +23,6 @@
 #include <QTextStream>
 #include <QUrl>
 #include <QVBoxLayout>
-
-namespace {
-
-// Mismo criterio que main.cpp para leer .env (primero junto al ejecutable,
-// luego junto al código fuente vía la macro PROJECT_SOURCE_DIR de CMake).
-QString resolveStorageRoot()
-{
-    QFile envFile(QCoreApplication::applicationDirPath() + QStringLiteral("/.env"));
-    if (!envFile.exists())
-        envFile.setFileName(QStringLiteral(PROJECT_SOURCE_DIR) + QStringLiteral("/.env"));
-
-    QString storageRoot;
-    if (envFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QTextStream stream(&envFile);
-        while (!stream.atEnd()) {
-            const QString line = stream.readLine().trimmed();
-            if (line.startsWith(QStringLiteral("STORAGE_ROOT="))) {
-                storageRoot = line.mid(QStringLiteral("STORAGE_ROOT=").size()).trimmed();
-                break;
-            }
-        }
-        envFile.close();
-    }
-
-    if (storageRoot.isEmpty())
-        storageRoot = QStringLiteral(PROJECT_SOURCE_DIR) + QStringLiteral("/storage");
-
-    return storageRoot;
-}
-
-} // namespace
 
 VehicleWizardView::VehicleWizardView(QWidget *parent)
     : QWidget(parent)
@@ -181,7 +151,7 @@ void VehicleWizardView::onSaveClicked()
     // copia al almacén. Si compartiera el objeto con esta vista, un reintento
     // después de un fallo de la base buscaría los archivos en su ruta ya
     // reescrita, que no existe como origen.
-    m_worker = new VehicleRegistrationWorker(m_vehicle->clone(), resolveStorageRoot(), this);
+    m_worker = new VehicleRegistrationWorker(m_vehicle->clone(), AppConfig::storageRoot(), this);
     connect(m_worker, &VehicleRegistrationWorker::registrationSucceeded, this, &VehicleWizardView::onRegistrationSucceeded);
     connect(m_worker, &VehicleRegistrationWorker::registrationFailed, this, &VehicleWizardView::onRegistrationFailed);
     connect(m_worker, &QThread::finished, m_worker, &QObject::deleteLater);
@@ -211,8 +181,8 @@ void VehicleWizardView::onRegistrationSucceeded(int folio)
     m_stepper->setStepCompleted(2, true);
     m_saveButton->setEnabled(false);
     m_saveButton->setText(QStringLiteral("Guardado ✓"));
-    // No toda operación tiene contrato que imprimir: la plantilla que existe
-    // es de compraventa, y una consignación no lo es. Que lo diga la unidad.
+    // Que decida la unidad si le corresponde contrato: hoy las dos ramas lo
+    // emiten, pero una rama futura podría no hacerlo.
     m_printContractButton->setEnabled(m_vehicle && m_vehicle->canGenerateContract());
     m_cancelButton->setText(QStringLiteral("Volver al Inventario"));
 

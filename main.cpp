@@ -1,3 +1,4 @@
+#include "include/app/appconfig.h"
 #include "include/loginwindow.h"
 #include "include/mainwindow.h"
 #include "include/db/connectionpool.h"
@@ -84,6 +85,16 @@ int main(int argc, char *argv[])
     dbConfig.userName = env.value(QStringLiteral("POSTGRES_USER"), QStringLiteral("seminuevos_app"));
     dbConfig.password = env.value(QStringLiteral("POSTGRES_PASSWORD"));
     ConnectionPool::configure(dbConfig);
+
+    // Se resuelve una vez aquí, no en cada pantalla que necesite archivos: lo
+    // usan tanto el asistente al copiar fotos como la rejilla de inventario al
+    // mostrarlas, porque en la base las rutas se guardan relativas a esta raíz.
+    {
+        QString storageRoot = env.value(QStringLiteral("STORAGE_ROOT")).trimmed();
+        if (storageRoot.isEmpty())
+            storageRoot = QStringLiteral(PROJECT_SOURCE_DIR) + QStringLiteral("/storage");
+        AppConfig::setStorageRoot(storageRoot);
+    }
 
     // Antes de mostrar el login dejamos el esquema al día. El script solo se
     // ejecuta cuando la versión instalada no coincide con

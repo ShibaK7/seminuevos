@@ -2,6 +2,7 @@
     <qresource prefix="/resources/images">
         <file>images/background.png</file>
         <file>images/logo-seminuevos.jpeg</file>
+        <file>images/logo-seminuevos.svg</file>
     </qresource>
     <qresource prefix="/resources/styles"/>
     <qresource prefix="/resourcess/styles">
@@ -15,6 +16,7 @@
         <file>icons/car.png</file>
         <file>icons/dollar.png</file>
         <file>icons/plus.png</file>
+        <file>icons/chevron_down.png</file>
         <file>icons/checkmark.png</file>
         <file>icons/check-badge-green.png</file>
     </qresource>
