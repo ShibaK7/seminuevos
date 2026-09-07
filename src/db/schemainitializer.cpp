@@ -94,6 +94,19 @@ int readInstalledVersion(QSqlDatabase &db, bool &queryOk, QString &errorMessage)
     return versionQuery.next() ? versionQuery.value(0).toInt() : -1;
 }
 
+// ¿Ya hay un esquema puesto? Se pregunta por vehicles, que es la tabla
+// central del negocio y existe en todas las versiones del esquema. Sirve
+// para saber si el reset va a destruir datos incluso cuando schema_version
+// no existe todavía, que es justo el caso de las bases creadas antes de que
+// hubiera versionado.
+bool hasExistingSchema(QSqlDatabase &db)
+{
+    QSqlQuery query(db);
+    if (!query.exec(QStringLiteral("SELECT to_regclass('public.vehicles')")) || !query.next())
+        return false;
+    return !query.value(0).isNull();
+}
+
 bool writeVersion(QSqlDatabase &db, int version, QString &errorMessage)
 {
     QSqlQuery query(db);
@@ -158,6 +171,10 @@ SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db, bool allowDes
         result.applied = false;
         return result;
     }
+
+    // Se consulta antes de tocar nada: después del script la respuesta
+    // siempre sería "sí" y no diría nada útil.
+    result.hadExistingSchema = hasExistingSchema(db);
 
     if (!allowDestructiveReset) {
         result.errorMessage =

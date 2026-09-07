@@ -117,19 +117,6 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        // previousVersion >= 0 significa que ya había un esquema instalado y
-        // acabamos de borrarlo. Una instalación nueva (previousVersion == -1)
-        // no tenía datos que perder, así que no vale la pena avisar.
-        if (schemaResult.applied && schemaResult.previousVersion >= 0) {
-            QMessageBox::information(nullptr, QStringLiteral("Base de datos regenerada"),
-                QStringLiteral("El esquema pasó de la versión %1 a la %2, así que la base se "
-                                "recreó desde cero y se perdieron los datos que tenía.\n\n"
-                                "Es el comportamiento esperado mientras el esquema sigue en "
-                                "definición.")
-                    .arg(schemaResult.previousVersion)
-                    .arg(SchemaInitializer::kSchemaVersion));
-        }
-
         // Catálogo REAL del checklist de condición (US-03.2). Va fuera de la
         // bandera SEED_TEST_USERS a propósito: el Paso 2 del wizard construye
         // sus renglones leyendo vehicle_conditions_cat, así que sin esto la
@@ -162,6 +149,24 @@ int main(int argc, char *argv[])
                     catalogResult.errorMessage);
                 return 1;
             }
+        }
+
+        // El aviso del reset va AL FINAL, no justo después de aplicarlo: es un
+        // diálogo modal, y entre el reset y este punto se siembran el catálogo
+        // de condiciones y los datos de desarrollo. Avisar antes dejaba la
+        // aplicación esperando un clic con la base a medio poblar, y cerrarla
+        // ahí la dejaba sin catálogo -- con el Paso 2 del wizard en blanco.
+        if (schemaResult.applied && schemaResult.hadExistingSchema) {
+            QMessageBox::information(nullptr, QStringLiteral("Base de datos regenerada"),
+                QStringLiteral("La base se recreó desde cero y se perdieron los datos que "
+                                "tenía (esquema %1 -> %2).\n\n"
+                                "Es el comportamiento esperado mientras el esquema sigue en "
+                                "definición. Para desactivarlo, pon SCHEMA_AUTO_RESET=false "
+                                "en el archivo .env.")
+                    .arg(schemaResult.previousVersion < 0
+                             ? QStringLiteral("sin versionar")
+                             : QString::number(schemaResult.previousVersion))
+                    .arg(SchemaInitializer::kSchemaVersion));
         }
     }
 

@@ -32,10 +32,14 @@ struct Result
     // true si se ejecutó el script, es decir, si hubo reset destructivo.
     bool applied = false;
     // Versión que había instalada antes de correr. -1 = base virgen o
-    // anterior al versionado. Junto con applied permite distinguir una
-    // instalación nueva ("no había nada") de un reset real ("acabo de
-    // borrar una base que ya existía").
+    // anterior al versionado.
     int previousVersion = -1;
+    // true si al arrancar ya existían tablas del esquema, es decir, si el
+    // reset destruyó algo. Hace falta aparte de previousVersion porque una
+    // base creada antes de que existiera el versionado reporta -1 y sin
+    // embargo puede estar llena de datos: mirar solo la versión haría que
+    // justo esa primera migración borrara todo en silencio.
+    bool hadExistingSchema = false;
     QString errorMessage;
 };
 
