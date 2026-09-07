@@ -171,7 +171,7 @@ void VehicleWizardView::onCancelClicked()
             return;
     }
 
-    emit cancelled();
+    emit returnToInventory();
 }
 
 void VehicleWizardView::onRegistrationSucceeded(int folio)
@@ -183,13 +183,38 @@ void VehicleWizardView::onRegistrationSucceeded(int folio)
     m_saveButton->setText(QStringLiteral("Guardado ✓"));
     // Que decida la unidad si le corresponde contrato: hoy las dos ramas lo
     // emiten, pero una rama futura podría no hacerlo.
-    m_printContractButton->setEnabled(m_vehicle && m_vehicle->canGenerateContract());
+    const bool canPrint = m_vehicle && m_vehicle->canGenerateContract();
+    m_printContractButton->setEnabled(canPrint);
     m_cancelButton->setText(QStringLiteral("Volver al Inventario"));
 
-    QMessageBox::information(this, QStringLiteral("Vehículo registrado"),
-                              QStringLiteral("El vehículo se guardó correctamente (folio %1).").arg(folio));
+    // El contrato se ofrece AQUÍ, que es cuando los datos de la operación
+    // están completos y a la mano. Después de esto se vuelve al inventario, y
+    // reconstruirlos desde la base para reimprimir seria otro trabajo.
+    QMessageBox box(this);
+    box.setIcon(QMessageBox::Information);
+    box.setWindowTitle(QStringLiteral("Vehículo registrado"));
+    box.setText(QStringLiteral("El vehículo se guardó correctamente (folio %1).").arg(folio));
+
+    QPushButton *printButton = nullptr;
+    if (canPrint) {
+        box.setInformativeText(QStringLiteral("¿Deseas imprimir el contrato de la operación?"));
+        printButton = box.addButton(QStringLiteral("Imprimir contrato"), QMessageBox::ActionRole);
+    }
+    QPushButton *backButton =
+        box.addButton(QStringLiteral("Volver al inventario"), QMessageBox::AcceptRole);
+    box.setDefaultButton(canPrint ? printButton : backButton);
+    box.exec();
 
     emit vehicleRegistered(folio);
+
+    if (box.clickedButton() == printButton && !printContract()) {
+        // No se pudo generar (o se cancelo el diálogo de guardado): se deja la
+        // pantalla abierta con el botón de contrato disponible, en vez de
+        // volver al inventario y perder la oportunidad.
+        return;
+    }
+
+    emit returnToInventory();
 }
 
 void VehicleWizardView::onRegistrationFailed(const QString &reason)
@@ -200,22 +225,28 @@ void VehicleWizardView::onRegistrationFailed(const QString &reason)
 
 void VehicleWizardView::onPrintContractClicked()
 {
+    printContract();
+}
+
+bool VehicleWizardView::printContract()
+{
     if (!m_vehicle)
-        return;
+        return false;
 
     const QString suggestedName = QStringLiteral("contrato_%1.pdf").arg(m_vehicle->serialNumber());
     const QString outputPath = QFileDialog::getSaveFileName(
         this, QStringLiteral("Guardar contrato"), suggestedName, QStringLiteral("PDF (*.pdf)"));
     if (outputPath.isEmpty())
-        return;
+        return false;
 
     const ContractPdfGenerator::Result result = ContractPdfGenerator::generate(*m_vehicle, outputPath);
     if (!result.ok) {
         QMessageBox::warning(this, QStringLiteral("Error al generar el contrato"), result.errorMessage);
-        return;
+        return false;
     }
 
     QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath));
+    return true;
 }
 
 void VehicleWizardView::setBusy(bool busy)

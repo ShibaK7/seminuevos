@@ -23,7 +23,7 @@ class VehicleRegistrationWorker;
 // Inventario dentro del mismo mainContentStack -- no se abre como QDialog.
 // Al confirmar el Paso 3 arma la unidad con un VehicleBuilder a partir de lo
 // que tienen los widgets, dispara el guardado atómico (archivos + BD) y
-// habilita "Imprimir Contrato". Emite cancelled()/vehicleRegistered() para
+// ofrece imprimir el contrato. Emite vehicleRegistered()/returnToInventory() para
 // que MainWindow decida cuándo regresar a la lista de inventario.
 class VehicleWizardView : public QWidget
 {
@@ -34,9 +34,12 @@ public:
     ~VehicleWizardView() override;
 
 signals:
-    // Se emite al presionar "Cancelar" (con confirmación si aún no se ha
-    // guardado) o "Volver al Inventario" después de un guardado exitoso.
-    void cancelled();
+    // Pide cerrar esta pantalla y volver al inventario. Se emite al cancelar
+    // (con confirmación si todavía no se guardó), al pulsar "Volver al
+    // Inventario", y también sola después de un registro exitoso.
+    void returnToInventory();
+    // Se emite en cuanto la unidad queda guardada, antes de cerrar, para que
+    // el inventario de atrás ya esté actualizado cuando se vuelva a ver.
     void vehicleRegistered(int folio);
 
 private slots:
@@ -52,6 +55,10 @@ private:
     void showError(const QString &message);
     void hideError();
     void setBusy(bool busy);
+    // Pide destino y genera el PDF. Devuelve false si el usuario canceló el
+    // diálogo de guardado o si falló la generación, para que quien lo llame
+    // pueda dejarlo intentar de nuevo en vez de cerrar la pantalla.
+    bool printContract();
 
     WizardStepper *m_stepper;
     QStackedWidget *m_stack;

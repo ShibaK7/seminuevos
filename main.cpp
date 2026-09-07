@@ -59,6 +59,24 @@ QMap<QString, QString> loadDatabaseEnv()
     return env;
 }
 
+// Como la aplicación ya no termina sola al ocultarse la última ventana, hay
+// que atender el caso de quien cierra el login sin llegar a entrar: sin esto
+// el proceso se quedaría vivo y sin ventanas. No necesita Q_OBJECT porque solo
+// redefine un método virtual, sin señales ni slots propios.
+class LoginCloseWatcher : public QObject
+{
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (event->type() == QEvent::Close)
+            QCoreApplication::quit();
+        return QObject::eventFilter(watched, event);
+    }
+};
+
 } // namespace
 
 void applyGlobalStyle(QApplication &app) {
@@ -75,6 +93,14 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setApplicationName("Seminuevos");
+
+    // La aplicación termina SOLO cuando se destruye la ventana principal (ver
+    // el connect más abajo). Sin esto habría un segundo camino de salida: Qt
+    // cierra la aplicación por su cuenta cuando cree que se ocultó la última
+    // ventana, y eso se dispara en momentos que no son un cierre de verdad --
+    // entre ocultar el login y mostrar la ventana principal, o cuando un
+    // widget deja de tener padre por un instante al reemplazar una página.
+    app.setQuitOnLastWindowClosed(false);
 
     const QMap<QString, QString> env = loadDatabaseEnv();
 
@@ -182,6 +208,8 @@ int main(int argc, char *argv[])
     }
 
     LoginWindow login;
+    LoginCloseWatcher loginCloseWatcher(&login);
+    login.installEventFilter(&loginCloseWatcher);
 
     // Conectar login exitoso con animación
     QObject::connect(&login, &LoginWindow::loginRequested, [&login, &app](const QString &user, const QString &pass) {
@@ -222,6 +250,15 @@ int main(int argc, char *argv[])
                     anim2->setDuration(500);
                     anim2->setStartValue(0.0);
                     anim2->setEndValue(1.0);
+                    // Se retira el efecto al terminar la animación. Mientras
+                    // sigue puesto, Qt dibuja la ventana entera de forma
+                    // indirecta (la pinta a una imagen y luego la compone), y
+                    // eso se paga en cada repintado y da problemas con los
+                    // widgets que se agregan o quitan después. La animación
+                    // dura medio segundo; el efecto no tiene por qué durar
+                    // toda la sesión.
+                    QObject::connect(anim2, &QPropertyAnimation::finished, mainWin,
+                                     [mainWin] { mainWin->setGraphicsEffect(nullptr); });
                     anim2->start();
                 });
             });

@@ -230,7 +230,7 @@ void MainWindow::openVehicleWizard()
     // del mismo contenedor, en vez de abrir un diálogo aparte.
     auto *wizard = new VehicleWizardView(ui->mainContentStack);
 
-    connect(wizard, &VehicleWizardView::cancelled, this, &MainWindow::closeVehicleWizard);
+    connect(wizard, &VehicleWizardView::returnToInventory, this, &MainWindow::closeVehicleWizard);
     connect(wizard, &VehicleWizardView::vehicleRegistered, this, &MainWindow::onVehicleRegistered);
 
     ui->mainContentStack->addWidget(wizard);
@@ -239,10 +239,9 @@ void MainWindow::openVehicleWizard()
 
 void MainWindow::onVehicleRegistered(int folio)
 {
-    // El asistente sigue en pantalla (deja el botón de contrato disponible),
-    // así que aquí solo se refresca la lista de atrás. Cuando el usuario cierre
-    // con "Volver al Inventario", el vehículo nuevo ya está puesto y a la
-    // vista.
+    // Se refresca la lista de atrás en cuanto la unidad queda guardada, no al
+    // cerrar: así, cuando el asistente se quite de en medio, el vehículo nuevo
+    // ya está en su sitio y con el desplazamiento puesto encima.
     reloadInventory();
     scrollToFolio(folio);
 }
@@ -254,6 +253,11 @@ void MainWindow::closeVehicleWizard()
         return;
 
     ui->mainContentStack->setCurrentWidget(ui->inventoryPage);
-    ui->mainContentStack->removeWidget(current);
+    // Se destruye sin llamar a removeWidget(): esa función reparenta el widget
+    // a nullptr, con lo que por un instante deja de tener padre y cuenta como
+    // ventana de nivel superior. Al destruirse justo después, Qt puede
+    // interpretar que se cerró la última ventana y terminar la aplicación
+    // entera. Al destruirlo directo, el contenedor lo suelta solo y el widget
+    // nunca deja de tener padre.
     current->deleteLater();
 }
