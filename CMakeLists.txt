@@ -57,10 +57,14 @@ set(PROJECT_SOURCES
         src/domain/acquiredvehicle.cpp
         include/domain/consignedvehicle.h
         src/domain/consignedvehicle.cpp
-        include/vehiclewizard/vehicledraft.h
+        include/domain/vehiclebuilder.h
+        src/domain/vehiclebuilder.cpp
+        include/db/counterpartyrepository.h
+        src/db/counterpartyrepository.cpp
+        include/db/vehiclerepository.h
+        src/db/vehiclerepository.cpp
         include/vehiclewizard/vehiclewizardview.h
         src/vehiclewizard/vehiclewizardview.cpp
-        include/vehiclewizard/components/conditionchecklistitems.h
         include/vehiclewizard/components/conditionchecklistrow.h
         src/vehiclewizard/components/conditionchecklistrow.cpp
         include/vehiclewizard/components/wizardstepper.h
@@ -75,8 +79,6 @@ set(PROJECT_SOURCES
         src/vehiclewizard/steps/step3filesview.cpp
         include/storage/localfilestoragemanager.h
         src/storage/localfilestoragemanager.cpp
-        include/db/vehicleregistrationservice.h
-        src/db/vehicleregistrationservice.cpp
         include/db/vehicleregistrationworker.h
         src/db/vehicleregistrationworker.cpp
         include/contract/numbertowordses.h

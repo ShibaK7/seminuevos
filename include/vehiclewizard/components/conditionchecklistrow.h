@@ -1,33 +1,57 @@
 #ifndef CONDITIONCHECKLISTROW_H
 #define CONDITIONCHECKLISTROW_H
 
-#include "conditionchecklistitems.h"
-#include "../vehicledraft.h"
+#include "../../db/conditioncatalog.h"
+#include "domain/inspectionitem.h"
 
+#include <QList>
 #include <QWidget>
 
 class QCheckBox;
 class QRadioButton;
 class QLineEdit;
 
-// Una fila del checklist del Paso 2: casilla "incluido en la inspección" +
-// radio Estado óptimo / <negativeStateLabel> + observaciones. Reutilizable
-// para los ~34 ítems de conditionChecklistItems() -- ver Step2ConditionView.
+// Una fila del checklist del Paso 2: casilla "la unidad trae este elemento" +
+// radio Estado óptimo / <etiqueta negativa> + observaciones. Se construye a
+// partir de un renglón de vehicle_conditions_cat.
+//
+// Las dos columnas de etiqueta tienen ancho variable según el ítem, así que
+// se miden una vez sobre TODO el catálogo (measureColumns) y el ancho se
+// inyecta en cada fila, para que queden alineadas en columna en vez de que
+// cada una se ajuste a su propio texto.
 class ConditionChecklistRow : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ConditionChecklistRow(const ConditionChecklistItemDef &def, QWidget *parent = nullptr);
+    struct ColumnWidths
+    {
+        int checkBox = 0;
+        int faultyRadio = 0;
+    };
 
-    ConditionItemValue value() const;
+    // Mide sobre el catálogo completo. Antes esto se cacheaba en una estática
+    // dentro del constructor, lo que era correcto mientras la lista era una
+    // constante de compilación; con el catálogo viniendo de la base dejó de
+    // serlo, porque el asistente se reconstruye cada vez que se abre y el
+    // ancho quedaba congelado con los datos de la primera apertura.
+    static ColumnWidths measureColumns(const QList<ConditionCatalogItem> &items);
+
+    ConditionChecklistRow(const ConditionCatalogItem &item, const ColumnWidths &columns,
+                          QWidget *parent = nullptr);
+
+    // Para agrupar y para el botón "Marcar todo", sin tener que construir un
+    // valor completo solo para leer a qué grupo pertenece la fila.
+    const QString &category() const;
+
+    domain::InspectionItem value() const;
     void setChecked(bool checked);
 
 private slots:
     void updateRowState();
 
 private:
-    ConditionChecklistItemDef m_def;
+    ConditionCatalogItem m_item;
     QCheckBox *m_checkBox;
     QRadioButton *m_optimalRadio;
     QRadioButton *m_faultyRadio;

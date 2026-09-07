@@ -378,6 +378,17 @@ void Vehicle::setObservations(const QString &value)
     m_observations = value.trimmed();
 }
 
+const QString &Vehicle::invoiceFilePath() const
+{
+    static const QString empty;
+    return empty;
+}
+
+void Vehicle::setInvoiceFilePath(const QString &)
+{
+    // Sin efecto: la rama que no guarda factura simplemente lo ignora.
+}
+
 // ---------------------------------------------------------------------------
 // Composición
 // ---------------------------------------------------------------------------
@@ -492,6 +503,43 @@ bool Vehicle::isAvailable() const
 bool Vehicle::hasFaults() const
 {
     return m_inspection.faultCount() > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Contrato
+// ---------------------------------------------------------------------------
+
+bool Vehicle::canGenerateContract() const
+{
+    // Por omisión, no. Así una rama nueva no empieza a emitir documentos
+    // legales por el simple hecho de heredar.
+    return false;
+}
+
+double Vehicle::contractAmount() const
+{
+    return 0.0;
+}
+
+QMap<QString, QString> Vehicle::contractPlaceholders() const
+{
+    QMap<QString, QString> values;
+
+    values.insert(QStringLiteral("vendedor_nombre"), m_counterparty.fullName());
+    values.insert(QStringLiteral("vendedor_domicilio"), m_counterparty.formattedAddress());
+    values.insert(QStringLiteral("vendedor_identificacion"), m_counterparty.nationalId());
+
+    values.insert(QStringLiteral("marca"), m_brand.name);
+    values.insert(QStringLiteral("modelo_anio"), QString::number(m_yearModel));
+    values.insert(QStringLiteral("tipo"), m_model);
+    values.insert(QStringLiteral("no_serie"), m_serialNumber);
+    values.insert(QStringLiteral("no_motor"), m_motorNumber);
+    values.insert(QStringLiteral("no_placas"),
+                  m_plates.isEmpty() ? QStringLiteral("SIN PLACA") : m_plates);
+    values.insert(QStringLiteral("color"), m_color);
+    values.insert(QStringLiteral("fecha"), m_dealDate.toString(QStringLiteral("dd/MM/yyyy")));
+
+    return values;
 }
 
 } // namespace domain

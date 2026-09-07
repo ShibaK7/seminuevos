@@ -19,6 +19,24 @@
 #include <QTextEdit>
 #include <QVBoxLayout>
 
+namespace {
+
+// Traduce la selección de un combo de catálogo a la referencia del dominio.
+// Un combo vacío -- el de subtipo lo queda cada vez que cambia el tipo padre
+// -- produce una referencia inválida, que el repositorio guarda como NULL en
+// lugar de como id cero, que rompería la llave foránea.
+domain::CatalogRef catalogRefFrom(const QComboBox *combo)
+{
+    domain::CatalogRef ref;
+    const QVariant data = combo->currentData();
+    if (data.isValid() && !data.isNull())
+        ref.id = data.toInt();
+    ref.name = combo->currentText();
+    return ref;
+}
+
+} // namespace
+
 Step1DetailsView::Step1DetailsView(QWidget *parent)
     : QWidget(parent)
 {
@@ -294,42 +312,14 @@ void Step1DetailsView::loadLookups()
         m_umaValue = umaQuery.value(0).toDouble();
 }
 
-bool Step1DetailsView::validate(QString &errorMessage) const
+domain::ValidationResult Step1DetailsView::validate() const
 {
-    if (m_serialNumberEdit->text().trimmed().isEmpty()) {
-        errorMessage = QStringLiteral("El No. de Serie (VIN) es obligatorio.");
-        return false;
-    }
-    if (m_brandCombo->currentIndex() < 0 || m_brandCombo->currentText().trimmed().isEmpty()) {
-        errorMessage = QStringLiteral("Selecciona la Marca del vehículo.");
-        return false;
-    }
-    if (m_modelEdit->text().trimmed().isEmpty()) {
-        errorMessage = QStringLiteral("El Modelo es obligatorio.");
-        return false;
-    }
-    if (m_purchasePriceSpin->value() <= 0) {
-        errorMessage = QStringLiteral("El Precio de Compra debe ser mayor a cero.");
-        return false;
-    }
-    if (m_ownerNameEdit->text().trimmed().isEmpty()) {
-        errorMessage = QStringLiteral("El nombre del Propietario anterior es obligatorio.");
-        return false;
-    }
-
-    // Regla UMA: un pago de contado no puede alcanzar/superar 3210 UMA.
-    if (m_paymentTypeCombo->currentText() == QStringLiteral("Contado")) {
-        const double limit = 3210.0 * m_umaValue;
-        if (m_purchasePriceSpin->value() >= limit) {
-            errorMessage = QStringLiteral(
-                "El pago de contado no puede ser mayor o igual a 3210 UMA ($%1). "
-                "Cambia el tipo de pago a Crédito o ajusta el precio.")
-                .arg(limit, 0, 'f', 2);
-            return false;
-        }
-    }
-
-    return true;
+    // Se arma un builder desechable con lo capturado y se le pregunta al
+    // dominio. Las reglas (VIN obligatorio, precio mayor a cero, el tope de
+    // las 3210 UMA para pagos en efectivo) viven en AcquiredVehicle, no aquí.
+    domain::VehicleBuilder builder;
+    applyTo(builder);
+    return builder.validateVehicleData();
 }
 
 void Step1DetailsView::showError(const QString &message)
@@ -343,41 +333,59 @@ void Step1DetailsView::hideError()
     m_errorLabel->setVisible(false);
 }
 
-void Step1DetailsView::fillDraft(VehicleDraft &draft) const
+void Step1DetailsView::applyTo(domain::VehicleBuilder &builder) const
 {
-    draft.date = m_dateEdit->date();
-    draft.vehicleTypeId = m_vehicleTypeCombo->currentData().toString();
-    draft.subtypeId = m_subtypeCombo->currentData().toString();
-    draft.brandId = m_brandCombo->currentData().toString();
-    draft.brandName = m_brandCombo->currentText();
-    draft.model = m_modelEdit->text().trimmed();
-    draft.yearModel = m_yearModelSpin->value();
-    draft.color = m_colorEdit->text().trimmed();
-    draft.mileage = m_mileageSpin->value();
-    draft.description = m_descriptionEdit->toPlainText();
-    draft.motorNumber = m_motorNumberEdit->text().trimmed();
-    draft.serialNumber = m_serialNumberEdit->text().trimmed();
-    draft.repuve = m_repuveEdit->text().trimmed();
-    draft.plates = m_platesEdit->text().trimmed();
-    draft.platesHolder = m_platesHolderEdit->text().trimmed();
+    // El tipo de operación va primero: decide qué subclase construye el
+    // builder, y los demás datos se aplican sobre ella. Por ahora solo hay
+    // flujo de Adquisición; cuando exista el selector, este valor sale de él.
+    builder.setAcquisitionType(domain::AcquisitionType::Adquisicion);
 
-    draft.owner.fullName = m_ownerNameEdit->text().trimmed();
-    draft.owner.nationalId = m_ownerIdEdit->text().trimmed();
-    draft.owner.streetAddress = m_ownerAddressEdit->text().trimmed();
-    draft.owner.suburb = m_ownerSuburbEdit->text().trimmed();
-    draft.owner.locality = m_ownerLocalityEdit->text().trimmed();
-    draft.owner.state = m_ownerStateEdit->text().trimmed();
-    draft.owner.postalCode = m_ownerPostalCodeEdit->text().trimmed();
+    builder.setDealDate(m_dateEdit->date())
+        .setVehicleType(catalogRefFrom(m_vehicleTypeCombo))
+        .setSubtype(catalogRefFrom(m_subtypeCombo))
+        .setBrand(catalogRefFrom(m_brandCombo))
+        .setModel(m_modelEdit->text())
+        .setYearModel(m_yearModelSpin->value())
+        .setColor(m_colorEdit->text())
+        .setMileage(m_mileageSpin->value())
+        .setDescription(m_descriptionEdit->toPlainText())
+        .setMotorNumber(m_motorNumberEdit->text())
+        .setSerialNumber(m_serialNumberEdit->text())
+        .setRepuve(m_repuveEdit->text())
+        .setPlates(m_platesEdit->text())
+        .setPlatesHolder(m_platesHolderEdit->text());
 
-    draft.invoiceType = m_invoiceTypeCombo->currentText();
-    draft.invoiceFilePath = m_invoiceFilePath;
-    draft.invoiceNumber = m_invoiceNumberEdit->text().trimmed();
-    draft.invoiceIssuer = m_invoiceIssuerEdit->text().trimmed();
+    domain::Counterparty owner;
+    // Los setters de Counterparty devuelven bool, pero aquí los valores vienen
+    // de campos de texto acotados por la interfaz. Lo que sí puede fallar de
+    // verdad -- código postal o teléfono mal formados -- se refleja en que el
+    // campo queda vacío, y el contrato lo reporta como domicilio incompleto.
+    (void)owner.setFullName(m_ownerNameEdit->text());
+    (void)owner.setNationalId(m_ownerIdEdit->text());
+    owner.setStreetAddress(m_ownerAddressEdit->text());
+    (void)owner.setSuburb(m_ownerSuburbEdit->text());
+    (void)owner.setLocality(m_ownerLocalityEdit->text());
+    (void)owner.setState(m_ownerStateEdit->text());
+    (void)owner.setPostalCode(m_ownerPostalCodeEdit->text());
+    builder.setCounterparty(owner);
 
-    draft.purchasePrice = m_purchasePriceSpin->value();
-    draft.paymentType = m_paymentTypeCombo->currentText();
-    draft.paymentMethod = m_paymentMethodCombo->currentText();
-    draft.maintenanceCost = m_maintenanceCostSpin->value();
-    draft.salePrice = m_salePriceSpin->value();
-    draft.observations = m_observationsEdit->toPlainText();
+    if (const auto invoiceType = domain::invoiceTypeFromDb(m_invoiceTypeCombo->currentText()))
+        builder.setInvoiceType(*invoiceType);
+    builder.setInvoiceFilePath(m_invoiceFilePath)
+        .setInvoiceNumber(m_invoiceNumberEdit->text())
+        .setInvoiceIssuer(m_invoiceIssuerEdit->text());
+
+    builder.setPurchasePrice(m_purchasePriceSpin->value())
+        .setSalePrice(m_salePriceSpin->value())
+        .setMaintenanceCost(m_maintenanceCostSpin->value())
+        .setObservations(m_observationsEdit->toPlainText())
+        // La UMA se inyecta desde aquí porque el dominio no consulta la base:
+        // la regla del pago en efectivo necesita el valor vigente, y quien lo
+        // leyó de global_configurations fue loadLookups().
+        .setUmaDailyValue(m_umaValue);
+
+    if (const auto paymentType = domain::paymentTypeFromDb(m_paymentTypeCombo->currentText()))
+        builder.setPaymentType(*paymentType);
+    if (const auto paymentMethod = domain::paymentMethodFromDb(m_paymentMethodCombo->currentText()))
+        builder.setPaymentMethod(*paymentMethod);
 }

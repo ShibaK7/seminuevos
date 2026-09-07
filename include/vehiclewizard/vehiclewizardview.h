@@ -1,9 +1,13 @@
 #ifndef VEHICLEWIZARDVIEW_H
 #define VEHICLEWIZARDVIEW_H
 
-#include "vehicledraft.h"
-
 #include <QWidget>
+
+#include <memory>
+
+namespace domain {
+class Vehicle;
+}
 
 class WizardStepper;
 class QStackedWidget;
@@ -17,16 +21,17 @@ class VehicleRegistrationWorker;
 // Vista embebida (NO modal) con los 3 pasos del wizard de registro de
 // vehículo (US-03.2). MainWindow la muestra reemplazando la página de
 // Inventario dentro del mismo mainContentStack -- no se abre como QDialog.
-// Mantiene un VehicleDraft en memoria hasta que el Paso 3 confirma -- ahí
-// dispara el guardado atómico (archivos + BD) y habilita "Imprimir
-// Contrato". Emite cancelled()/vehicleRegistered() para que MainWindow
-// decida cuándo regresar a la lista de inventario.
+// Al confirmar el Paso 3 arma la unidad con un VehicleBuilder a partir de lo
+// que tienen los widgets, dispara el guardado atómico (archivos + BD) y
+// habilita "Imprimir Contrato". Emite cancelled()/vehicleRegistered() para
+// que MainWindow decida cuándo regresar a la lista de inventario.
 class VehicleWizardView : public QWidget
 {
     Q_OBJECT
 
 public:
     explicit VehicleWizardView(QWidget *parent = nullptr);
+    ~VehicleWizardView() override;
 
 signals:
     // Se emite al presionar "Cancelar" (con confirmación si aún no se ha
@@ -65,7 +70,10 @@ private:
     // "bloquee" el acceso a los pasos que ya se habían completado.
     int m_maxUnlockedStep = 0;
     bool m_registered = false;
-    VehicleDraft m_finalDraft;
+    // La unidad ya construida y validada. La vista conserva SU ejemplar: al
+    // worker se le manda un clon, porque ese hilo reescribe las rutas de los
+    // archivos y compartir el objeto rompería un reintento tras un fallo.
+    std::unique_ptr<domain::Vehicle> m_vehicle;
     VehicleRegistrationWorker *m_worker = nullptr;
 };
 

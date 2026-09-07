@@ -114,8 +114,8 @@ void Step3FilesView::addImages(const QStringList &paths)
     for (const QString &path : paths) {
         if (path.isEmpty())
             continue;
-        PendingImage image;
-        image.sourcePath = path;
+        domain::VehicleImage image;
+        image.path = path;
         image.isPrimary = m_images.isEmpty(); // la primera foto agregada es portada por defecto
         m_images << image;
     }
@@ -145,7 +145,7 @@ void Step3FilesView::rebuildGallery()
     QHBoxLayout *rowLayout = nullptr;
 
     for (int i = 0; i < m_images.size(); ++i) {
-        const PendingImage &image = m_images.at(i);
+        const domain::VehicleImage &image = m_images.at(i);
 
         // Cada fila es su propio QHBoxLayout con un stretch antes de la
         // primera foto, entre fotos, y después de la última -- así el
@@ -170,7 +170,7 @@ void Step3FilesView::rebuildGallery()
         cellLayout->setSpacing(10);
 
         auto *thumbnail = new AspectRatioImageLabel(cell);
-        thumbnail->setSourcePixmap(QPixmap(image.sourcePath));
+        thumbnail->setSourcePixmap(QPixmap(image.path));
         thumbnail->setFixedSize(360, 280);
         cellLayout->addWidget(thumbnail);
 
@@ -180,7 +180,7 @@ void Step3FilesView::rebuildGallery()
         connect(deleteButton, &QPushButton::clicked, this, [this, i]() {
             m_images.removeAt(i);
             if (!m_images.isEmpty() && std::none_of(m_images.cbegin(), m_images.cend(),
-                                                      [](const PendingImage &img) { return img.isPrimary; })) {
+                                                      [](const domain::VehicleImage &img) { return img.isPrimary; })) {
                 m_images.first().isPrimary = true;
             }
             rebuildGallery();
@@ -216,7 +216,7 @@ void Step3FilesView::rebuildDocuments()
     }
 
     for (const QString &type : documentTypes()) {
-        const bool hasFile = m_documents.contains(type) && !m_documents.value(type).sourcePath.isEmpty();
+        const bool hasFile = m_documents.contains(type) && !m_documents.value(type).path.isEmpty();
 
         auto *row = new QWidget(this);
         auto *rowLayout = new QHBoxLayout(row);
@@ -244,7 +244,7 @@ void Step3FilesView::rebuildDocuments()
             auto *viewButton = new QPushButton(QStringLiteral("Ver"), row);
             viewButton->setProperty("class", QStringLiteral("secondary"));
             connect(viewButton, &QPushButton::clicked, this, [this, type]() {
-                QDesktopServices::openUrl(QUrl::fromLocalFile(m_documents.value(type).sourcePath));
+                QDesktopServices::openUrl(QUrl::fromLocalFile(m_documents.value(type).path));
             });
             rowLayout->addWidget(viewButton);
 
@@ -255,7 +255,7 @@ void Step3FilesView::rebuildDocuments()
                 if (path.isEmpty())
                     return;
                 m_documents[type].documentType = type;
-                m_documents[type].sourcePath = path;
+                m_documents[type].path = path;
                 rebuildDocuments();
             });
             rowLayout->addWidget(replaceButton);
@@ -267,7 +267,7 @@ void Step3FilesView::rebuildDocuments()
                 if (path.isEmpty())
                     return;
                 m_documents[type].documentType = type;
-                m_documents[type].sourcePath = path;
+                m_documents[type].path = path;
                 rebuildDocuments();
             });
             rowLayout->addWidget(uploadButton);
@@ -294,13 +294,18 @@ void Step3FilesView::dropEvent(QDropEvent *event)
     event->acceptProposedAction();
 }
 
-void Step3FilesView::fillDraft(VehicleDraft &draft) const
+void Step3FilesView::applyTo(domain::VehicleBuilder &builder) const
 {
-    draft.images = m_images;
+    // Se limpia primero porque el builder puede venir de un intento anterior:
+    // sin esto, un segundo guardado duplicaría las imágenes y chocaría contra
+    // la restricción de un solo documento por tipo.
+    builder.clearFiles();
 
-    draft.documents.clear();
-    for (const PendingDocument &document : m_documents) {
-        if (!document.sourcePath.isEmpty())
-            draft.documents << document;
+    for (const domain::VehicleImage &image : m_images)
+        builder.addImage(image);
+
+    for (const domain::VehicleDocument &document : m_documents) {
+        if (!document.path.isEmpty())
+            builder.addDocument(document);
     }
 }

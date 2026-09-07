@@ -28,6 +28,12 @@ public:
     void accept(VehicleVisitor &visitor) const override;
     std::unique_ptr<Vehicle> clone() const override;
 
+    // La compraventa sí tiene contrato: es exactamente lo que describe la
+    // plantilla, con la agencia como compradora.
+    bool canGenerateContract() const override;
+    double contractAmount() const override;
+    QMap<QString, QString> contractPlaceholders() const override;
+
     // --- Datos propios de la compra ---------------------------------------
     double purchasePrice() const;
     [[nodiscard]] bool setPurchasePrice(double value);
@@ -40,8 +46,8 @@ public:
     PaymentMethod paymentMethod() const;
     void setPaymentMethod(PaymentMethod value);
 
-    const QString &invoiceFilePath() const;
-    void setInvoiceFilePath(const QString &value);
+    const QString &invoiceFilePath() const override;
+    void setInvoiceFilePath(const QString &value) override;
 
     // --- Regla del pago en efectivo ---------------------------------------
     // La UMA vigente a la fecha de la operación es un dato del trato, no algo

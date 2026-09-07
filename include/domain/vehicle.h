@@ -12,6 +12,7 @@
 
 #include <QDate>
 #include <QList>
+#include <QMap>
 #include <QString>
 
 #include <memory>
@@ -78,6 +79,25 @@ public:
     // la vista conserva el suyo con las rutas originales, que es lo que hace
     // posible reintentar el guardado después de un error.
     virtual std::unique_ptr<Vehicle> clone() const = 0;
+
+    // --- Contrato ---------------------------------------------------------
+    // No toda operación produce un contrato. La plantilla que existe es de
+    // COMPRAVENTA, con la agencia como compradora y una cláusula que declara
+    // que el vendedor recibe el importe del vehículo. En una consignación no
+    // hay compraventa: no se le paga al propietario, se le cobra una
+    // comisión por venderlo. Reutilizar esa plantilla no sería un descuido de
+    // formato, produciría un documento que afirma algo falso.
+    virtual bool canGenerateContract() const;
+
+    // Monto que el contrato declara como precio de la operación. Se devuelve
+    // como número y no como texto para que el formateo (separadores, importe
+    // en letras) siga siendo cosa de quien arma el documento.
+    virtual double contractAmount() const;
+
+    // Valores para las marcas {{...}} de la plantilla. Cada rama añade los
+    // suyos sobre los comunes; el generador solo sustituye lo que recibe, sin
+    // saber de qué tipo de unidad se trata.
+    virtual QMap<QString, QString> contractPlaceholders() const;
 
     // --- Validación (Template Method, deliberadamente NO virtual) --------
     // Comprueba lo común a toda unidad y delega lo propio de cada rama en el
@@ -172,6 +192,14 @@ public:
 
     const QString &observations() const;
     void setObservations(const QString &value);
+
+    // Archivo digitalizado de la factura. Solo la compra lo contempla: el
+    // esquema pone invoice_file_path únicamente en vehicle_acquisitions. La
+    // implementación por omisión devuelve vacío e ignora el setter, para que
+    // quien copia archivos a disco no tenga que preguntar de qué rama es la
+    // unidad que trae entre manos.
+    virtual const QString &invoiceFilePath() const;
+    virtual void setInvoiceFilePath(const QString &value);
 
     // --- COMPOSICIÓN ------------------------------------------------------
     // Estas cuatro sí son composición, y el esquema lo dice: sus tablas

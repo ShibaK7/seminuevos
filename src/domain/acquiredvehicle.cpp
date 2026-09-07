@@ -139,6 +139,31 @@ bool AcquiredVehicle::isSoldAtLoss() const
     return m_salePrice < totalCost();
 }
 
+bool AcquiredVehicle::canGenerateContract() const
+{
+    return true;
+}
+
+double AcquiredVehicle::contractAmount() const
+{
+    // El contrato declara lo que la agencia le paga al vendedor, no lo que
+    // después pedirá por la unidad.
+    return m_purchasePrice;
+}
+
+QMap<QString, QString> AcquiredVehicle::contractPlaceholders() const
+{
+    QMap<QString, QString> values = Vehicle::contractPlaceholders();
+
+    values.insert(QStringLiteral("condiciones_pago"),
+                  m_paymentType == PaymentType::Contado
+                      ? QStringLiteral("PAGO DE CONTADO EN UNA SOLA EXHIBICIÓN.")
+                      : QStringLiteral("PAGO A CRÉDITO SEGÚN LAS CONDICIONES ACORDADAS ENTRE "
+                                       "LAS PARTES."));
+
+    return values;
+}
+
 void AcquiredVehicle::collectSpecificErrors(ValidationResult &result) const
 {
     if (m_purchasePrice <= 0.0) {

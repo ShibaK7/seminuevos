@@ -1,7 +1,7 @@
 #ifndef STEP3FILESVIEW_H
 #define STEP3FILESVIEW_H
 
-#include "../vehicledraft.h"
+#include "domain/vehiclebuilder.h"
 
 #include <QList>
 #include <QMap>
@@ -21,7 +21,7 @@ class Step3FilesView : public QWidget
 public:
     explicit Step3FilesView(QWidget *parent = nullptr);
 
-    void fillDraft(VehicleDraft &draft) const;
+    void applyTo(domain::VehicleBuilder &builder) const;
 
 protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
@@ -34,8 +34,8 @@ private:
     void rebuildGallery();
     void rebuildDocuments();
 
-    QList<PendingImage> m_images;
-    QMap<QString, PendingDocument> m_documents; // key = documentType
+    QList<domain::VehicleImage> m_images;
+    QMap<QString, domain::VehicleDocument> m_documents; // key = documentType
 
     // Filas armadas a mano (QHBoxLayout por cada 2 fotos) en vez de
     // QGridLayout -- así el espacio sobrante se reparte como stretch antes/

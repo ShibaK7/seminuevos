@@ -1,6 +1,5 @@
 #include "../../../include/vehiclewizard/steps/step2conditionview.h"
 #include "../../../include/db/connectionpool.h"
-#include "../../../include/vehiclewizard/components/conditionchecklistitems.h"
 #include "../../../include/vehiclewizard/components/conditionchecklistrow.h"
 
 #include <QComboBox>
@@ -34,16 +33,25 @@ QWidget *Step2ConditionView::buildBasicSpecsPanel()
     m_cylindersCombo = new QComboBox(card);
     m_cylindersCombo->addItems({QStringLiteral("3"), QStringLiteral("4"), QStringLiteral("5"),
                                  QStringLiteral("6"), QStringLiteral("8")});
+
+    // Los combos de valores cerrados se llenan desde el dominio, que es la
+    // misma fuente que decide qué texto acepta la base. Antes eran literales
+    // repetidos aquí, y cualquier retoque a una etiqueta rompía el CHECK.
     m_transmissionCombo = new QComboBox(card);
-    m_transmissionCombo->addItems({QStringLiteral("Automático"), QStringLiteral("Manual")});
+    for (domain::Transmission value : domain::allTransmissions())
+        m_transmissionCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+
     m_interiorMaterialCombo = new QComboBox(card);
     m_interiorMaterialCombo->setEditable(true);
     m_interiorMaterialCombo->addItems({QStringLiteral("Tela"), QStringLiteral("Piel"), QStringLiteral("Piel sintética")});
+
     m_windowRegulatorsCombo = new QComboBox(card);
-    m_windowRegulatorsCombo->addItems({QStringLiteral("Manuales"), QStringLiteral("Eléctricos tradicionales"),
-                                        QStringLiteral("Eléctricos inteligentes")});
+    for (domain::WindowRegulators value : domain::allWindowRegulators())
+        m_windowRegulatorsCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+
     m_airConditioningCombo = new QComboBox(card);
-    m_airConditioningCombo->addItems({QStringLiteral("Automático"), QStringLiteral("Manual")});
+    for (domain::AirConditioning value : domain::allAirConditioningModes())
+        m_airConditioningCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
     auto *form = new QFormLayout;
     form->addRow(QStringLiteral("Combustible"), m_fuelTypeCombo);
@@ -71,80 +79,153 @@ QWidget *Step2ConditionView::buildChecklistPanel()
     title->setProperty("class", QStringLiteral("h3"));
     cardLayout->addWidget(title);
 
+    m_checklistMessageLabel = new QLabel(card);
+    m_checklistMessageLabel->setProperty("class", QStringLiteral("error-text"));
+    m_checklistMessageLabel->setWordWrap(true);
+    m_checklistMessageLabel->setVisible(false);
+    cardLayout->addWidget(m_checklistMessageLabel);
+
     auto *scrollArea = new QScrollArea(card);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
 
-    auto *scrollContent = new QWidget(scrollArea);
-    auto *scrollLayout = new QVBoxLayout(scrollContent);
+    // El contenedor se crea vacío y se puebla en loadLookups(). OJO: el
+    // addStretch() final NO va aquí -- tiene que quedar después de las filas,
+    // o el espaciador las empuja al fondo del área desplazable.
+    m_checklistContent = new QWidget(scrollArea);
+    m_checklistLayout = new QVBoxLayout(m_checklistContent);
 
-    const QList<ConditionChecklistItemDef> &items = conditionChecklistItems();
-    for (const QString &group : conditionChecklistGroups()) {
-        auto *groupHeaderLayout = new QHBoxLayout;
-        auto *groupLabel = new QLabel(group, scrollContent);
-        groupLabel->setProperty("class", QStringLiteral("form-label"));
-        auto *markAllButton = new QPushButton(QStringLiteral("Marcar todo"), scrollContent);
-        markAllButton->setProperty("class", QStringLiteral("secondary"));
-        connect(markAllButton, &QPushButton::clicked, this, [this, group]() { markAllInGroup(group, true); });
-
-        groupHeaderLayout->addWidget(groupLabel);
-        groupHeaderLayout->addStretch();
-        groupHeaderLayout->addWidget(markAllButton);
-        scrollLayout->addLayout(groupHeaderLayout);
-
-        for (const ConditionChecklistItemDef &def : items) {
-            if (def.group != group)
-                continue;
-            auto *row = new ConditionChecklistRow(def, scrollContent);
-            scrollLayout->addWidget(row);
-            m_checklistRows << row;
-        }
-
-        auto *separator = new QFrame(scrollContent);
-        separator->setFrameShape(QFrame::HLine);
-        scrollLayout->addWidget(separator);
-    }
-    scrollLayout->addStretch();
-
-    scrollArea->setWidget(scrollContent);
+    scrollArea->setWidget(m_checklistContent);
     cardLayout->addWidget(scrollArea, 1);
 
     return card;
 }
 
-void Step2ConditionView::markAllInGroup(const QString &group, bool checked)
+void Step2ConditionView::showChecklistMessage(const QString &message)
+{
+    m_checklistMessageLabel->setText(message);
+    m_checklistMessageLabel->setVisible(true);
+}
+
+void Step2ConditionView::markAllInGroup(const QString &category, bool checked)
 {
     for (ConditionChecklistRow *row : std::as_const(m_checklistRows)) {
-        if (row->value().itemGroup == group)
+        if (row->category() == category)
             row->setChecked(checked);
     }
 }
 
 void Step2ConditionView::loadLookups()
 {
-    ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
-    QSqlDatabase &db = handle.database();
-    if (!db.isOpen())
-        return;
+    QList<ConditionCatalogItem> catalog;
+    QString catalogError;
 
-    m_fuelTypeCombo->clear();
-    QSqlQuery query(db);
-    if (query.exec(QStringLiteral("SELECT id, name FROM fuel_type_cat ORDER BY name"))) {
-        while (query.next())
-            m_fuelTypeCombo->addItem(query.value(1).toString(), query.value(0));
+    {
+        ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
+        QSqlDatabase &db = handle.database();
+        if (!db.isOpen()) {
+            showChecklistMessage(QStringLiteral(
+                "No se pudo conectar con la base de datos, así que el checklist de condición "
+                "no está disponible."));
+            return;
+        }
+
+        m_fuelTypeCombo->clear();
+        QSqlQuery query(db);
+        if (query.exec(QStringLiteral("SELECT id, name FROM fuel_type_cat ORDER BY name"))) {
+            while (query.next())
+                m_fuelTypeCombo->addItem(query.value(1).toString(), query.value(0));
+        }
+
+        catalog = ConditionCatalog::load(db, &catalogError);
+        // El handle se libera aquí, antes de construir un par de cientos de
+        // widgets: no tiene sentido retener una conexión del pool durante eso.
     }
+
+    if (catalog.isEmpty()) {
+        showChecklistMessage(
+            catalogError.isEmpty()
+                ? QStringLiteral("El catálogo de condiciones (vehicle_conditions_cat) está "
+                                 "vacío. Revisa que la aplicación haya podido sembrarlo al "
+                                 "arrancar.")
+                : QStringLiteral("No se pudo leer el catálogo de condiciones: %1").arg(catalogError));
+        return;
+    }
+
+    populateChecklist(catalog);
 }
 
-void Step2ConditionView::fillDraft(VehicleDraft &draft) const
+void Step2ConditionView::populateChecklist(const QList<ConditionCatalogItem> &items)
 {
-    draft.fuelTypeId = m_fuelTypeCombo->currentData().toString();
-    draft.cylinders = m_cylindersCombo->currentText().toInt();
-    draft.transmission = m_transmissionCombo->currentText();
-    draft.interiorMaterial = m_interiorMaterialCombo->currentText();
-    draft.windowRegulators = m_windowRegulatorsCombo->currentText();
-    draft.airConditioning = m_airConditioningCombo->currentText();
+    const ConditionChecklistRow::ColumnWidths columns =
+        ConditionChecklistRow::measureColumns(items);
 
-    draft.conditionItems.clear();
+    // Un solo recorrido: el catálogo ya viene ordenado y con las categorías
+    // contiguas, así que basta abrir un encabezado cada vez que cambia.
+    QString currentCategory;
+    for (const ConditionCatalogItem &item : items) {
+        if (item.category != currentCategory) {
+            if (!currentCategory.isEmpty()) {
+                auto *separator = new QFrame(m_checklistContent);
+                separator->setFrameShape(QFrame::HLine);
+                m_checklistLayout->addWidget(separator);
+            }
+            currentCategory = item.category;
+
+            auto *groupHeaderLayout = new QHBoxLayout;
+            auto *groupLabel = new QLabel(currentCategory, m_checklistContent);
+            groupLabel->setProperty("class", QStringLiteral("form-label"));
+            auto *markAllButton = new QPushButton(QStringLiteral("Marcar todo"), m_checklistContent);
+            markAllButton->setProperty("class", QStringLiteral("secondary"));
+            const QString category = currentCategory;
+            connect(markAllButton, &QPushButton::clicked, this,
+                    [this, category]() { markAllInGroup(category, true); });
+
+            groupHeaderLayout->addWidget(groupLabel);
+            groupHeaderLayout->addStretch();
+            groupHeaderLayout->addWidget(markAllButton);
+            m_checklistLayout->addLayout(groupHeaderLayout);
+        }
+
+        auto *row = new ConditionChecklistRow(item, columns, m_checklistContent);
+        m_checklistLayout->addWidget(row);
+        m_checklistRows << row;
+    }
+
+    auto *separator = new QFrame(m_checklistContent);
+    separator->setFrameShape(QFrame::HLine);
+    m_checklistLayout->addWidget(separator);
+    m_checklistLayout->addStretch();
+}
+
+void Step2ConditionView::applyTo(domain::VehicleBuilder &builder) const
+{
+    domain::VehicleConditions conditions;
+
+    domain::CatalogRef fuelType;
+    const QVariant fuelData = m_fuelTypeCombo->currentData();
+    if (fuelData.isValid() && !fuelData.isNull())
+        fuelType.id = fuelData.toInt();
+    fuelType.name = m_fuelTypeCombo->currentText();
+    conditions.setFuelType(fuelType);
+
+    (void)conditions.setCylinders(m_cylindersCombo->currentText().toInt());
+    conditions.setTransmission(
+        static_cast<domain::Transmission>(m_transmissionCombo->currentData().toInt()));
+    (void)conditions.setInteriorMaterial(m_interiorMaterialCombo->currentText());
+    conditions.setWindowRegulators(
+        static_cast<domain::WindowRegulators>(m_windowRegulatorsCombo->currentData().toInt()));
+    conditions.setAirConditioning(
+        static_cast<domain::AirConditioning>(m_airConditioningCombo->currentData().toInt()));
+
+    builder.setConditions(conditions);
+
+    // Se vuelcan TODAS las filas, marcadas o no: guardar también las que la
+    // unidad no trae congela cómo se veía el checklist el día del registro, y
+    // distingue "no lo trae" de "ese elemento todavía no existía".
+    domain::Inspection inspection;
     for (ConditionChecklistRow *row : m_checklistRows)
-        draft.conditionItems << row->value();
+        inspection.setItem(row->value());
+
+    builder.setInspection(inspection);
 }

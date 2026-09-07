@@ -1,7 +1,8 @@
 #ifndef STEP1DETAILSVIEW_H
 #define STEP1DETAILSVIEW_H
 
-#include "../vehicledraft.h"
+#include "domain/validationresult.h"
+#include "domain/vehiclebuilder.h"
 
 #include <QWidget>
 
@@ -29,8 +30,16 @@ public:
     // pequeños -- mismo criterio que Step2ConditionView::loadLookups()).
     void loadLookups();
 
-    bool validate(QString &errorMessage) const;
-    void fillDraft(VehicleDraft &draft) const;
+    // Vuelca los widgets sobre el builder. Se llama en cada intento de
+    // guardado: la fuente de verdad son los widgets, no un objeto que haya
+    // que mantener sincronizado.
+    void applyTo(domain::VehicleBuilder &builder) const;
+
+    // Ya no comprueba las reglas por su cuenta: arma un builder con lo
+    // capturado y deja que el dominio decida. Así la regla del pago en
+    // efectivo o el mínimo del precio viven en un solo sitio, y esta vista
+    // solo traduce el resultado a un mensaje en pantalla.
+    domain::ValidationResult validate() const;
 
     void showError(const QString &message);
     void hideError();

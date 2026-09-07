@@ -1,5 +1,6 @@
 #include "../../../include/vehiclewizard/components/conditionchecklistrow.h"
 
+#include <QApplication>
 #include <QCheckBox>
 #include <QFont>
 #include <QFontMetrics>
@@ -12,63 +13,61 @@
 
 namespace {
 
-// Ancho necesario para que el texto más largo entre todos los ítems del
-// checklist quepa sin recortarse -- se usa como ancho fijo en TODAS las
-// filas para que el checkbox (y el radio de "con fallas", cuya etiqueta
-// también varía por ítem) queden alineados entre sí, en vez de que cada
-// fila se ajuste a su propio texto. Se calcula una sola vez (cacheado).
-int maxTextWidth(const QFontMetrics &metrics, const QList<QString> &candidates)
-{
-    int width = 0;
-    for (const QString &text : candidates)
-        width = std::max(width, metrics.horizontalAdvance(text));
-    return width;
-}
+// Espejo de resources/styles/global-style.qss: el font-size base de QWidget
+// (12pt), el ancho del indicador de checkbox/radio (14px) y su spacing (8px).
+// Están duplicados aquí porque la medición ocurre antes de que la hoja de
+// estilos se aplique -- ver measureColumns().
+constexpr int kStyleSheetBaseFontPointSize = 12;
+constexpr int kIndicatorWidth = 14;
+constexpr int kIndicatorSpacing = 8;
+constexpr int kColumnPadding = 18;
 
 } // namespace
 
-ConditionChecklistRow::ConditionChecklistRow(const ConditionChecklistItemDef &def, QWidget *parent)
-    : QWidget(parent)
-    , m_def(def)
+ConditionChecklistRow::ColumnWidths
+ConditionChecklistRow::measureColumns(const QList<ConditionCatalogItem> &items)
 {
+    // OJO: esto corre antes de que los widgets existan y se "pulan" con la
+    // hoja de estilos, así que QWidget::font() todavía devuelve la fuente por
+    // omisión de Windows, más chica que la del QSS. Medir con ella dejaba el
+    // ancho corto y recortaba el texto. Por eso se fuerza el mismo tamaño que
+    // declara la regla base del QSS.
+    QFont measureFont = QApplication::font();
+    measureFont.setPointSize(kStyleSheetBaseFontPointSize);
+    const QFontMetrics metrics(measureFont);
+
+    ColumnWidths widths;
+    for (const ConditionCatalogItem &item : items) {
+        widths.checkBox = std::max(widths.checkBox, metrics.horizontalAdvance(item.element));
+        widths.faultyRadio = std::max(widths.faultyRadio,
+                                      metrics.horizontalAdvance(item.negativeLabel));
+    }
+
+    const int chrome = kIndicatorWidth + kIndicatorSpacing + kColumnPadding;
+    widths.checkBox += chrome;
+    widths.faultyRadio += chrome;
+    return widths;
+}
+
+ConditionChecklistRow::ConditionChecklistRow(const ConditionCatalogItem &item,
+                                             const ColumnWidths &columns, QWidget *parent)
+    : QWidget(parent)
+    , m_item(item)
+{
+    // Este widget contenedor es lo que engancha la regla del QSS que agrisa
+    // la fila cuando se desmarca: el selector es de descendiente y necesita un
+    // contenedor por fila que cargue la propiedad itemChecked. Subir los hijos
+    // al layout del padre rompería el estilo en silencio.
     setProperty("class", QStringLiteral("condition-row"));
 
-    m_checkBox = new QCheckBox(def.label, this);
+    m_checkBox = new QCheckBox(item.element, this);
     m_checkBox->setChecked(true);
+    m_checkBox->setFixedWidth(columns.checkBox);
 
     m_optimalRadio = new QRadioButton(QStringLiteral("Estado óptimo"), this);
     m_optimalRadio->setChecked(true);
-    m_faultyRadio = new QRadioButton(def.negativeStateLabel, this);
-
-    {
-        // OJO: m_checkBox->fontMetrics() aquí mismo, recién construido,
-        // todavía no está "polished" con la hoja de estilos de la app (el
-        // font-size:12pt de QWidget en global-style.qss se aplica más
-        // tarde) -- mide con la fuente default de Windows (más chica), lo
-        // que dejaba el ancho corto y recortaba el texto. Se fuerza 12pt
-        // explícito, igual que la regla base de global-style.qss.
-        QFont measureFont = m_checkBox->font();
-        measureFont.setPointSize(12);
-        const QFontMetrics metrics(measureFont);
-
-        static const int checkBoxLabelWidth = [&metrics] {
-            QList<QString> labels;
-            for (const ConditionChecklistItemDef &item : conditionChecklistItems())
-                labels << item.label;
-            // Indicador (14px, ver global-style.qss) + su spacing (8px) + margen.
-            return maxTextWidth(metrics, labels) + 14 + 8 + 18;
-        }();
-
-        static const int faultyRadioLabelWidth = [&metrics] {
-            QList<QString> labels;
-            for (const ConditionChecklistItemDef &item : conditionChecklistItems())
-                labels << item.negativeStateLabel;
-            return maxTextWidth(metrics, labels) + 14 + 8 + 18;
-        }();
-
-        m_checkBox->setFixedWidth(checkBoxLabelWidth);
-        m_faultyRadio->setFixedWidth(faultyRadioLabelWidth);
-    }
+    m_faultyRadio = new QRadioButton(item.negativeLabel, this);
+    m_faultyRadio->setFixedWidth(columns.faultyRadio);
 
     m_observationsEdit = new QLineEdit(this);
     m_observationsEdit->setPlaceholderText(QStringLiteral("Observaciones"));
@@ -102,13 +101,16 @@ void ConditionChecklistRow::setChecked(bool checked)
     m_checkBox->setChecked(checked);
 }
 
-ConditionItemValue ConditionChecklistRow::value() const
+const QString &ConditionChecklistRow::category() const
 {
-    ConditionItemValue value;
-    value.itemKey = m_def.itemKey;
-    value.itemGroup = m_def.group;
-    value.isChecked = m_checkBox->isChecked();
-    value.status = m_optimalRadio->isChecked() ? QStringLiteral("Estado óptimo") : QStringLiteral("Con fallas");
-    value.observations = m_observationsEdit->text();
-    return value;
+    return m_item.category;
+}
+
+domain::InspectionItem ConditionChecklistRow::value() const
+{
+    // La etiqueta del radio negativo varía por ítem ("Deteriorada",
+    // "Gastadas"), pero lo que se guarda es un booleano: el texto es solo
+    // presentación.
+    return domain::InspectionItem(m_item.id, m_checkBox->isChecked(),
+                                  m_optimalRadio->isChecked(), m_observationsEdit->text());
 }

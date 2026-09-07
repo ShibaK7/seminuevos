@@ -1,11 +1,12 @@
 #include "../../include/contract/contractpdfgenerator.h"
 #include "../../include/contract/companyprofile.h"
 #include "../../include/contract/numbertowordses.h"
-#include "../../include/vehiclewizard/vehicledraft.h"
+#include "domain/vehicle.h"
 
 #include <QFile>
 #include <QIODevice>
 #include <QLocale>
+#include <QMap>
 #include <QPageLayout>
 #include <QPrinter>
 #include <QStringConverter>
@@ -19,7 +20,8 @@ QString loadTemplate(QString &errorMessage)
 {
     QFile file(QStringLiteral(":/templates/contract_acquisition.html"));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        errorMessage = QStringLiteral("No se pudo abrir la plantilla del contrato (:/templates/contract_acquisition.html).");
+        errorMessage = QStringLiteral("No se pudo abrir la plantilla del contrato "
+                                       "(:/templates/contract_acquisition.html).");
         return QString();
     }
     QTextStream stream(&file);
@@ -27,17 +29,21 @@ QString loadTemplate(QString &errorMessage)
     return stream.readAll();
 }
 
-QString buildDocumentsListHtml(const VehicleDraft &draft)
+// La lista de documentos es lo único que se arma como HTML y no como texto
+// plano, así que cada campo se escapa por separado antes de envolverlo en las
+// etiquetas.
+QString buildDocumentsListHtml(const domain::Vehicle &vehicle)
 {
     QStringList items;
-    if (!draft.invoiceNumber.trimmed().isEmpty()) {
+
+    if (!vehicle.invoiceNumber().trimmed().isEmpty()) {
         items << QStringLiteral("<li>FACTURA %1 No. %2 EXPEDIDA POR %3</li>")
-                     .arg(draft.invoiceType.toHtmlEscaped(),
-                          draft.invoiceNumber.toHtmlEscaped(),
-                          draft.invoiceIssuer.toHtmlEscaped());
+                     .arg(domain::toDbString(vehicle.invoiceType()).toHtmlEscaped(),
+                          vehicle.invoiceNumber().toHtmlEscaped(),
+                          vehicle.invoiceIssuer().toHtmlEscaped());
     }
-    for (const PendingDocument &doc : draft.documents)
-        items << QStringLiteral("<li>%1</li>").arg(doc.documentType.toHtmlEscaped());
+    for (const domain::VehicleDocument &document : vehicle.documents())
+        items << QStringLiteral("<li>%1</li>").arg(document.documentType.toHtmlEscaped());
 
     if (items.isEmpty())
         items << QStringLiteral("<li>Sin documentos registrados.</li>");
@@ -45,18 +51,20 @@ QString buildDocumentsListHtml(const VehicleDraft &draft)
     return items.join(QStringLiteral("\n"));
 }
 
-QString paymentConditionsText(const VehicleDraft &draft)
-{
-    if (draft.paymentType.compare(QStringLiteral("Contado"), Qt::CaseInsensitive) == 0)
-        return QStringLiteral("PAGO DE CONTADO EN UNA SOLA EXHIBICIÓN.");
-    return QStringLiteral("PAGO A CRÉDITO SEGÚN LAS CONDICIONES ACORDADAS ENTRE LAS PARTES.");
-}
-
 } // namespace
 
-ContractPdfGenerator::Result ContractPdfGenerator::generate(const VehicleDraft &draft, const QString &outputPath)
+ContractPdfGenerator::Result ContractPdfGenerator::generate(const domain::Vehicle &vehicle,
+                                                            const QString &outputPath)
 {
     Result result;
+
+    if (!vehicle.canGenerateContract()) {
+        result.errorMessage = QStringLiteral(
+            "Esta operación no genera contrato de compraventa. La plantilla disponible "
+            "declara que el vendedor recibe el importe del vehículo, cosa que no ocurre "
+            "en una consignación.");
+        return result;
+    }
 
     QString errorMessage;
     QString html = loadTemplate(errorMessage);
@@ -65,36 +73,27 @@ ContractPdfGenerator::Result ContractPdfGenerator::generate(const VehicleDraft &
         return result;
     }
 
-    const QLocale locale(QLocale::Spanish, QLocale::Mexico);
-    const QString priceNumber = locale.toString(draft.purchasePrice, 'f', 2);
+    // Lo que aporta la unidad. Todo texto plano, así que se escapa al
+    // sustituir.
+    const QMap<QString, QString> placeholders = vehicle.contractPlaceholders();
+    for (auto it = placeholders.constBegin(); it != placeholders.constEnd(); ++it) {
+        html.replace(QStringLiteral("{{%1}}").arg(it.key()), it.value().toHtmlEscaped());
+    }
 
-    html.replace(QStringLiteral("{{vendedor_nombre}}"), draft.owner.fullName.toHtmlEscaped());
-    html.replace(QStringLiteral("{{vendedor_domicilio}}"),
-                 QStringLiteral("%1, %2, %3, %4, C.P. %5")
-                     .arg(draft.owner.streetAddress, draft.owner.suburb, draft.owner.locality,
-                          draft.owner.state, draft.owner.postalCode)
-                     .toHtmlEscaped());
-    html.replace(QStringLiteral("{{vendedor_identificacion}}"), draft.owner.nationalId.toHtmlEscaped());
-
+    // Datos de la agencia: son de la aplicación, no de la unidad.
     html.replace(QStringLiteral("{{comprador_nombre}}"), CompanyProfile::name().toHtmlEscaped());
     html.replace(QStringLiteral("{{comprador_domicilio}}"), CompanyProfile::address().toHtmlEscaped());
-    html.replace(QStringLiteral("{{comprador_identificacion}}"), CompanyProfile::identification().toHtmlEscaped());
+    html.replace(QStringLiteral("{{comprador_identificacion}}"),
+                 CompanyProfile::identification().toHtmlEscaped());
 
-    html.replace(QStringLiteral("{{marca}}"), draft.brandName.toHtmlEscaped());
-    html.replace(QStringLiteral("{{modelo_anio}}"), QString::number(draft.yearModel));
-    html.replace(QStringLiteral("{{tipo}}"), draft.model.toHtmlEscaped());
-    html.replace(QStringLiteral("{{no_serie}}"), draft.serialNumber.toHtmlEscaped());
-    html.replace(QStringLiteral("{{no_motor}}"), draft.motorNumber.toHtmlEscaped());
-    html.replace(QStringLiteral("{{no_placas}}"),
-                 draft.plates.trimmed().isEmpty() ? QStringLiteral("SIN PLACA") : draft.plates.toHtmlEscaped());
-    html.replace(QStringLiteral("{{color}}"), draft.color.toHtmlEscaped());
+    // El importe llega como número y se formatea aquí: convertirlo a letras o
+    // ponerle separadores de miles es presentación, no negocio.
+    const QLocale locale(QLocale::Spanish, QLocale::Mexico);
+    const double amount = vehicle.contractAmount();
+    html.replace(QStringLiteral("{{precio_numero}}"), locale.toString(amount, 'f', 2));
+    html.replace(QStringLiteral("{{precio_letras}}"), NumberToWordsEs::convert(amount));
 
-    html.replace(QStringLiteral("{{precio_numero}}"), priceNumber);
-    html.replace(QStringLiteral("{{precio_letras}}"), NumberToWordsEs::convert(draft.purchasePrice));
-    html.replace(QStringLiteral("{{condiciones_pago}}"), paymentConditionsText(draft));
-
-    html.replace(QStringLiteral("{{documentos_lista}}"), buildDocumentsListHtml(draft));
-    html.replace(QStringLiteral("{{fecha}}"), draft.date.toString(QStringLiteral("dd/MM/yyyy")));
+    html.replace(QStringLiteral("{{documentos_lista}}"), buildDocumentsListHtml(vehicle));
 
     QTextDocument document;
     document.setHtml(html);

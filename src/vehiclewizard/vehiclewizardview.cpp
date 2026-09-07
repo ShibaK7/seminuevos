@@ -5,6 +5,8 @@
 #include "../../include/vehiclewizard/steps/step2conditionview.h"
 #include "../../include/vehiclewizard/steps/step3filesview.h"
 #include "../../include/vehiclewizard/components/wizardstepper.h"
+#include "domain/vehicle.h"
+#include "domain/vehiclebuilder.h"
 
 #include <algorithm>
 
@@ -111,6 +113,10 @@ VehicleWizardView::VehicleWizardView(QWidget *parent)
     goToStep(0);
 }
 
+// Fuera de línea: destruir un unique_ptr<domain::Vehicle> exige la definición
+// completa de Vehicle, que el header solo declara.
+VehicleWizardView::~VehicleWizardView() = default;
+
 void VehicleWizardView::goToStep(int index)
 {
     m_currentStep = index;
@@ -133,9 +139,9 @@ void VehicleWizardView::onStepClicked(int index)
 void VehicleWizardView::onSaveClicked()
 {
     if (m_currentStep == 0) {
-        QString errorMessage;
-        if (!m_step1->validate(errorMessage)) {
-            m_step1->showError(errorMessage);
+        const domain::ValidationResult validation = m_step1->validate();
+        if (!validation.isValid()) {
+            m_step1->showError(validation.firstMessage());
             return;
         }
         m_step1->hideError();
@@ -152,16 +158,30 @@ void VehicleWizardView::onSaveClicked()
         return;
     }
 
-    // Paso 3: arma el draft completo y dispara el guardado atómico.
-    m_finalDraft = VehicleDraft();
-    m_step1->fillDraft(m_finalDraft);
-    m_step2->fillDraft(m_finalDraft);
-    m_step3->fillDraft(m_finalDraft);
+    // Paso 3: se vuelven a leer los tres pasos sobre un builder nuevo. La
+    // fuente de verdad son los widgets, así que volver atrás y corregir algo
+    // se refleja sin necesidad de mantener nada sincronizado.
+    domain::VehicleBuilder builder;
+    m_step1->applyTo(builder);
+    m_step2->applyTo(builder);
+    m_step3->applyTo(builder);
+
+    domain::ValidationResult validation;
+    std::unique_ptr<domain::Vehicle> vehicle = builder.build(validation);
+    if (!vehicle) {
+        showError(validation.firstMessage());
+        return;
+    }
+    m_vehicle = std::move(vehicle);
 
     setBusy(true);
     hideError();
 
-    m_worker = new VehicleRegistrationWorker(m_finalDraft, resolveStorageRoot(), this);
+    // clone(): el worker reescribe las rutas de los archivos a medida que los
+    // copia al almacén. Si compartiera el objeto con esta vista, un reintento
+    // después de un fallo de la base buscaría los archivos en su ruta ya
+    // reescrita, que no existe como origen.
+    m_worker = new VehicleRegistrationWorker(m_vehicle->clone(), resolveStorageRoot(), this);
     connect(m_worker, &VehicleRegistrationWorker::registrationSucceeded, this, &VehicleWizardView::onRegistrationSucceeded);
     connect(m_worker, &VehicleRegistrationWorker::registrationFailed, this, &VehicleWizardView::onRegistrationFailed);
     connect(m_worker, &QThread::finished, m_worker, &QObject::deleteLater);
@@ -191,7 +211,9 @@ void VehicleWizardView::onRegistrationSucceeded(int folio)
     m_stepper->setStepCompleted(2, true);
     m_saveButton->setEnabled(false);
     m_saveButton->setText(QStringLiteral("Guardado ✓"));
-    m_printContractButton->setEnabled(true);
+    // No toda operación tiene contrato que imprimir: la plantilla que existe
+    // es de compraventa, y una consignación no lo es. Que lo diga la unidad.
+    m_printContractButton->setEnabled(m_vehicle && m_vehicle->canGenerateContract());
     m_cancelButton->setText(QStringLiteral("Volver al Inventario"));
 
     QMessageBox::information(this, QStringLiteral("Vehículo registrado"),
@@ -208,13 +230,16 @@ void VehicleWizardView::onRegistrationFailed(const QString &reason)
 
 void VehicleWizardView::onPrintContractClicked()
 {
-    const QString suggestedName = QStringLiteral("contrato_%1.pdf").arg(m_finalDraft.serialNumber);
+    if (!m_vehicle)
+        return;
+
+    const QString suggestedName = QStringLiteral("contrato_%1.pdf").arg(m_vehicle->serialNumber());
     const QString outputPath = QFileDialog::getSaveFileName(
         this, QStringLiteral("Guardar contrato"), suggestedName, QStringLiteral("PDF (*.pdf)"));
     if (outputPath.isEmpty())
         return;
 
-    const ContractPdfGenerator::Result result = ContractPdfGenerator::generate(m_finalDraft, outputPath);
+    const ContractPdfGenerator::Result result = ContractPdfGenerator::generate(*m_vehicle, outputPath);
     if (!result.ok) {
         QMessageBox::warning(this, QStringLiteral("Error al generar el contrato"), result.errorMessage);
         return;
