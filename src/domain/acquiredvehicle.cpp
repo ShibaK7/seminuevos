@@ -144,6 +144,11 @@ bool AcquiredVehicle::canGenerateContract() const
     return true;
 }
 
+QString AcquiredVehicle::contractTitle() const
+{
+    return QStringLiteral("COMPRA - VENTA AUTOMOTRIZ");
+}
+
 double AcquiredVehicle::contractAmount() const
 {
     // El contrato declara lo que la agencia le paga al vendedor, no lo que

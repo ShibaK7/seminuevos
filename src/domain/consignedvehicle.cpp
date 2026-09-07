@@ -101,6 +101,36 @@ double ConsignedVehicle::ownerPayout() const
     return m_basePrice;
 }
 
+bool ConsignedVehicle::canGenerateContract() const
+{
+    return true;
+}
+
+QString ConsignedVehicle::contractTitle() const
+{
+    return QStringLiteral("CONSIGNACIÓN AUTOMOTRIZ");
+}
+
+double ConsignedVehicle::contractAmount() const
+{
+    return m_basePrice;
+}
+
+QMap<QString, QString> ConsignedVehicle::contractPlaceholders() const
+{
+    QMap<QString, QString> values = Vehicle::contractPlaceholders();
+
+    // La plantilla tiene un renglón de condiciones de pago que en la compra
+    // describe si fue de contado o a crédito. Aquí se llena con el dato
+    // equivalente de esta rama -- la comisión pactada -- para no dejar la
+    // marca sin sustituir en el documento.
+    values.insert(QStringLiteral("condiciones_pago"),
+                  QStringLiteral("VENTA EN CONSIGNACIÓN. COMISIÓN PACTADA DEL %1%.")
+                      .arg(m_commissionRate, 0, 'f', 2));
+
+    return values;
+}
+
 void ConsignedVehicle::collectSpecificErrors(ValidationResult &result) const
 {
     if (m_basePrice <= 0.0) {

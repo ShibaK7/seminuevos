@@ -81,13 +81,12 @@ public:
     virtual std::unique_ptr<Vehicle> clone() const = 0;
 
     // --- Contrato ---------------------------------------------------------
-    // No toda operación produce un contrato. La plantilla que existe es de
-    // COMPRAVENTA, con la agencia como compradora y una cláusula que declara
-    // que el vendedor recibe el importe del vehículo. En una consignación no
-    // hay compraventa: no se le paga al propietario, se le cobra una
-    // comisión por venderlo. Reutilizar esa plantilla no sería un descuido de
-    // formato, produciría un documento que afirma algo falso.
+    // La concesionaria usa el mismo documento para las dos ramas, con la
+    // misma información; lo único que cambia es cómo se titula la operación.
     virtual bool canGenerateContract() const;
+
+    // Encabezado del documento: es lo que distingue una operación de la otra.
+    virtual QString contractTitle() const;
 
     // Monto que el contrato declara como precio de la operación. Se devuelve
     // como número y no como texto para que el formateo (separadores, importe

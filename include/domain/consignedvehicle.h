@@ -40,6 +40,16 @@ public:
     void accept(VehicleVisitor &visitor) const override;
     std::unique_ptr<Vehicle> clone() const override;
 
+    // Mismo documento que la compra, con la misma información: lo único que
+    // cambia es cómo se titula la operación.
+    bool canGenerateContract() const override;
+    QString contractTitle() const override;
+    // El precio base, o sea lo que se le va a entregar al propietario. NO el
+    // precio de venta, que incluye la comisión de la agencia y es lo que
+    // acabará pagando un tercero.
+    double contractAmount() const override;
+    QMap<QString, QString> contractPlaceholders() const override;
+
     // --- Datos propios de la consignación ---------------------------------
     // Lo que el dueño quiere recibir por su unidad.
     double basePrice() const;

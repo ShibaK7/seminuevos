@@ -9,6 +9,7 @@
 #include <QMap>
 #include <QPageLayout>
 #include <QPrinter>
+#include <QRegularExpression>
 #include <QStringConverter>
 #include <QStringList>
 #include <QTextDocument>
@@ -59,10 +60,7 @@ ContractPdfGenerator::Result ContractPdfGenerator::generate(const domain::Vehicl
     Result result;
 
     if (!vehicle.canGenerateContract()) {
-        result.errorMessage = QStringLiteral(
-            "Esta operación no genera contrato de compraventa. La plantilla disponible "
-            "declara que el vendedor recibe el importe del vehículo, cosa que no ocurre "
-            "en una consignación.");
+        result.errorMessage = QStringLiteral("Este tipo de operación no genera contrato.");
         return result;
     }
 
@@ -94,6 +92,19 @@ ContractPdfGenerator::Result ContractPdfGenerator::generate(const domain::Vehicl
     html.replace(QStringLiteral("{{precio_letras}}"), NumberToWordsEs::convert(amount));
 
     html.replace(QStringLiteral("{{documentos_lista}}"), buildDocumentsListHtml(vehicle));
+
+    // Si quedó alguna marca sin sustituir, el documento saldría con un
+    // "{{algo}}" impreso en medio de una cláusula. Es preferible no generar
+    // nada y decir cuál falta: un contrato con una marca cruda es peor que
+    // ninguno, porque parece válido hasta que alguien lo lee con cuidado.
+    static const QRegularExpression leftover(QStringLiteral("\\{\\{([a-z_]+)\\}\\}"));
+    const QRegularExpressionMatch match = leftover.match(html);
+    if (match.hasMatch()) {
+        result.errorMessage = QStringLiteral(
+            "La plantilla del contrato quedó con el campo '%1' sin llenar, así que no se "
+            "generó el documento.").arg(match.captured(1));
+        return result;
+    }
 
     QTextDocument document;
     document.setHtml(html);

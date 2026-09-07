@@ -28,9 +28,8 @@ public:
     void accept(VehicleVisitor &visitor) const override;
     std::unique_ptr<Vehicle> clone() const override;
 
-    // La compraventa sí tiene contrato: es exactamente lo que describe la
-    // plantilla, con la agencia como compradora.
     bool canGenerateContract() const override;
+    QString contractTitle() const override;
     double contractAmount() const override;
     QMap<QString, QString> contractPlaceholders() const override;
 

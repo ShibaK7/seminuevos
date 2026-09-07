@@ -512,8 +512,14 @@ bool Vehicle::hasFaults() const
 bool Vehicle::canGenerateContract() const
 {
     // Por omisión, no. Así una rama nueva no empieza a emitir documentos
-    // legales por el simple hecho de heredar.
+    // legales por el simple hecho de heredar: quien la agregue tiene que
+    // decidir a conciencia si le corresponde contrato y con qué título.
     return false;
+}
+
+QString Vehicle::contractTitle() const
+{
+    return QString();
 }
 
 double Vehicle::contractAmount() const
@@ -524,6 +530,8 @@ double Vehicle::contractAmount() const
 QMap<QString, QString> Vehicle::contractPlaceholders() const
 {
     QMap<QString, QString> values;
+
+    values.insert(QStringLiteral("titulo_contrato"), contractTitle());
 
     values.insert(QStringLiteral("vendedor_nombre"), m_counterparty.fullName());
     values.insert(QStringLiteral("vendedor_domicilio"), m_counterparty.formattedAddress());
