@@ -2,6 +2,7 @@
 #include "include/mainwindow.h"
 #include "include/db/connectionpool.h"
 #include "include/db/catalogseeder.h"
+#include "include/db/conditioncatalogseeder.h"
 #include "include/db/devseeder.h"
 #include "include/db/schemainitializer.h"
 #include "include/auth/loginworker.h"
@@ -84,9 +85,11 @@ int main(int argc, char *argv[])
     dbConfig.password = env.value(QStringLiteral("POSTGRES_PASSWORD"));
     ConnectionPool::configure(dbConfig);
 
-    // Antes de mostrar el login, dejamos el esquema al día (idempotente: es
-    // seguro correrlo en cada arranque). Si la base no está disponible,
-    // avisamos con claridad en vez de abrir una app rota.
+    // Antes de mostrar el login dejamos el esquema al día. El script solo se
+    // ejecuta cuando la versión instalada no coincide con
+    // SchemaInitializer::kSchemaVersion; en un arranque normal esto no toca
+    // nada. Si la base no está disponible, avisamos con claridad en vez de
+    // abrir una app rota.
     {
         ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
         QSqlDatabase &db = handle.database();
@@ -99,10 +102,42 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        const SchemaInitializer::Result schemaResult = SchemaInitializer::run(db);
+        // Aplicar el esquema BORRA la base. Por defecto se permite (estamos
+        // en fase de definición y regenerar es más barato que migrar), pero
+        // el .env puede desactivarlo para que un ambiente con datos reales
+        // no se vacíe solo al instalar una build nueva.
+        const bool allowSchemaReset =
+            env.value(QStringLiteral("SCHEMA_AUTO_RESET"), QStringLiteral("true"))
+                .compare(QStringLiteral("false"), Qt::CaseInsensitive) != 0;
+
+        const SchemaInitializer::Result schemaResult = SchemaInitializer::run(db, allowSchemaReset);
         if (!schemaResult.ok) {
             QMessageBox::critical(nullptr, QStringLiteral("Error al inicializar la base de datos"),
                 schemaResult.errorMessage);
+            return 1;
+        }
+
+        // previousVersion >= 0 significa que ya había un esquema instalado y
+        // acabamos de borrarlo. Una instalación nueva (previousVersion == -1)
+        // no tenía datos que perder, así que no vale la pena avisar.
+        if (schemaResult.applied && schemaResult.previousVersion >= 0) {
+            QMessageBox::information(nullptr, QStringLiteral("Base de datos regenerada"),
+                QStringLiteral("El esquema pasó de la versión %1 a la %2, así que la base se "
+                                "recreó desde cero y se perdieron los datos que tenía.\n\n"
+                                "Es el comportamiento esperado mientras el esquema sigue en "
+                                "definición.")
+                    .arg(schemaResult.previousVersion)
+                    .arg(SchemaInitializer::kSchemaVersion));
+        }
+
+        // Catálogo REAL del checklist de condición (US-03.2). Va fuera de la
+        // bandera SEED_TEST_USERS a propósito: el Paso 2 del wizard construye
+        // sus renglones leyendo vehicle_conditions_cat, así que sin esto la
+        // pantalla saldría vacía en cualquier ambiente. Es idempotente.
+        const ConditionCatalogSeeder::Result conditionCatalogResult = ConditionCatalogSeeder::run(db);
+        if (!conditionCatalogResult.ok) {
+            QMessageBox::critical(nullptr, QStringLiteral("Error al sembrar el catálogo de condiciones"),
+                conditionCatalogResult.errorMessage);
             return 1;
         }
 

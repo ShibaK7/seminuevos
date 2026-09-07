@@ -8,6 +8,7 @@
 #include <QStringConverter>
 #include <QStringList>
 #include <QTextStream>
+#include <QVariant>
 
 namespace {
 
@@ -15,6 +16,8 @@ namespace {
 // sentencia termina con ';' al final de su última línea, los comentarios
 // van en líneas propias con '--'), así que un split simple por líneas es
 // suficiente y evita depender del soporte multi-statement del driver.
+// Ejecutar sentencia por sentencia también nos da el mensaje de error
+// atribuido a la sentencia exacta que falló, que es todo el valor de esto.
 QStringList splitStatements(const QString &script)
 {
     QStringList statements;
@@ -40,11 +43,82 @@ QStringList splitStatements(const QString &script)
     return statements;
 }
 
+// Fila única a nivel de base: 'singleton' solo admite TRUE (por el CHECK) y
+// es la llave primaria, así que la tabla no puede tener más de un renglón.
+// La crea el C++ y no el .sql a propósito: si el script la dropeara, la app
+// perdería la cuenta de qué versión tiene instalada y volvería a resetear en
+// cada arranque, en silencio.
+bool ensureVersionTable(QSqlDatabase &db, QString &errorMessage)
+{
+    QSqlQuery query(db);
+    if (!query.exec(QStringLiteral(
+            "CREATE TABLE IF NOT EXISTS schema_version ("
+            "  singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),"
+            "  version INTEGER NOT NULL,"
+            "  applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"))) {
+        errorMessage = query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+// Devuelve la versión instalada, o -1 si la base es virgen (la tabla no
+// existe o está vacía). queryOk distingue ese caso normal de un fallo real
+// de la consulta: si se colapsaran ambos en -1, un problema de permisos o de
+// red se convertiría en un reset destructivo.
+//
+// Se usa to_regclass() y no un SELECT directo contra schema_version porque
+// en PostgreSQL una sentencia que falla DENTRO de una transacción aborta la
+// transacción completa ("current transaction is aborted"). to_regclass
+// devuelve NULL cuando la relación no existe, sin fallar.
+int readInstalledVersion(QSqlDatabase &db, bool &queryOk, QString &errorMessage)
+{
+    queryOk = true;
+
+    QSqlQuery existsQuery(db);
+    if (!existsQuery.exec(QStringLiteral("SELECT to_regclass('public.schema_version')"))
+        || !existsQuery.next()) {
+        errorMessage = existsQuery.lastError().text();
+        queryOk = false;
+        return -1;
+    }
+    if (existsQuery.value(0).isNull())
+        return -1;
+
+    QSqlQuery versionQuery(db);
+    if (!versionQuery.exec(QStringLiteral("SELECT version FROM schema_version WHERE singleton"))) {
+        errorMessage = versionQuery.lastError().text();
+        queryOk = false;
+        return -1;
+    }
+    return versionQuery.next() ? versionQuery.value(0).toInt() : -1;
+}
+
+bool writeVersion(QSqlDatabase &db, int version, QString &errorMessage)
+{
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "INSERT INTO schema_version (singleton, version) VALUES (TRUE, :version) "
+        "ON CONFLICT (singleton) DO UPDATE "
+        "SET version = EXCLUDED.version, applied_at = CURRENT_TIMESTAMP"));
+    query.bindValue(QStringLiteral(":version"), version);
+
+    if (!query.exec()) {
+        errorMessage = query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
 // UMA vigente usada por la regla de validación de pagos en efectivo (Paso 1
 // del wizard de vehículos: Contado bloqueado si el precio >= 3210 * UMA). Se
 // siembra aquí (no en DevSeeder) porque es dato de negocio, no de prueba, y
-// debe existir también en producción. ON CONFLICT DO NOTHING la deja intacta
-// si ya fue ajustada manualmente en la base.
+// debe existir también en producción.
+//
+// Solo corre cuando hubo reset, y en ese momento global_configurations acaba
+// de recrearse vacía, así que en la práctica el INSERT siempre inserta. El
+// ON CONFLICT DO NOTHING se mantiene para que re-ejecutar run() dentro del
+// mismo proceso no falle por llave duplicada.
 bool seedUmaConfig(QSqlDatabase &db, QString &errorMessage)
 {
     QSqlQuery query(db);
@@ -62,9 +136,40 @@ bool seedUmaConfig(QSqlDatabase &db, QString &errorMessage)
 
 } // namespace
 
-SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db)
+SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db, bool allowDestructiveReset)
 {
     Result result;
+
+    // La lectura va FUERA de la transacción: en autocommit, una consulta que
+    // falla no deja nada envenenado detrás.
+    bool versionQueryOk = false;
+    QString versionError;
+    const int installedVersion = readInstalledVersion(db, versionQueryOk, versionError);
+    if (!versionQueryOk) {
+        result.errorMessage = QStringLiteral("No se pudo leer la versión del esquema: %1")
+                                   .arg(versionError);
+        return result;
+    }
+
+    result.previousVersion = installedVersion;
+
+    if (installedVersion == kSchemaVersion) {
+        result.ok = true;
+        result.applied = false;
+        return result;
+    }
+
+    if (!allowDestructiveReset) {
+        result.errorMessage =
+            QStringLiteral("El esquema de la base está en la versión %1 y esta build espera la "
+                           "%2. Aplicarlo implica BORRAR todos los datos, y el reset automático "
+                           "está desactivado (SCHEMA_AUTO_RESET).\n\n"
+                           "Si de verdad quieres regenerar la base, pon SCHEMA_AUTO_RESET=true "
+                           "en el archivo .env y vuelve a abrir la aplicación.")
+                .arg(installedVersion)
+                .arg(kSchemaVersion);
+        return result;
+    }
 
     QFile file(QStringLiteral(":/db/001_init_schema.sql"));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -88,6 +193,19 @@ SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db)
         return result;
     }
 
+    // PostgreSQL tiene DDL transaccional: los DROP y CREATE de abajo
+    // participan en esta transacción y se deshacen con el rollback. Por eso
+    // la escritura de la versión puede ir dentro -- si algo falla a mitad,
+    // se revierten esquema y versión a la vez, y nunca queda una base con el
+    // esquema a medias marcada como versión buena. (Este diseño no
+    // sobreviviría a un port a MySQL, que hace commit implícito en cada DDL.)
+    QString stepError;
+    if (!ensureVersionTable(db, stepError)) {
+        result.errorMessage = QStringLiteral("Error creando la tabla schema_version: %1").arg(stepError);
+        db.rollback();
+        return result;
+    }
+
     QSqlQuery query(db);
     for (const QString &statement : statements) {
         if (!query.exec(statement)) {
@@ -98,9 +216,14 @@ SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db)
         }
     }
 
-    QString seedError;
-    if (!seedUmaConfig(db, seedError)) {
-        result.errorMessage = QStringLiteral("Error sembrando configuración UMA_DIARIA: %1").arg(seedError);
+    if (!seedUmaConfig(db, stepError)) {
+        result.errorMessage = QStringLiteral("Error sembrando configuración UMA_DIARIA: %1").arg(stepError);
+        db.rollback();
+        return result;
+    }
+
+    if (!writeVersion(db, kSchemaVersion, stepError)) {
+        result.errorMessage = QStringLiteral("Error registrando la versión del esquema: %1").arg(stepError);
         db.rollback();
         return result;
     }
@@ -112,5 +235,6 @@ SchemaInitializer::Result SchemaInitializer::run(QSqlDatabase &db)
     }
 
     result.ok = true;
+    result.applied = true;
     return result;
 }

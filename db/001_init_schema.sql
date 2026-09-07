@@ -1,43 +1,131 @@
 -- ===========================================================================
 -- SCHEMA: seminuevos (concesionaria de autos)
 -- ===========================================================================
--- Solo estructura -- los usuarios de prueba van en DevSeeder (C++), no aquí.
--- Idempotente a propósito: esta app la ejecuta SchemaInitializer cada vez
--- que arranca (no un script de init de Docker que solo corre una vez), así
--- que nunca debe usar DROP TABLE ni nada que borre datos existentes.
+-- Solo estructura -- los datos van en los seeders de C++, no aquí.
+--
+-- *** ESTE SCRIPT ES DESTRUCTIVO: empieza borrando todas las tablas. ***
+--
+-- No lo ejecuta la app en cada arranque. SchemaInitializer compara la tabla
+-- schema_version contra la constante kSchemaVersion del código y solo corre
+-- este archivo cuando no coinciden. Para forzar la regeneración: sube
+-- kSchemaVersion en include/db/schemainitializer.h y vuelve a compilar.
+--
+-- REGLAS DE FORMATO (de las que depende el parser de SchemaInitializer):
+--   1. Una sola sentencia por bloque, terminada con ';' al final de su
+--      última línea. Nada de 'DROP TABLE a; DROP TABLE b;' en un renglón.
+--   2. Los comentarios van en líneas propias, empezando con '--'.
+--   3. Nada de bloques $$ ... $$ (funciones, DO): el parser cortaría en el
+--      primer ';' interno y produciría fragmentos inválidos.
 -- ===========================================================================
 
 -- ===========================================================================
--- 1. LOOKUP & CATALOG TABLES (Must be created first for FK dependencies)
+-- 0. LIMPIEZA (hijos -> padres)
+-- ===========================================================================
+-- El CASCADE bastaría por sí solo, pero el orden explícito deja el bloque
+-- legible como el inverso exacto de los CREATE de abajo.
+--
+-- OJO: schema_version NO se dropea aquí a propósito. La crea y la mantiene
+-- SchemaInitializer; si este script la borrara, la app perdería la cuenta de
+-- qué versión tiene instalada y volvería a resetear en cada arranque.
+
+DROP TABLE IF EXISTS sale_payments CASCADE;
+DROP TABLE IF EXISTS sale_financing CASCADE;
+DROP TABLE IF EXISTS sales CASCADE;
+
+DROP TABLE IF EXISTS vehicle_maintenance CASCADE;
+DROP TABLE IF EXISTS vehicle_documents CASCADE;
+DROP TABLE IF EXISTS vehicle_images CASCADE;
+DROP TABLE IF EXISTS vehicle_inspection CASCADE;
+
+-- LEGACY: reemplazada por vehicle_conditions_cat + vehicle_inspection.
+-- Ya no se recrea; sin este DROP se quedaría huérfana en las bases que la
+-- tienen, con datos que parecen buenos y ningún código que los escriba.
+DROP TABLE IF EXISTS vehicle_condition_items CASCADE;
+
+DROP TABLE IF EXISTS vehicle_conditions CASCADE;
+DROP TABLE IF EXISTS vehicle_consignments CASCADE;
+DROP TABLE IF EXISTS vehicle_acquisitions CASCADE;
+DROP TABLE IF EXISTS vehicles CASCADE;
+
+DROP TABLE IF EXISTS counterparty_documents CASCADE;
+DROP TABLE IF EXISTS counterparties CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+DROP TABLE IF EXISTS operational_expenses CASCADE;
+DROP TABLE IF EXISTS operational_expense_cat CASCADE;
+
+DROP TABLE IF EXISTS vehicle_conditions_cat CASCADE;
+DROP TABLE IF EXISTS vehicle_maintenance_cat CASCADE;
+DROP TABLE IF EXISTS fuel_type_cat CASCADE;
+DROP TABLE IF EXISTS brands_cat CASCADE;
+DROP TABLE IF EXISTS vehicle_categories_cat CASCADE;
+
+DROP TABLE IF EXISTS global_configurations CASCADE;
+
+-- ===========================================================================
+-- 1. CATÁLOGOS (van primero: el resto los referencia)
 -- ===========================================================================
 
-CREATE TABLE IF NOT EXISTS vehicle_categories_cat (
+CREATE TABLE vehicle_categories_cat (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
     parent_id INTEGER REFERENCES vehicle_categories_cat(id) ON DELETE CASCADE,
     CONSTRAINT unique_name_per_parent UNIQUE NULLS NOT DISTINCT (name, parent_id)
 );
 
-CREATE TABLE IF NOT EXISTS brands_cat (
+CREATE TABLE brands_cat (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS fuel_type_cat (
+CREATE TABLE fuel_type_cat (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS vehicle_maintenance_cat (
+-- Catálogo del checklist de condición del Paso 2 del wizard. Lo siembra
+-- ConditionCatalogSeeder en cada arranque (upsert por item_key) y la UI
+-- construye sus renglones leyendo esta tabla: si queda vacía, el panel de
+-- condiciones sale en blanco.
+--
+-- item_key es la llave estable del upsert. Sin ella la única llave natural
+-- sería (category, element) -- texto visible --, y corregir una etiqueta
+-- crearía una fila nueva en vez de actualizar la existente, dejando el
+-- catálogo duplicado y las inspecciones viejas apuntando a la fila muerta.
+--
+-- negative_label es la etiqueta del estado negativo, que varía por ítem
+-- ("Con fallas", "Deteriorada", "Gastadas"). Es presentación pura: la BD
+-- guarda un booleano, no este texto.
+--
+-- sort_order es global y creciente a lo largo de todo el catálogo (no se
+-- reinicia por categoría), para que un simple ORDER BY entregue los ítems ya
+-- agrupados y con los grupos en el orden correcto.
+CREATE TABLE vehicle_conditions_cat (
+    id SERIAL PRIMARY KEY,
+    item_key VARCHAR(50) UNIQUE NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    element VARCHAR(50) NOT NULL,
+    negative_label VARCHAR(50) NOT NULL DEFAULT 'Con fallas',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT unique_category_element UNIQUE (category, element)
+);
+
+CREATE TABLE vehicle_maintenance_cat (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE operational_expense_cat (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT
 );
 
 -- ===========================================================================
--- 2. USER & COUNTERPARTY MANAGEMENT
+-- 2. USUARIOS Y CONTRAPARTES
 -- ===========================================================================
 
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -46,7 +134,10 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS counterparties (
+-- Una sola tabla para todos los roles (vendedor, propietario, comprador,
+-- aval): el rol es contextual, no un tipo. La misma persona puede vender un
+-- auto hoy y comprar otro mañana.
+CREATE TABLE counterparties (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
     national_id VARCHAR(50),
@@ -61,7 +152,7 @@ CREATE TABLE IF NOT EXISTS counterparties (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS counterparty_documents (
+CREATE TABLE counterparty_documents (
     id SERIAL PRIMARY KEY,
     counterparty_id INTEGER NOT NULL REFERENCES counterparties(id) ON DELETE CASCADE,
     document_type VARCHAR(50) NOT NULL,
@@ -71,11 +162,14 @@ CREATE TABLE IF NOT EXISTS counterparty_documents (
 );
 
 -- ===========================================================================
--- 3. INVENTORY & VEHICLE MANAGEMENT
+-- 3. INVENTARIO DE VEHÍCULOS
 -- ===========================================================================
+-- Class Table Inheritance: vehicles es la tabla base y acquisition_type el
+-- discriminador; vehicle_acquisitions y vehicle_consignments son las
+-- subtablas. En C++ esto se refleja como Vehicle (abstracta) ->
+-- AcquiredVehicle / ConsignedVehicle.
 
--- Core Vehicle Table
-CREATE TABLE IF NOT EXISTS vehicles (
+CREATE TABLE vehicles (
     folio SERIAL PRIMARY KEY,
     acquisition_type VARCHAR(20) NOT NULL CHECK (acquisition_type IN ('Adquisición', 'Consignación')),
     status VARCHAR(20) DEFAULT 'Disponible' CHECK (status IN ('Disponible', 'Apartado', 'Vendido')),
@@ -95,8 +189,8 @@ CREATE TABLE IF NOT EXISTS vehicles (
     added_date DATE DEFAULT CURRENT_DATE
 );
 
--- Acquisition Flow
-CREATE TABLE IF NOT EXISTS vehicle_acquisitions (
+-- Subtabla: la agencia COMPRA la unidad.
+CREATE TABLE vehicle_acquisitions (
     vehicle_folio INTEGER PRIMARY KEY REFERENCES vehicles(folio) ON DELETE CASCADE,
     seller_id INTEGER NOT NULL REFERENCES counterparties(id),
     invoice_type VARCHAR(50) NOT NULL CHECK (invoice_type IN ('Facturado', 'Autofactura')),
@@ -112,8 +206,12 @@ CREATE TABLE IF NOT EXISTS vehicle_acquisitions (
     acquisition_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
--- Consignment Flow
-CREATE TABLE IF NOT EXISTS vehicle_consignments (
+-- Subtabla: la agencia VENDE por cuenta del dueño y cobra comisión.
+-- Nota para quien escriba el INSERT: sale_price es GENERATED ALWAYS, así que
+-- NO puede aparecer en la lista de columnas -- Postgres responde "cannot
+-- insert a non-DEFAULT value into column". Usa RETURNING sale_price si
+-- necesitas el valor calculado de vuelta.
+CREATE TABLE vehicle_consignments (
     vehicle_folio INTEGER PRIMARY KEY REFERENCES vehicles(folio) ON DELETE CASCADE,
     owner_id INTEGER NOT NULL REFERENCES counterparties(id),
     invoice_type VARCHAR(50) NOT NULL CHECK (invoice_type IN ('Facturado REAL', 'No Facturado')),
@@ -129,8 +227,8 @@ CREATE TABLE IF NOT EXISTS vehicle_consignments (
     consignment_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
--- Vehicle Checklist & Mechanical Conditions
-CREATE TABLE IF NOT EXISTS vehicle_conditions (
+-- Especificaciones técnicas de la unidad (panel izquierdo del Paso 2).
+CREATE TABLE vehicle_conditions (
     vehicle_folio INTEGER PRIMARY KEY REFERENCES vehicles(folio) ON DELETE CASCADE,
     fuel_type_id INTEGER REFERENCES fuel_type_cat(id),
     cylinders INTEGER NOT NULL,
@@ -138,35 +236,35 @@ CREATE TABLE IF NOT EXISTS vehicle_conditions (
     interior_material VARCHAR(50),
     window_regulators VARCHAR(50) NOT NULL CHECK (window_regulators IN ('Manuales', 'Eléctricos tradicionales', 'Eléctricos inteligentes')),
     air_conditioning VARCHAR(50) NOT NULL CHECK (air_conditioning IN ('Automático', 'Manual')),
-    lights_front VARCHAR(20) DEFAULT 'Estado óptimo' CHECK (lights_front IN ('Estado óptimo', 'Con fallas')),
-    lights_front_obs TEXT,
-    lights_rear VARCHAR(20) DEFAULT 'Estado óptimo' CHECK (lights_rear IN ('Estado óptimo', 'Con fallas')),
-    lights_rear_obs TEXT,
-    tires VARCHAR(20) DEFAULT 'Estado óptimo' CHECK (tires IN ('Estado óptimo', 'Con fallas')),
-    tires_obs TEXT,
-    engine VARCHAR(20) DEFAULT 'Estado óptimo' CHECK (engine IN ('Estado óptimo', 'Con fallas')),
-    engine_obs TEXT,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Checklist extendido de condición (accesorios + componentes), un renglón por
--- ítem inspeccionado. Reemplaza el enfoque de columnas fijas de
--- vehicle_conditions para los ~30+ ítems del checklist legacy (ver US-03.2) --
--- las columnas viejas de vehicle_conditions (lights_front/lights_rear/tires/
--- engine) se dejan sin usar, nunca se elimina una columna existente.
-CREATE TABLE IF NOT EXISTS vehicle_condition_items (
+-- Checklist de condición: un renglón por ítem del catálogo, por vehículo.
+-- Se guardan TODOS los ítems del catálogo, marcados o no, para congelar cómo
+-- se veía el checklist el día del registro.
+--
+-- is_checked y is_optimal son dos ejes distintos:
+--   is_checked = FALSE -> el vehículo no trae ese accesorio; is_optimal no
+--                         significa nada en ese renglón.
+--   is_checked = TRUE  -> se inspeccionó, e is_optimal dice cómo salió.
+--
+-- element_id usa RESTRICT y no CASCADE a propósito: con CASCADE, borrar un
+-- renglón del catálogo borraría en silencio esa línea de la inspección de
+-- todos los vehículos históricos. Esta tabla es evidencia de lo que se
+-- revisó, no configuración. Para retirar un ítem durante la fase de
+-- definición, quítalo de la semilla y sube kSchemaVersion.
+CREATE TABLE vehicle_inspection (
     id SERIAL PRIMARY KEY,
     vehicle_folio INTEGER NOT NULL REFERENCES vehicles(folio) ON DELETE CASCADE,
-    item_key VARCHAR(50) NOT NULL,
-    item_group VARCHAR(30) NOT NULL,
-    is_checked BOOLEAN DEFAULT TRUE,
-    status VARCHAR(20) CHECK (status IN ('Estado óptimo', 'Con fallas')),
+    element_id INTEGER NOT NULL REFERENCES vehicle_conditions_cat(id) ON DELETE RESTRICT,
+    is_checked BOOLEAN NOT NULL DEFAULT TRUE,
+    is_optimal BOOLEAN NOT NULL DEFAULT TRUE,
     observations TEXT,
-    CONSTRAINT unique_vehicle_condition_item UNIQUE (vehicle_folio, item_key)
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_vehicle_element_inspection UNIQUE (vehicle_folio, element_id)
 );
 
--- Images & Documents
-CREATE TABLE IF NOT EXISTS vehicle_images (
+CREATE TABLE vehicle_images (
     id SERIAL PRIMARY KEY,
     vehicle_folio INTEGER REFERENCES vehicles(folio) ON DELETE CASCADE,
     file_path TEXT NOT NULL,
@@ -174,7 +272,7 @@ CREATE TABLE IF NOT EXISTS vehicle_images (
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS vehicle_documents (
+CREATE TABLE vehicle_documents (
     id SERIAL PRIMARY KEY,
     vehicle_folio INTEGER REFERENCES vehicles(folio) ON DELETE CASCADE,
     document_type VARCHAR(50) NOT NULL,
@@ -185,8 +283,7 @@ CREATE TABLE IF NOT EXISTS vehicle_documents (
     CONSTRAINT unique_vehicle_doc UNIQUE(vehicle_folio, document_type)
 );
 
--- Maintenance Log
-CREATE TABLE IF NOT EXISTS vehicle_maintenance (
+CREATE TABLE vehicle_maintenance (
     id SERIAL PRIMARY KEY,
     vehicle_folio INTEGER REFERENCES vehicles(folio) ON DELETE CASCADE,
     maintenance_date DATE NOT NULL,
@@ -196,11 +293,10 @@ CREATE TABLE IF NOT EXISTS vehicle_maintenance (
 );
 
 -- ===========================================================================
--- 4. COMMERCIAL PIPELINE, SALES & FINANCING
+-- 4. VENTAS Y FINANCIAMIENTO
 -- ===========================================================================
 
--- Core Sales Header (Universal for Cash and Credit)
-CREATE TABLE IF NOT EXISTS sales (
+CREATE TABLE sales (
     folio SERIAL PRIMARY KEY,
     vehicle_folio INTEGER UNIQUE NOT NULL REFERENCES vehicles(folio),
     vendor_id INTEGER NOT NULL REFERENCES users(id),
@@ -215,8 +311,7 @@ CREATE TABLE IF NOT EXISTS sales (
     sale_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
--- Credit Financing Details (1:1 Extension of sales)
-CREATE TABLE IF NOT EXISTS sale_financing (
+CREATE TABLE sale_financing (
     sale_folio INTEGER PRIMARY KEY REFERENCES sales(folio) ON DELETE CASCADE,
     down_payment NUMERIC(12, 2) NOT NULL,
     amount_to_finance NUMERIC(12, 2) NOT NULL,
@@ -228,8 +323,7 @@ CREATE TABLE IF NOT EXISTS sale_financing (
     status VARCHAR(20) DEFAULT 'Al Corriente' CHECK (status IN ('Al Corriente', 'Atrasado', 'Liquidado'))
 );
 
--- Amortization Schedule & Payment Collection Logs
-CREATE TABLE IF NOT EXISTS sale_payments (
+CREATE TABLE sale_payments (
     id SERIAL PRIMARY KEY,
     sale_folio INTEGER NOT NULL REFERENCES sale_financing(sale_folio) ON DELETE CASCADE,
     installment_number INTEGER NOT NULL,
@@ -252,13 +346,13 @@ CREATE TABLE IF NOT EXISTS sale_payments (
 );
 
 -- ===========================================================================
--- 5. OPERATIONAL EXPENSES & SYSTEM CONFIGURATION
+-- 5. GASTOS OPERATIVOS Y CONFIGURACIÓN
 -- ===========================================================================
 
-CREATE TABLE IF NOT EXISTS operational_expenses (
+CREATE TABLE operational_expenses (
     folio SERIAL PRIMARY KEY,
     expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    expense_type VARCHAR(50) NOT NULL,
+    expense_id INTEGER NOT NULL REFERENCES operational_expense_cat(id),
     description TEXT,
     has_invoice BOOLEAN DEFAULT FALSE,
     invoice_number VARCHAR(50),
@@ -267,8 +361,19 @@ CREATE TABLE IF NOT EXISTS operational_expenses (
     total_amount NUMERIC(12, 2) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS global_configurations (
+CREATE TABLE global_configurations (
     key_param VARCHAR(50) PRIMARY KEY,
     value_param NUMERIC(12, 2) NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ===========================================================================
+-- 6. ÍNDICES QUE NO SALEN GRATIS DE UN PK/UNIQUE
+-- ===========================================================================
+-- PostgreSQL no indexa las columnas de una llave foránea automáticamente.
+-- Sin este índice, el chequeo del ON DELETE RESTRICT al intentar borrar un
+-- renglón del catálogo hace un seq scan de toda la tabla de inspecciones.
+-- vehicle_folio no lo necesita: unique_vehicle_element_inspection ya crea un
+-- btree con esa columna a la izquierda.
+
+CREATE INDEX idx_vehicle_inspection_element ON vehicle_inspection(element_id);

@@ -27,10 +27,36 @@ set(PROJECT_SOURCES
         src/db/devseeder.cpp
         include/db/catalogseeder.h
         src/db/catalogseeder.cpp
+        include/db/conditioncatalog.h
+        src/db/conditioncatalog.cpp
+        include/db/conditioncatalogseeder.h
+        src/db/conditioncatalogseeder.cpp
         include/auth/passwordhasher.h
         src/auth/passwordhasher.cpp
         include/auth/loginworker.h
         src/auth/loginworker.cpp
+        include/domain/enums.h
+        src/domain/enums.cpp
+        include/domain/validationresult.h
+        src/domain/validationresult.cpp
+        include/domain/catalogref.h
+        include/domain/counterparty.h
+        src/domain/counterparty.cpp
+        include/domain/vehicleconditions.h
+        src/domain/vehicleconditions.cpp
+        include/domain/inspectionitem.h
+        src/domain/inspectionitem.cpp
+        include/domain/inspection.h
+        src/domain/inspection.cpp
+        include/domain/vehicleimage.h
+        include/domain/vehicledocument.h
+        include/domain/vehiclevisitor.h
+        include/domain/vehicle.h
+        src/domain/vehicle.cpp
+        include/domain/acquiredvehicle.h
+        src/domain/acquiredvehicle.cpp
+        include/domain/consignedvehicle.h
+        src/domain/consignedvehicle.cpp
         include/vehiclewizard/vehicledraft.h
         include/vehiclewizard/vehiclewizardview.h
         src/vehiclewizard/vehiclewizardview.cpp
