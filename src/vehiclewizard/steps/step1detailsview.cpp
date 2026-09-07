@@ -51,6 +51,45 @@ Step1DetailsView::Step1DetailsView(QWidget *parent)
     layout->addWidget(m_errorLabel);
 
     connect(m_vehicleTypeCombo, &QComboBox::currentIndexChanged, this, &Step1DetailsView::reloadSubtypes);
+    connect(m_acquisitionTypeCombo, &QComboBox::currentIndexChanged, this,
+            &Step1DetailsView::onAcquisitionTypeChanged);
+    // Deja la vista coherente con la rama seleccionada por omisión.
+    onAcquisitionTypeChanged();
+}
+
+domain::AcquisitionType Step1DetailsView::selectedAcquisitionType() const
+{
+    return static_cast<domain::AcquisitionType>(m_acquisitionTypeCombo->currentData().toInt());
+}
+
+void Step1DetailsView::onAcquisitionTypeChanged()
+{
+    const domain::AcquisitionType type = selectedAcquisitionType();
+    const bool isAcquisition = type == domain::AcquisitionType::Adquisicion;
+
+    for (QWidget *widget : std::as_const(m_acquisitionOnlyWidgets))
+        widget->setVisible(isAcquisition);
+    for (QWidget *widget : std::as_const(m_consignmentOnlyWidgets))
+        widget->setVisible(!isAcquisition);
+
+    // Repoblar el combo de factura NO es cosmético. Los CHECK de las dos
+    // subtablas admiten conjuntos disjuntos, así que dejarlo con los valores
+    // de la otra rama haría que el INSERT violara la restricción -- y el
+    // error llegaría desde el hilo de guardado, con los archivos ya copiados
+    // a disco.
+    const QString previous = m_invoiceTypeCombo->currentText();
+    m_invoiceTypeCombo->clear();
+    for (domain::InvoiceType value : domain::invoiceTypesFor(type))
+        m_invoiceTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+    // Si el valor anterior sigue siendo válido en la rama nueva, se conserva.
+    const int restored = m_invoiceTypeCombo->findText(previous);
+    if (restored >= 0)
+        m_invoiceTypeCombo->setCurrentIndex(restored);
+
+    // En una compra la contraparte vende la unidad; en una consignación sigue
+    // siendo su dueña.
+    m_counterpartyLabel->setText(isAcquisition ? QStringLiteral("Vendedor:")
+                                               : QStringLiteral("Propietario:"));
 }
 
 QWidget *Step1DetailsView::buildGeneralInfoCard()
@@ -152,8 +191,19 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     auto *grid = new QGridLayout;
     int row = 0;
 
+    // El tipo de operación va primero porque condiciona todo lo demás: qué
+    // campos de precio se piden y qué valores admite el combo de factura.
+    m_acquisitionTypeCombo = new QComboBox(card);
+    m_acquisitionTypeCombo->setObjectName(QStringLiteral("acquisitionTypeCombo"));
+    for (domain::AcquisitionType value : domain::allAcquisitionTypes())
+        m_acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+    grid->addWidget(new QLabel(QStringLiteral("Tipo de Operación:"), card), row, 0);
+    grid->addWidget(m_acquisitionTypeCombo, row, 1);
+    ++row;
+
     m_ownerNameEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("Propietario:"), card), row, 0);
+    m_counterpartyLabel = new QLabel(QStringLiteral("Propietario:"), card);
+    grid->addWidget(m_counterpartyLabel, row, 0);
     grid->addWidget(m_ownerNameEdit, row, 1);
 
     m_ownerIdEdit = new QLineEdit(card);
@@ -184,20 +234,30 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     grid->addWidget(m_ownerPostalCodeEdit, row, 1);
     ++row;
 
+    // El combo se llena en onAcquisitionTypeChanged(): los valores válidos
+    // dependen de la rama y los conjuntos son disjuntos.
     m_invoiceTypeCombo = new QComboBox(card);
-    m_invoiceTypeCombo->addItems({QStringLiteral("Facturado"), QStringLiteral("Autofactura")});
+    m_invoiceTypeCombo->setObjectName(QStringLiteral("invoiceTypeCombo"));
     grid->addWidget(new QLabel(QStringLiteral("Tipo Factura:"), card), row, 0);
     grid->addWidget(m_invoiceTypeCombo, row, 1);
 
-    auto *invoiceFileLayout = new QHBoxLayout;
-    m_invoiceFileLabel = new QLabel(QStringLiteral("Sin archivo"), card);
-    auto *invoiceFileButton = new QPushButton(QStringLiteral("Subir documento"), card);
+    // El archivo de factura solo existe en la compra: el esquema pone
+    // invoice_file_path únicamente en vehicle_acquisitions. Va envuelto en un
+    // widget porque un QHBoxLayout suelto no se puede ocultar de una pieza.
+    auto *invoiceFileWidget = new QWidget(card);
+    auto *invoiceFileLayout = new QHBoxLayout(invoiceFileWidget);
+    invoiceFileLayout->setContentsMargins(0, 0, 0, 0);
+    m_invoiceFileLabel = new QLabel(QStringLiteral("Sin archivo"), invoiceFileWidget);
+    auto *invoiceFileButton = new QPushButton(QStringLiteral("Subir documento"), invoiceFileWidget);
     invoiceFileButton->setProperty("class", QStringLiteral("secondary"));
     connect(invoiceFileButton, &QPushButton::clicked, this, &Step1DetailsView::onBrowseInvoiceFile);
     invoiceFileLayout->addWidget(m_invoiceFileLabel, 1);
     invoiceFileLayout->addWidget(invoiceFileButton);
-    grid->addWidget(new QLabel(QStringLiteral("Factura:"), card), row, 2);
-    grid->addLayout(invoiceFileLayout, row, 3);
+
+    auto *invoiceFileRowLabel = new QLabel(QStringLiteral("Factura:"), card);
+    grid->addWidget(invoiceFileRowLabel, row, 2);
+    grid->addWidget(invoiceFileWidget, row, 3);
+    m_acquisitionOnlyWidgets << invoiceFileRowLabel << invoiceFileWidget;
     ++row;
 
     m_invoiceNumberEdit = new QLineEdit(card);
@@ -209,36 +269,74 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     grid->addWidget(m_invoiceIssuerEdit, row, 3);
     ++row;
 
+    // Los campos propios de cada rama ocupan FILAS COMPLETAS, no medias
+    // filas compartidas con campos comunes: así, al ocultar una rama, sus
+    // filas colapsan enteras en vez de dejar huecos a un lado.
+
+    // --- Solo Adquisición ---
     m_purchasePriceSpin = new QDoubleSpinBox(card);
     m_purchasePriceSpin->setRange(0, 99999999);
     m_purchasePriceSpin->setPrefix(QStringLiteral("$ "));
     m_purchasePriceSpin->setDecimals(2);
-    grid->addWidget(new QLabel(QStringLiteral("Precio Compra:"), card), row, 0);
+    auto *purchasePriceLabel = new QLabel(QStringLiteral("Precio Compra:"), card);
+    grid->addWidget(purchasePriceLabel, row, 0);
     grid->addWidget(m_purchasePriceSpin, row, 1);
 
     m_paymentTypeCombo = new QComboBox(card);
-    m_paymentTypeCombo->addItems({QStringLiteral("Contado"), QStringLiteral("Crédito")});
-    grid->addWidget(new QLabel(QStringLiteral("Tipo Pago:"), card), row, 2);
+    for (domain::PaymentType value : domain::allPaymentTypes())
+        m_paymentTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+    auto *paymentTypeLabel = new QLabel(QStringLiteral("Tipo Pago:"), card);
+    grid->addWidget(paymentTypeLabel, row, 2);
     grid->addWidget(m_paymentTypeCombo, row, 3);
+    m_acquisitionOnlyWidgets << purchasePriceLabel << m_purchasePriceSpin
+                             << paymentTypeLabel << m_paymentTypeCombo;
     ++row;
 
     m_paymentMethodCombo = new QComboBox(card);
-    m_paymentMethodCombo->addItems({QStringLiteral("Efectivo"), QStringLiteral("Transferencia")});
-    grid->addWidget(new QLabel(QStringLiteral("Método de Pago:"), card), row, 0);
+    for (domain::PaymentMethod value : domain::allPaymentMethods())
+        m_paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+    auto *paymentMethodLabel = new QLabel(QStringLiteral("Método de Pago:"), card);
+    grid->addWidget(paymentMethodLabel, row, 0);
     grid->addWidget(m_paymentMethodCombo, row, 1);
-
-    m_maintenanceCostSpin = new QDoubleSpinBox(card);
-    m_maintenanceCostSpin->setRange(0, 9999999);
-    m_maintenanceCostSpin->setPrefix(QStringLiteral("$ "));
-    grid->addWidget(new QLabel(QStringLiteral("Mantenimientos:"), card), row, 2);
-    grid->addWidget(m_maintenanceCostSpin, row, 3);
-    ++row;
 
     m_salePriceSpin = new QDoubleSpinBox(card);
     m_salePriceSpin->setRange(0, 99999999);
     m_salePriceSpin->setPrefix(QStringLiteral("$ "));
-    grid->addWidget(new QLabel(QStringLiteral("Precio Venta:"), card), row, 0);
-    grid->addWidget(m_salePriceSpin, row, 1);
+    auto *salePriceLabel = new QLabel(QStringLiteral("Precio Venta:"), card);
+    grid->addWidget(salePriceLabel, row, 2);
+    grid->addWidget(m_salePriceSpin, row, 3);
+    m_acquisitionOnlyWidgets << paymentMethodLabel << m_paymentMethodCombo
+                             << salePriceLabel << m_salePriceSpin;
+    ++row;
+
+    // --- Solo Consignación ---
+    // No hay precio de venta que capturar: sale de base + comisión, igual que
+    // la columna generada de vehicle_consignments.
+    m_basePriceSpin = new QDoubleSpinBox(card);
+    m_basePriceSpin->setRange(0, 99999999);
+    m_basePriceSpin->setPrefix(QStringLiteral("$ "));
+    m_basePriceSpin->setDecimals(2);
+    auto *basePriceLabel = new QLabel(QStringLiteral("Precio Base (dueño):"), card);
+    grid->addWidget(basePriceLabel, row, 0);
+    grid->addWidget(m_basePriceSpin, row, 1);
+
+    m_commissionRateSpin = new QDoubleSpinBox(card);
+    m_commissionRateSpin->setRange(0, 100);
+    m_commissionRateSpin->setSuffix(QStringLiteral(" %"));
+    m_commissionRateSpin->setDecimals(2);
+    auto *commissionRateLabel = new QLabel(QStringLiteral("Comisión:"), card);
+    grid->addWidget(commissionRateLabel, row, 2);
+    grid->addWidget(m_commissionRateSpin, row, 3);
+    m_consignmentOnlyWidgets << basePriceLabel << m_basePriceSpin
+                             << commissionRateLabel << m_commissionRateSpin;
+    ++row;
+
+    // --- Común a las dos ramas ---
+    m_maintenanceCostSpin = new QDoubleSpinBox(card);
+    m_maintenanceCostSpin->setRange(0, 9999999);
+    m_maintenanceCostSpin->setPrefix(QStringLiteral("$ "));
+    grid->addWidget(new QLabel(QStringLiteral("Mantenimientos:"), card), row, 0);
+    grid->addWidget(m_maintenanceCostSpin, row, 1);
     ++row;
 
     m_observationsEdit = new QTextEdit(card);
@@ -336,9 +434,8 @@ void Step1DetailsView::hideError()
 void Step1DetailsView::applyTo(domain::VehicleBuilder &builder) const
 {
     // El tipo de operación va primero: decide qué subclase construye el
-    // builder, y los demás datos se aplican sobre ella. Por ahora solo hay
-    // flujo de Adquisición; cuando exista el selector, este valor sale de él.
-    builder.setAcquisitionType(domain::AcquisitionType::Adquisicion);
+    // builder, y todo lo demás se aplica sobre ella.
+    builder.setAcquisitionType(selectedAcquisitionType());
 
     builder.setDealDate(m_dateEdit->date())
         .setVehicleType(catalogRefFrom(m_vehicleTypeCombo))
@@ -369,23 +466,36 @@ void Step1DetailsView::applyTo(domain::VehicleBuilder &builder) const
     (void)owner.setPostalCode(m_ownerPostalCodeEdit->text());
     builder.setCounterparty(owner);
 
-    if (const auto invoiceType = domain::invoiceTypeFromDb(m_invoiceTypeCombo->currentText()))
-        builder.setInvoiceType(*invoiceType);
-    builder.setInvoiceFilePath(m_invoiceFilePath)
-        .setInvoiceNumber(m_invoiceNumberEdit->text())
-        .setInvoiceIssuer(m_invoiceIssuerEdit->text());
-
-    builder.setPurchasePrice(m_purchasePriceSpin->value())
-        .setSalePrice(m_salePriceSpin->value())
+    // El userData del combo guarda el enum, así que no hay que traducir el
+    // texto de vuelta ni depender de cómo esté escrita la etiqueta.
+    builder.setInvoiceType(
+        static_cast<domain::InvoiceType>(m_invoiceTypeCombo->currentData().toInt()));
+    builder.setInvoiceNumber(m_invoiceNumberEdit->text())
+        .setInvoiceIssuer(m_invoiceIssuerEdit->text())
         .setMaintenanceCost(m_maintenanceCostSpin->value())
-        .setObservations(m_observationsEdit->toPlainText())
+        .setObservations(m_observationsEdit->toPlainText());
+
+    // Los datos propios de cada rama se mandan siempre: el builder ignora los
+    // que no corresponden a la subclase que construyó, así que no hace falta
+    // ramificar aquí también.
+    builder.setInvoiceFilePath(m_invoiceFilePath)
+        .setSalePrice(m_salePriceSpin->value())
+        .setPaymentType(static_cast<domain::PaymentType>(m_paymentTypeCombo->currentData().toInt()))
+        .setPaymentMethod(
+            static_cast<domain::PaymentMethod>(m_paymentMethodCombo->currentData().toInt()))
         // La UMA se inyecta desde aquí porque el dominio no consulta la base:
         // la regla del pago en efectivo necesita el valor vigente, y quien lo
         // leyó de global_configurations fue loadLookups().
-        .setUmaDailyValue(m_umaValue);
+        .setUmaDailyValue(m_umaValue)
+        .setCommissionRate(m_commissionRateSpin->value());
 
-    if (const auto paymentType = domain::paymentTypeFromDb(m_paymentTypeCombo->currentText()))
-        builder.setPaymentType(*paymentType);
-    if (const auto paymentMethod = domain::paymentMethodFromDb(m_paymentMethodCombo->currentText()))
-        builder.setPaymentMethod(*paymentMethod);
+    // Los precios en cero no se mandan: el rango del control impide valores
+    // negativos, así que un cero solo significa "sin capturar". Mandarlo haría
+    // que el setter lo rechazara y se reportara dos veces el mismo problema,
+    // una con el mensaje del rechazo y otra con el de la validación, que es
+    // el que de verdad describe lo que falta.
+    if (m_purchasePriceSpin->value() > 0.0)
+        builder.setPurchasePrice(m_purchasePriceSpin->value());
+    if (m_basePriceSpin->value() > 0.0)
+        builder.setBasePrice(m_basePriceSpin->value());
 }

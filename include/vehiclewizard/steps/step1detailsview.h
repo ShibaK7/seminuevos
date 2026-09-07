@@ -4,6 +4,7 @@
 #include "domain/validationresult.h"
 #include "domain/vehiclebuilder.h"
 
+#include <QList>
 #include <QWidget>
 
 class QComboBox;
@@ -14,10 +15,13 @@ class QLineEdit;
 class QSpinBox;
 class QTextEdit;
 
-// Paso 1 del wizard: datos generales del vehículo + propietario anterior +
-// datos de adquisición (solo flujo de Adquisición, ver plan US-03.2). Único
-// paso con campos obligatorios (AC2): No. Serie, Marca, Modelo, Precio
-// Compra, Propietario -- y la regla UMA para pagos de contado.
+// Paso 1 del wizard: datos generales del vehículo + contraparte + condiciones
+// de la operación. Cubre las dos ramas -- Adquisición (la agencia compra) y
+// Consignación (la agencia vende por cuenta del dueño y cobra comisión) --
+// mostrando los campos de una u otra según el selector de tipo.
+//
+// Único paso con campos obligatorios. Cuáles y con qué reglas lo decide el
+// dominio, no esta vista: validate() arma un VehicleBuilder y le pregunta.
 class Step1DetailsView : public QWidget
 {
     Q_OBJECT
@@ -47,10 +51,13 @@ public:
 private slots:
     void reloadSubtypes();
     void onBrowseInvoiceFile();
+    // Muestra los campos de la rama elegida y repuebla el combo de factura.
+    void onAcquisitionTypeChanged();
 
 private:
     QWidget *buildGeneralInfoCard();
     QWidget *buildOwnerAndAcquisitionCard();
+    domain::AcquisitionType selectedAcquisitionType() const;
 
     // --- Datos generales ---
     QLabel *m_folioLabel;
@@ -69,6 +76,12 @@ private:
     QLineEdit *m_platesEdit;
     QLineEdit *m_platesHolderEdit;
 
+    // --- Tipo de operación ---
+    QComboBox *m_acquisitionTypeCombo;
+    // La contraparte se llama distinto en cada rama (vendedor o propietario),
+    // así que la etiqueta se actualiza junto con el resto.
+    QLabel *m_counterpartyLabel;
+
     // --- Propietario ---
     QLineEdit *m_ownerNameEdit;
     QLineEdit *m_ownerIdEdit;
@@ -84,12 +97,25 @@ private:
     QString m_invoiceFilePath;
     QLineEdit *m_invoiceNumberEdit;
     QLineEdit *m_invoiceIssuerEdit;
+    QDoubleSpinBox *m_maintenanceCostSpin;
+    QTextEdit *m_observationsEdit;
+
+    // --- Solo Adquisición ---
     QDoubleSpinBox *m_purchasePriceSpin;
     QComboBox *m_paymentTypeCombo;
     QComboBox *m_paymentMethodCombo;
-    QDoubleSpinBox *m_maintenanceCostSpin;
     QDoubleSpinBox *m_salePriceSpin;
-    QTextEdit *m_observationsEdit;
+
+    // --- Solo Consignación ---
+    QDoubleSpinBox *m_basePriceSpin;
+    QDoubleSpinBox *m_commissionRateSpin;
+
+    // Etiquetas y campos que se muestran u ocultan según la rama. Se guardan
+    // en listas y no como miembros sueltos porque hay que esconder también
+    // las etiquetas: dejar una etiqueta huérfana junto a un campo invisible
+    // es peor que no ocultar nada.
+    QList<QWidget *> m_acquisitionOnlyWidgets;
+    QList<QWidget *> m_consignmentOnlyWidgets;
 
     QLabel *m_errorLabel;
 
