@@ -13,6 +13,8 @@
 #include <QSqlQuery>
 #include <QVBoxLayout>
 
+#include <optional>
+
 Step2ConditionView::Step2ConditionView(QWidget *parent)
     : QWidget(parent)
 {
@@ -220,12 +222,15 @@ void Step2ConditionView::applyTo(domain::VehicleBuilder &builder) const
 
     builder.setConditions(conditions);
 
-    // Se vuelcan TODAS las filas, marcadas o no: guardar también las que la
-    // unidad no trae congela cómo se veía el checklist el día del registro, y
-    // distingue "no lo trae" de "ese elemento todavía no existía".
+    // Solo se vuelcan las filas marcadas. Las desmarcadas no generan renglón:
+    // en vehicle_inspection la ausencia ya significa "la unidad no lo trae", y
+    // el checklist completo se reconstruye después con el LEFT JOIN contra el
+    // catálogo (VehicleInspectionQuery).
     domain::Inspection inspection;
-    for (ConditionChecklistRow *row : m_checklistRows)
-        inspection.setItem(row->value());
+    for (ConditionChecklistRow *row : m_checklistRows) {
+        if (const std::optional<domain::InspectionItem> item = row->value())
+            inspection.setItem(*item);
+    }
 
     builder.setInspection(inspection);
 }

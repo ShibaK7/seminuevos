@@ -24,7 +24,7 @@ namespace SchemaInitializer
 // cuanto haya datos reales de la concesionaria, esto se reemplaza por
 // migraciones incrementales (002_*.sql, 003_*.sql...) y este mecanismo se
 // retira.
-inline constexpr int kSchemaVersion = 1;
+inline constexpr int kSchemaVersion = 2;
 
 struct Result
 {

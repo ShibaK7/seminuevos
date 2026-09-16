@@ -31,6 +31,8 @@ set(PROJECT_SOURCES
         src/db/conditioncatalog.cpp
         include/db/vehicleinventoryquery.h
         src/db/vehicleinventoryquery.cpp
+        include/db/vehicleinspectionquery.h
+        src/db/vehicleinspectionquery.cpp
         include/app/appconfig.h
         src/app/appconfig.cpp
         include/db/conditioncatalogseeder.h

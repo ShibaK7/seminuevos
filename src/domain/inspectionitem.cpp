@@ -4,9 +4,8 @@
 
 namespace domain {
 
-InspectionItem::InspectionItem(int elementId, bool checked, bool optimal, QString observations)
+InspectionItem::InspectionItem(int elementId, bool optimal, QString observations)
     : m_elementId(elementId)
-    , m_isChecked(checked)
     , m_isOptimal(optimal)
     , m_observations(std::move(observations))
 {
@@ -27,16 +26,6 @@ bool InspectionItem::setElementId(int id)
         return false;
     m_elementId = id;
     return true;
-}
-
-bool InspectionItem::isChecked() const
-{
-    return m_isChecked;
-}
-
-void InspectionItem::setChecked(bool value)
-{
-    m_isChecked = value;
 }
 
 bool InspectionItem::isOptimal() const
@@ -61,7 +50,7 @@ void InspectionItem::setObservations(const QString &value)
 
 bool InspectionItem::hasFault() const
 {
-    return m_isChecked && !m_isOptimal;
+    return !m_isOptimal;
 }
 
 ValidationResult InspectionItem::validate() const
