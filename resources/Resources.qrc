@@ -10,12 +10,17 @@
     </qresource>
     <qresource prefix="/resources/icons"/>
     <qresource prefix="/">
+        <file>icons/avatar.png</file>
+        <file>icons/avatar@2x.png</file>
         <file>icons/bank.png</file>
         <file>icons/bar-chart.png</file>
+        <file>icons/calendar.png</file>
+        <file>icons/calendar@2x.png</file>
         <file>icons/billing.png</file>
         <file>icons/car.png</file>
         <file>icons/dollar.png</file>
         <file>icons/plus.png</file>
+        <file>icons/plus@2x.png</file>
         <file>icons/chevron_down.png</file>
         <file>icons/checkmark.png</file>
         <file>icons/check-badge-green.png</file>

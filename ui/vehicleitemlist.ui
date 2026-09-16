@@ -34,48 +34,73 @@
   <property name="styleSheet">
    <string notr="true">/* ---------- Tarjeta del vehículo (el QWidget dentro de la lista) ---------- */
 
+/* La raíz va transparente: el hueco entre tarjetas lo pinta la lista, y si
+   aquí hubiera color se leería como una banda pegada al borde de la tarjeta
+   en vez de como separación. */
 QWidget#VehicleItemList {
-	min-height: 200px;
-    max-height: 200px;
+    background: transparent;
+    min-height: 150px;
+    max-height: 150px;
 }
 
-QWidget#VehicleItemList * {
-	background-color: #c3cbdb;
-	border-top-right-radius: 10px;
-	border-top-left-radius: 10px;
-	border-bottom-right-radius: 10px;
-	border-bottom-left-radius: 10px;
+/* La tarjeta propiamente dicha. */
+QFrame#frame {
+    background-color: #FFFFFF;
+    border: 1px solid #E6E8EC;
+    border-radius: 12px;
 }
 
+/* Los contenedores internos vienen del Designer con frameShape=StyledPanel,
+   que dibuja un recuadro nativo. Antes quedaban tapados por una regla
+   universal (QWidget#VehicleItemList *) que le ponía fondo y radio a TODOS
+   los descendientes -- y que de paso era lo que pintaba la tarjeta entera de
+   azul grisáceo. Al quitarla hay que apagar esos recuadros a mano, o
+   aparecen cinco cajas anidadas dentro de la tarjeta. */
+QFrame#leftFrame, QFrame#rightFrame, QFrame#frame_2,
+QFrame#detailLine, QFrame#frame_5 {
+    background: transparent;
+    border: none;
+}
+
+/* Caja de la foto. El gris claro y el borde punteado son lo que se ve cuando
+   la unidad no tiene foto: el hueco parece intencional y no un error de
+   carga. Con foto, el pixmap lo cubre. */
+QLabel#vehicleImage {
+    background-color: #F7F8FA;
+    border: 1px dashed #D7DBE2;
+    border-radius: 8px;
+}
+
+/* Separadores &quot;|&quot; de la línea de specs. */
 QFrame[class=&quot;lineSpecial&quot;] {
-    border-left: 2px solid #6c757d;
-    min-height: 25px;
-    max-height: 25px;
+    border-left: 1px solid #E1E4EA;
+    min-height: 13px;
+    max-height: 13px;
 }
 
 /* Modelo del auto */
 QLabel#vehicleTitle {
-    color: #46527a;
-    font-size: 26px;
+    color: #111827;
+    font-size: 17px;
     font-weight: 700;
 }
 
 /* Línea de specs: 2016 | Negro | 190,000 | Automático | Motor */
 QLabel[class=&quot;detailLine&quot;] {
-    color: #46527a;
-    font-size: 14px;
+    color: #6B7280;
+    font-size: 13px;
 }
 
 /* &quot;Agregado el: ...&quot; */
 QLabel[class=&quot;dateIncomingLabel&quot;] {
-    color: #46527a;
+    color: #9AA1AC;
     font-size: 12px;
 }
 
 /* Precio */
 QLabel#priceLabel {
-    color: #46527a;
-    font-size: 26px;
+    color: #111827;
+    font-size: 21px;
     font-weight: 800;
 }
 
@@ -84,44 +109,54 @@ QLabel#priceLabel {
    aqui es el de respaldo: se ve cuando el estado guardado no corresponde a
    ninguno de los tres del dominio, y sirve para notar el dato raro en vez de
    disfrazarlo de disponible. */
+/* Pastilla de color suave y texto oscuro, en vez de relleno saturado con
+   texto blanco: con tres tarjetas en pantalla, tres insignias sólidas eran lo
+   primero que saltaba a la vista, por encima del modelo y del precio. */
 QLabel#statusBadge {
-    border-radius: 10px;
-    padding: 4px 12px;
-    font-size: 12px;
+    border-radius: 9px;
+    padding: 3px 10px;
+    font-size: 11px;
     font-weight: 700;
-    color: #ffffff;
-    background-color: #6c757d;
+    color: #4B5563;
+    background-color: #EDEFF2;
 }
 
 QLabel#statusBadge[status=&quot;available&quot;] {
-    background-color: #2fae4e;
+    background-color: #DCF5E4;
+    color: #17703C;
 }
 
 QLabel#statusBadge[status=&quot;reserved&quot;] {
-    background-color: #e0a52c;
+    background-color: #FDF0D5;
+    color: #8A5A00;
 }
 
 QLabel#statusBadge[status=&quot;sold&quot;] {
-    background-color: #c94444;
+    background-color: #FBE1E1;
+    color: #A32020;
 }
 
-/* Primary Brand Action Button */
+/* &quot;Detalles&quot;: botón de contorno, no primario. En una lista de veinte
+   unidades había veinte botones azules gritando lo mismo; la acción
+   destacada de la pantalla es &quot;Agregar Vehículo&quot;, y esto es
+   navegación repetida. */
 QPushButton#detailsButton {
-    background-color: #0A25C9;   /* DE LA HOZ Royal Blue */
-    border: none;
-    color: #FFFFFF;
-    font-size: 12pt;
+    background-color: #FFFFFF;
+    color: #374151;
+    border: 1px solid #D7DBE2;
+    border-radius: 8px;
+    font-size: 12px;
     font-weight: 600;
-    border-radius: 6px;
-    padding: 8px 18px;
+    padding: 6px 18px;
 }
 
 QPushButton#detailsButton:hover {
-    background-color: #081CA2;
+    background-color: #F4F6F9;
+    border-color: #ADB5BD;
 }
 
 QPushButton#detailsButton:pressed {
-    background-color: #06157B;
+    background-color: #E9ECF1;
 }</string>
   </property>
   <property name="class" stdset="0">
@@ -131,8 +166,16 @@ QPushButton#detailsButton:pressed {
    <property name="spacing">
     <number>2</number>
    </property>
+   <!-- 24 px a cada lado para alinear el borde de la tarjeta con las pestañas
+        y con la barra de filtros: la columna del inventario ya no aporta esa
+        sangría (la cedió para que el divisor llegue de orilla a orilla), así
+        que cada zona la pone por su cuenta. Arriba y abajo se quedan en el
+        valor por omisión, que es lo que separa una tarjeta de la siguiente. -->
    <property name="leftMargin">
-    <number>9</number>
+    <number>24</number>
+   </property>
+   <property name="rightMargin">
+    <number>32</number>
    </property>
    <item>
     <widget class="QFrame" name="frame">
@@ -159,7 +202,7 @@ QPushButton#detailsButton:pressed {
         </property>
         <property name="minimumSize">
          <size>
-          <width>250</width>
+          <width>200</width>
           <height>0</height>
          </size>
         </property>
@@ -169,25 +212,37 @@ QPushButton#detailsButton:pressed {
         <property name="frameShadow">
          <enum>QFrame::Shadow::Raised</enum>
         </property>
-        <widget class="QLabel" name="vehicleImage">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>0</y>
-           <width>241</width>
-           <height>161</height>
-          </rect>
+        <!-- La foto va en un layout y no con geometry fija: antes eran 241x161
+             clavados, que ya no caben en una tarjeta de 150 px de alto y se
+             desbordaban por abajo. Con el layout, la caja se ajusta a lo que
+             mida la tarjeta. -->
+        <layout class="QVBoxLayout" name="leftFrameLayout">
+         <property name="leftMargin">
+          <number>4</number>
          </property>
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
+         <property name="topMargin">
+          <number>4</number>
          </property>
-         <property name="text">
-          <string/>
+         <property name="rightMargin">
+          <number>12</number>
          </property>
-        </widget>
+         <property name="bottomMargin">
+          <number>4</number>
+         </property>
+         <item>
+          <widget class="AspectRatioImageLabel" name="vehicleImage">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
       <item row="0" column="1">
@@ -495,6 +550,13 @@ QPushButton#detailsButton:pressed {
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AspectRatioImageLabel</class>
+   <extends>QLabel</extends>
+   <header>vehiclewizard/components/aspectratioimagelabel.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
