@@ -25,10 +25,20 @@ set(PROJECT_SOURCES
         src/db/schemainitializer.cpp
         include/db/devseeder.h
         src/db/devseeder.cpp
+        include/db/catalogrepository.h
+        src/db/catalogrepository.cpp
         include/auth/passwordhasher.h
         src/auth/passwordhasher.cpp
         include/auth/loginworker.h
         src/auth/loginworker.cpp
+        include/dto/acquisitiondto.h
+        include/dto/consignationdto.h
+        include/dto/counterpartydto.h
+        include/dto/operationalexpensedto.h
+        include/dto/paymentdto.h
+        include/dto/saledto.h
+        include/dto/userdto.h
+        include/dto/vehicledto.h
         ${TS_FILES}
 )
 
@@ -39,6 +49,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
             resources/Resources.qrc
             include/mainwindow.h src/mainwindow.cpp ui/mainwindow.ui
             include/vehicleitemlist.h src/vehicleitemlist.cpp ui/vehicleitemlist.ui
+            include/utils/UIUtils.h
 
     )
 
