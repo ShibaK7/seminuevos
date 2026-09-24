@@ -31,8 +31,18 @@ set(PROJECT_SOURCES
         src/db/conditioncatalog.cpp
         include/db/vehicleinventoryquery.h
         src/db/vehicleinventoryquery.cpp
+        include/db/vehicleinspectionquery.h
+        src/db/vehicleinspectionquery.cpp
         include/app/appconfig.h
         src/app/appconfig.cpp
+        include/components/statefultextbutton.h
+        src/components/statefultextbutton.cpp
+        include/components/sidebarmenuitem.h
+        src/components/sidebarmenuitem.cpp
+        include/components/navtabitem.h
+        src/components/navtabitem.cpp
+        include/components/outlinebutton.h
+        src/components/outlinebutton.cpp
         include/db/conditioncatalogseeder.h
         src/db/conditioncatalogseeder.cpp
         include/auth/passwordhasher.h

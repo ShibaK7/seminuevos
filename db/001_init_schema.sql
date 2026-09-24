@@ -239,14 +239,31 @@ CREATE TABLE vehicle_conditions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Checklist de condición: un renglón por ítem del catálogo, por vehículo.
--- Se guardan TODOS los ítems del catálogo, marcados o no, para congelar cómo
--- se veía el checklist el día del registro.
+-- Checklist de condición: un renglón SOLO por cada ítem que la unidad trae.
 --
--- is_checked y is_optimal son dos ejes distintos:
---   is_checked = FALSE -> el vehículo no trae ese accesorio; is_optimal no
---                         significa nada en ese renglón.
---   is_checked = TRUE  -> se inspeccionó, e is_optimal dice cómo salió.
+-- La presencia del renglón ES la respuesta a "¿lo trae?". No hay columna
+-- is_checked: sería redundante, porque un renglón con is_checked = FALSE y la
+-- ausencia del renglón dirían exactamente lo mismo, y tener las dos formas de
+-- decirlo obliga a que toda consulta las contemple.
+--
+-- Por eso el checklist NO se lee desde esta tabla, sino desde el catálogo con
+-- un LEFT JOIN, que es lo que reconstruye la pantalla completa:
+--
+--   SELECT c.id, c.category, c.element,
+--          (i.id IS NOT NULL) AS is_present,
+--          i.is_optimal, i.observations
+--   FROM vehicle_conditions_cat c
+--   LEFT JOIN vehicle_inspection i
+--          ON i.element_id = c.id AND i.vehicle_folio = :folio
+--   ORDER BY c.sort_order, c.id;
+--
+-- Los que faltan son los renglones con i.id IS NULL. Ojo al escribir filtros
+-- sobre el lado derecho de un LEFT JOIN: la condición del vehículo va en el
+-- ON y no en el WHERE, porque en el WHERE degrada el LEFT JOIN a INNER y
+-- justo desaparecen las filas que se quieren detectar.
+--
+-- is_optimal solo tiene sentido cuando hay renglón: dice cómo salió el
+-- elemento que sí se revisó.
 --
 -- element_id usa RESTRICT y no CASCADE a propósito: con CASCADE, borrar un
 -- renglón del catálogo borraría en silencio esa línea de la inspección de
@@ -257,7 +274,6 @@ CREATE TABLE vehicle_inspection (
     id SERIAL PRIMARY KEY,
     vehicle_folio INTEGER NOT NULL REFERENCES vehicles(folio) ON DELETE CASCADE,
     element_id INTEGER NOT NULL REFERENCES vehicle_conditions_cat(id) ON DELETE RESTRICT,
-    is_checked BOOLEAN NOT NULL DEFAULT TRUE,
     is_optimal BOOLEAN NOT NULL DEFAULT TRUE,
     observations TEXT,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

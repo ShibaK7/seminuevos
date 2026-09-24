@@ -71,16 +71,6 @@ int Inspection::faultCount() const
     return count;
 }
 
-int Inspection::presentCount() const
-{
-    int count = 0;
-    for (const InspectionItem &item : m_items) {
-        if (item.isChecked())
-            ++count;
-    }
-    return count;
-}
-
 bool Inspection::isFlawless() const
 {
     // Una inspección vacía no es una unidad impecable: es una unidad que no
@@ -90,7 +80,7 @@ bool Inspection::isFlawless() const
 
 double Inspection::optimalRatio() const
 {
-    const int present = presentCount();
+    const int present = itemCount();
     if (present == 0)
         return 0.0;
     return static_cast<double>(present - faultCount()) / static_cast<double>(present);

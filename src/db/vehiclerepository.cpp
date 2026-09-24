@@ -189,13 +189,15 @@ bool insertInspection(QSqlDatabase &db, int folio, const domain::Inspection &ins
     QSqlQuery query(db);
     query.prepare(QStringLiteral(
         "INSERT INTO vehicle_inspection "
-        "(vehicle_folio, element_id, is_checked, is_optimal, observations) "
-        "VALUES (:vehicle_folio, :element_id, :is_checked, :is_optimal, :observations)"));
+        "(vehicle_folio, element_id, is_optimal, observations) "
+        "VALUES (:vehicle_folio, :element_id, :is_optimal, :observations)"));
 
+    // Solo llegan aquí los elementos que la unidad trae, así que se insertan
+    // todos: no hay nada que filtrar. Una inspección vacía no inserta nada, y
+    // eso es correcto -- significa que la unidad no trae ninguno.
     for (const domain::InspectionItem &item : inspection.items()) {
         query.bindValue(QStringLiteral(":vehicle_folio"), folio);
         query.bindValue(QStringLiteral(":element_id"), item.elementId());
-        query.bindValue(QStringLiteral(":is_checked"), item.isChecked());
         query.bindValue(QStringLiteral(":is_optimal"), item.isOptimal());
         query.bindValue(QStringLiteral(":observations"), nullIfEmpty(item.observations()));
         if (!query.exec()) {

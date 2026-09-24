@@ -106,11 +106,14 @@ const QString &ConditionChecklistRow::category() const
     return m_item.category;
 }
 
-domain::InspectionItem ConditionChecklistRow::value() const
+std::optional<domain::InspectionItem> ConditionChecklistRow::value() const
 {
+    if (!m_checkBox->isChecked())
+        return std::nullopt;
+
     // La etiqueta del radio negativo varía por ítem ("Deteriorada",
     // "Gastadas"), pero lo que se guarda es un booleano: el texto es solo
     // presentación.
-    return domain::InspectionItem(m_item.id, m_checkBox->isChecked(),
-                                  m_optimalRadio->isChecked(), m_observationsEdit->text());
+    return domain::InspectionItem(m_item.id, m_optimalRadio->isChecked(),
+                                  m_observationsEdit->text());
 }

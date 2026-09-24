@@ -10,13 +10,16 @@ namespace domain {
 // El resultado de revisar UN elemento del checklist en un vehículo. Mapea un
 // renglón de vehicle_inspection.
 //
-// isChecked e isOptimal son dos ejes distintos, no dos formas de decir lo
-// mismo:
-//   isChecked == false -> la unidad no trae ese accesorio (no hay antena que
-//                         revisar). isOptimal no significa nada.
-//   isChecked == true  -> se revisó, e isOptimal dice cómo salió.
-// Colapsarlos en un solo booleano haría indistinguible "no lo trae" de "lo
-// trae y está bien".
+// EXISTIR es la afirmación: si hay un InspectionItem para un elemento, la
+// unidad lo trae. No hay un isChecked, y quitarlo no perdió información: un
+// renglón marcado como "no lo trae" y la ausencia del renglón decían lo
+// mismo, y mantener las dos formas obligaba a que cada consulta contemplara
+// ambas. Los elementos que la unidad NO trae no viven aquí; se obtienen
+// cruzando el catálogo contra esta tabla con un LEFT JOIN (ver el comentario
+// de vehicle_inspection en db/001_init_schema.sql y VehicleInspectionQuery).
+//
+// isOptimal, entonces, ya no tiene un estado en el que "no significa nada":
+// el elemento está presente por construcción, e isOptimal dice cómo salió.
 //
 // El elemento se identifica por el id del catálogo (vehicle_conditions_cat),
 // no por su nombre: así renombrar "Tapón de gasolina" no rompe el historial.
@@ -24,13 +27,10 @@ class InspectionItem
 {
 public:
     InspectionItem() = default;
-    InspectionItem(int elementId, bool checked, bool optimal, QString observations = QString());
+    InspectionItem(int elementId, bool optimal, QString observations = QString());
 
     int elementId() const;
     [[nodiscard]] bool setElementId(int id);
-
-    bool isChecked() const;
-    void setChecked(bool value);
 
     bool isOptimal() const;
     void setOptimal(bool value);
@@ -38,7 +38,8 @@ public:
     const QString &observations() const;
     void setObservations(const QString &value);
 
-    // true cuando el elemento se revisó y salió mal. Es una CONSULTA para que
+    // true cuando el elemento que la unidad trae salió mal. Es una CONSULTA
+    // para que
     // la interfaz pueda sugerir que se escriba el detalle, no un requisito:
     // el Paso 2 no tiene campos obligatorios por decisión de negocio, y
     // convertir esto en error de validación bloquearía una captura que hoy es
@@ -49,7 +50,6 @@ public:
 
 private:
     int m_elementId = -1;
-    bool m_isChecked = true;
     bool m_isOptimal = true;
     QString m_observations;
 };

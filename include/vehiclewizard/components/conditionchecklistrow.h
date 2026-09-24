@@ -7,6 +7,8 @@
 #include <QList>
 #include <QWidget>
 
+#include <optional>
+
 class QCheckBox;
 class QRadioButton;
 class QLineEdit;
@@ -44,7 +46,12 @@ public:
     // valor completo solo para leer a qué grupo pertenece la fila.
     const QString &category() const;
 
-    domain::InspectionItem value() const;
+    // nullopt cuando la casilla está desmarcada: la unidad no trae ese
+    // elemento y por lo tanto NO le corresponde un renglón en
+    // vehicle_inspection. Devolver un optional y no un InspectionItem con una
+    // bandera adentro es lo que mantiene al dominio sin poder representar un
+    // "ítem ausente", que es justo el estado que se quiso eliminar.
+    std::optional<domain::InspectionItem> value() const;
     void setChecked(bool checked);
 
 private slots:

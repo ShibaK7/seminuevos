@@ -12,30 +12,47 @@ QWidget {
     background-color: #FFFFFF;     /* Light Surface Canvas */
 }
 
-QFrame[class='right-content'] {
+/* Chrome de la ventana principal.
+   Antes cada zona iba encajonada con `1px solid #212529`: hairlines negras
+   que dibujaban la retícula de la ventana y son lo que hacía ver la pantalla
+   "de sistema operativo" en vez de de producto. El separador ahora es un gris
+   claro (#E6E8EC) y solo donde de verdad separa: a la derecha de la barra
+   lateral y debajo de la barra superior. El resto de los marcos no pinta
+   nada, que es lo que deja respirar al blanco. */
+QFrame[class='right-content'],
+QFrame[class='main-content'] {
     background-color: #FFFFFF;
-    border-right: none;
-    border-bottom: 1px solid #212529;
-    border-top: none;
-    border-left: none;
+    border: none;
 }
 
 QFrame[class='side-bar'] {
-    border: 1px solid #212529;
+    background-color: #FFFFFF;
+    border: none;
+    border-right: 1px solid #E6E8EC;
 }
 
 QFrame[class='top-bar'] {
-    border-bottom: 1px solid #212529;
-    border-top: 1px solid #212529;
-    border-left: none;
-    border-right: 1px solid #212529;
+    background-color: #FFFFFF;
+    border: none;
+    border-bottom: 1px solid #E6E8EC;
 }
 
-QFrame[class='main-content'] {
-    border-right: 1px solid #212529;
-    border-top: none;
-    border-left: none;
-    border-bottom: none;
+/* Rol de la persona conectada, al lado del avatar. Mismo peso y mismo negro
+   que el título de las tarjetas y el de la pestaña activa: es una afirmación
+   sobre quién está usando la aplicación, no un rótulo secundario, y en gris
+   claro se leía como texto deshabilitado. */
+QLabel#userRoleLabel {
+    background: transparent;
+    font-size: 11pt;
+    font-weight: 600;
+    color: #111827;
+}
+
+/* El avatar solo sostiene el pixmap: sin fondo propio, o el blanco de la regla
+   base de QWidget asomaría en las esquinas del círculo. */
+QLabel#avatarLabel {
+    background: transparent;
+    border: none;
 }
 
 /* 2. TYPOGRAPHY HEADERS & LABELS
@@ -133,31 +150,60 @@ QLabel[class="error-text"] {
 
 /* 5. BUTTONS & ACTIONS
    --------------------------------------------------------------------------- */
-/* Side Menu Bar Button */
+/* Renglón del menú lateral -- la pastilla que dibuja SidebarMenuItem.
+   Aquí solo va el FONDO. El tamaño no sale de este `padding` (sizeHint()
+   viene del layout interno del componente, ver SidebarMenuItem::sizeHint) y
+   el color del texto tampoco sale de este `color`, porque el título es un
+   QLabel hijo y no el text() del botón. El margen lateral es lo que separa la
+   pastilla del borde de la barra.
+
+   Sin la barra azul de 4px del borde izquierdo que tenía antes: con el fondo
+   gris marcando el módulo activo, el acento era una segunda señal para lo
+   mismo, y además desalineaba el texto del renglón activo contra los otros
+   tres. */
 QPushButton[class="menu-bar"] {
-    background-color: #F4F6F9;
+    background-color: transparent;
     border: none;
-    color: #495057;
-    font-size: 13pt;
-    font-weight: 600;
-    padding: 12px 16px;
-    text-align: center;
+    border-radius: 14px;
+    margin: 0px 10px;
 }
 
 QPushButton[class="menu-bar"]:hover {
-    background-color: rgba(10, 37, 201, 0.10);
-    color: #0A25C9;
+    background-color: #F2F4F8;
 }
 
 QPushButton[class="menu-bar"]:checked {
-    background-color: #c3cbdb;
+    background-color: #E8EAED;
+}
+
+/* Título del renglón. El color va por la propiedad dinámica itemState y NO
+   por un selector de descendiente con pseudo-estado del tipo
+   `QPushButton[class="menu-bar"]:checked QLabel`: Qt no aplica de forma
+   fiable el pseudo-estado de un ancestro sobre sus descendientes. Quien fija
+   itemState y re-poliza es SidebarMenuItem::refreshState(); es el mismo
+   arreglo que WizardStepper hace con stepState. */
+QLabel[class="menu-bar-title"] {
+    background: transparent;
+    font-size: 12pt;
+    font-weight: 600;
+    color: #4B5563;
+}
+
+QLabel[class="menu-bar-title"][itemState="hover"] {
     color: #0A25C9;
+}
+
+QLabel[class="menu-bar-title"][itemState="selected"] {
+    color: #111827;
     font-weight: 700;
-    /* The thick blue accent bar on the left edge */
-    border-left: 4px solid #0A25C9;
-    border-top: none;
-    border-bottom: none;
-    border-right: none;
+}
+
+/* La caja del ícono no pinta nada propia: solo sostiene el pixmap. Hace falta
+   apagarle el fondo explícitamente porque la regla base de QWidget (sección
+   1) le pone blanco, y sobre la pastilla gris se vería un recuadro. */
+QLabel[class="menu-bar-icon"] {
+    background: transparent;
+    border: none;
 }
 
 /* Primary Brand Action Button */
@@ -343,77 +389,171 @@ QCheckBox::indicator:disabled, QRadioButton::indicator:disabled {
    Inventario QCSS Estilos
    ===================================================================== */
 
-/* ======== CONTENEDOR DE LA BARRA ======== */
+/* ======== CONTENEDOR DE LA FILA DE PESTAÑAS ======== */
 QFrame[class="navBar"] {
-    background-color: #c3cbdb;
-    border-bottom: 1px solid #212529;
-    align-items: stretch;
+    background-color: #FFFFFF;
+    border: none;
 }
 
-/* ======== BOTONES DE NAVEGACIÓN DEL NAVBAR ======== */
-QPushButton[class="navButton"] {
-	background-color: transparent;
-    color: #46527a;
+/* La línea divisoria bajo las pestañas. Es un widget propio (ver navDivider en
+   mainwindow.ui) y no el border-bottom del contenedor: como borde de QSS no
+   llegaba a dibujarse en la aplicación, aunque la misma regla sí pintara en un
+   banco de pruebas aislado. Un fondo sobre un QFrame se pinta siempre.
+
+   Va más claro (#F0F2F5) que los divisores de la barra lateral y la superior
+   (#E6E8EC), a diferencia de lo que suponía antes: recorre TODA la pantalla de
+   orilla a orilla y es la línea más larga de la ventana, así que al mismo tono
+   pesaba más que ninguna. Bajarle el contraste es lo que la hace leerse como
+   más fina sin poder adelgazarla: 1 px ya es el mínimo de un widget. */
+QFrame#navDivider {
+    background-color: #F0F2F5;
+    border: none;
+}
+
+/* ======== PESTAÑAS Adquisición / Consignación (NavTabItem) ========
+   Pestañas de texto subrayado, no botones rellenos. El azul sólido que tenían
+   antes le daba a la pestaña activa más peso visual que a "Agregar Vehículo",
+   y elegir entre dos vistas no es una acción: no debería ser lo más llamativo
+   de la pantalla.
+
+   Igual que en menu-bar, aquí solo va lo que se PINTA. El tamaño sale del
+   layout de NavTabItem (ver StatefulTextButton::sizeHint), así que un
+   `padding` en esta regla no tendría efecto sobre las dimensiones. */
+QPushButton[class="nav-tab"] {
+    background-color: transparent;
     border: none;
     margin: 0px;
-    padding: 10px 28px;
+}
+
+/* El subrayado NO es el border-bottom del botón: es un QFrame que NavTabItem
+   apila al final de su layout. Con el borde de QSS la selección se veía en el
+   texto pero la línea no llegaba a dibujarse, porque Qt no aplica de forma
+   fiable un borde sobre un QPushButton sin fondo. Un fondo sobre un QFrame sí
+   se pinta siempre.
+
+   El frame existe y ocupa sus 2 px en todos los estados, transparente cuando
+   no toca: si apareciera solo al seleccionar, el texto de la pestaña brincaría
+   2 px en el momento del clic. */
+QFrame[class="nav-tab-underline"] {
+    background-color: transparent;
+    border: none;
+}
+
+/* La pestaña activa: negro intenso contra el gris claro del divisor que corre
+   por debajo. Ese contraste entre las dos líneas es toda la señal de "aquí
+   estás" frente a "aquí hay otra opción". */
+QFrame[class="nav-tab-underline"][itemState="selected"] {
+    background-color: #111827;
+}
+
+/* Misma tipografía y mismos colores que el renglón de la barra lateral
+   (QLabel[class="menu-bar-title"]): son dos controles de navegación, así que
+   el texto de uno no tiene por qué leerse distinto del otro. El mecanismo de
+   itemState también es el mismo, y lo fija la clase base compartida
+   StatefulTextButton::refreshState(). */
+QLabel[class="nav-tab-title"] {
+    background: transparent;
     font-size: 12pt;
     font-weight: 600;
+    color: #4B5563;
 }
 
-/* Hover */
-QPushButton[class="navButton"]:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-	border-top-right-radius: 10px;
-	border-top-left-radius: 10px;
+/* La barra lateral usa el azul de marca en hover, pero aquí oscurece: con el
+   estado activo marcado en negro, un hover azul insinuaría que seleccionar la
+   pestaña la pondría azul. */
+QLabel[class="nav-tab-title"][itemState="hover"] {
+    color: #111827;
 }
 
-/* Activo (checked) */
-QPushButton[class="navButton"]:checked {
-    background-color: #081ca2;
-    color: #ffffff;
-    border-top-right-radius: 10px;
-	border-top-left-radius: 10px;
-}
-
-/* Presionado momentáneo */
-QPushButton[class="navButton"]:pressed {
-   border-top-right-radius: 10px;
-	border-top-left-radius: 10px;
-    background-color: #0056b3;
-    color: #FFFFFF;
+QLabel[class="nav-tab-title"][itemState="selected"] {
+    color: #111827;
+    font-weight: 700;
 }
 
 
 /* ======== BARRA DE FILTROS (Estado, Fecha inicio, Agregar Vehiculo) ======== */
+/* Sin borde inferior: la barra de filtros y la lista de tarjetas son la misma
+   zona, y la línea de separación entre ellas partía la pantalla en dos por la
+   mitad. La única línea horizontal que queda arriba es la de las pestañas. */
 #filterBar {
     background-color: transparent;
-    padding: 0px -10px 0px 0px;
-	border-right: none;
-    border-bottom: 1px solid #212529;
-    border-top: none;
-    border-left: none;
-	padding-bottom: 5px;
+    border: none;
+    padding-bottom: 6px;
 }
 
+/* Mismo TRATO tipográfico que los renglones del menú y las pestañas
+   (QLabel[class="menu-bar-title"] / [class="nav-tab-title"]): misma familia y
+   mismo peso 600, en lugar del peso 500 que tenían y que hacía ver la barra de
+   filtros como de otra aplicación.
+
+   El tamaño sí es menor que el de aquellos: a 12pt los controles crecían tanto
+   que la barra de filtros pesaba más que las pestañas, y los filtros acompañan
+   al inventario, no lo encabezan. El color se queda en el gris apagado por lo
+   mismo: son rótulos de un control, no elementos de navegación. */
+/* El color va oscuro y no en el gris apagado que tenían antes (#6B7280): a
+   13pt ese gris se leía lavado contra el blanco, más como texto deshabilitado
+   que como rótulo. */
 #filterBar QLabel {
-    font-size: 14px;
+    font-size: 11pt;
     font-weight: 600;
-    color: #2c3856;
+    color: #374151;
 }
 
+/* Botón de acción de contorno (OutlineButton). Aquí solo van el borde y el
+   fondo: el tamaño sale del layout del componente, no de un `padding` de esta
+   regla (ver StatefulTextButton::sizeHint).
+
+   Sin relleno a propósito. Antes era un bloque gris carbón, el único elemento
+   sólido de una pantalla hecha de superficies blancas, y terminaba pesando más
+   que el propio inventario. El contorno lo deja igual de legible como acción
+   principal sin robarse la atención.
+
+   El radio DEBE ser la mitad de kHeight en outlinebutton.cpp (34/2 = 17). Si
+   se pasa de la mitad del alto real, Qt no recorta: deja de redondear y pinta
+   un rectángulo. Fue justo lo que ocurrió al bajar el alto del botón sin
+   tocar este número. */
+QPushButton[class="outline-button"] {
+    background-color: transparent;
+    border: 1px solid #111827;
+    border-radius: 17px;
+}
+
+QPushButton[class="outline-button"]:hover {
+    background-color: #F2F4F8;
+}
+
+QPushButton[class="outline-button"]:pressed {
+    background-color: #E9ECF1;
+}
+
+QLabel[class="outline-button-title"] {
+    background: transparent;
+    font-size: 11pt;
+    font-weight: 700;
+    color: #111827;
+}
+
+QLabel[class="outline-button-icon"] {
+    background: transparent;
+    border: none;
+}
+
+/* El ancho es FIJO, no proporcional a la ventana: el layout ya no le da factor
+   de estiramiento (ver horizontalLayout_3 en mainwindow.ui), así que este
+   min-width es lo único que decide qué tan anchos son los controles, y se ven
+   igual en una pantalla grande que en una chica. */
 QComboBox[class="filterCombo"] {
-    background-color: #ffffff;
-    border: 1px solid #c2c9d6;
+    background-color: #FFFFFF;
+    border: 1px solid #E1E4EA;
     border-radius: 8px;
-    padding: 8px 12px;
-    min-width: 120px;
-    font-size: 14px;
-    color: #2c3856;
+    padding: 6px 14px;
+    min-width: 200px;
+    font-size: 11pt;
+    color: #111827;
 }
 
 QComboBox[class="filterCombo"]:hover {
-    border: 1px solid #2f6fed;
+    border: 1px solid #ADB5BD;
 }
 
 QComboBox[class="filterCombo"]::drop-down {
@@ -459,17 +599,20 @@ QComboBox QAbstractItemView {
 
 /* ---------- QDateEdit (mismo look que QComboBox, sin botón cuadrado) ---------- */
 QDateEdit[class="dateFilter"] {
-    background-color: #ffffff;
-    border: 1px solid #c2c9d6;
+    background-color: #FFFFFF;
+    border: 1px solid #E1E4EA;
     border-radius: 8px;
-    padding: 8px 12px;
-    min-width: 120px;
-    font-size: 14px;
-    color: #2c3856;
+    /* El padding derecho tiene que dar cabida a DOS cosas apiladas contra el
+       borde: la flecha del desplegable y, a su izquierda, el icono de
+       calendario. Sin él, la fecha se metía debajo de los dos. */
+    padding: 6px 56px 6px 14px;
+    min-width: 170px;
+    font-size: 11pt;
+    color: #111827;
 }
 
 QDateEdit[class="dateFilter"]:hover {
-    border: 1px solid #2f6fed;
+    border: 1px solid #ADB5BD;
 }
 
 /* Elimina el relieve/recuadro del botón de flecha */
@@ -481,11 +624,27 @@ QDateEdit[class="dateFilter"]::drop-down {
     background: transparent;  /* sin fondo/recuadro que sobresalga */
 }
 
-/* Mismo ícono que usa el QComboBox */
+/* Aquí va SOLO la flecha del desplegable, que es la que indica que el control
+   se abre. El icono de calendario es aparte: lo pone
+   MainWindow::attachCalendarIcon() como QLabel encima del campo, a la
+   izquierda de esta flecha.
+
+   El calendario no se pinta como `image` de este subcontrol porque así no
+   llegaba a dibujarse en la aplicación, aunque la misma regla sí pinta en un
+   banco de pruebas aislado tanto a escala 1 como a escala 2. La flecha, en
+   cambio, se dibuja sin problema: la diferencia entre las dos reglas era que
+   esta lleva width/height explícitos. */
 QDateEdit[class="dateFilter"]::down-arrow {
     image: url(:/icons/chevron_down.png);
     width: 12px;
     height: 12px;
+}
+
+/* La caja del icono no pinta fondo propio: la regla base de QWidget (sección
+   1) le pondría blanco y taparía el borde redondeado del campo. */
+QLabel#dateFilterIcon {
+    background: transparent;
+    border: none;
 }
 
 
@@ -527,6 +686,25 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
     background: transparent;
 }
 /* ---------- QListWidget contenedor de las tarjetas ---------- */
+QListWidget#vehicleList {
+    background-color: transparent;
+    border: none;
+    outline: none;
+}
+
+/* El renglón es solo el hueco donde vive la tarjeta: no debe pintar nada
+   propio. Sin esto, el resaltado de selección de Qt se dibuja DEBAJO de la
+   tarjeta y asoma en las cuatro esquinas, justo donde el borde redondeado
+   deja ver el fondo del renglón. */
+QListWidget#vehicleList::item {
+    background: transparent;
+    border: none;
+}
+
+QListWidget#vehicleList::item:selected,
+QListWidget#vehicleList::item:hover {
+    background: transparent;
+}
 
 /* Scrollbar del QListWidget */
 QScrollBar:vertical {

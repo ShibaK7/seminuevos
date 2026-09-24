@@ -93,7 +93,10 @@ void VehicleItemList::setStatus(const QString &label, const QString &styleKey)
 
 void VehicleItemList::setImage(const QPixmap &pix)
 {
-    ui->vehicleImage->setPixmap(pix.scaled(ui->vehicleImage->size(),
-                                           Qt::KeepAspectRatioByExpanding,
-                                           Qt::SmoothTransformation));
+    // Se le entrega el original y él se encarga de reescalar en cada resize.
+    // Antes se escalaba aquí contra ui->vehicleImage->size(), que en este
+    // punto todavía es el tamaño que puso el Designer y no el que la tarjeta
+    // va a tener: la foto salía del tamaño equivocado en cuanto la lista
+    // ajustaba el ancho.
+    ui->vehicleImage->setSourcePixmap(pix);
 }
