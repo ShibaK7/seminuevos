@@ -438,37 +438,10 @@ void Step1DetailsView::loadLookups()
     if (!db.isOpen())
         return;
 
-    m_vehicleTypeCombo->clear();
-    QSqlQuery typeQuery(db);
-    if (typeQuery.exec(QStringLiteral(
-            "SELECT id, name FROM vehicle_categories_cat WHERE parent_id IS NULL ORDER BY name"))) {
-        while (typeQuery.next())
-            m_vehicleTypeCombo->addItem(typeQuery.value(1).toString(), typeQuery.value(0));
-    }
+    UIUtils::populateCategoriesComboBox(m_vehicleTypeCombo);
 
-    m_brandCombo->clear();
-    QSqlQuery brandQuery(db);
-    if (brandQuery.exec(QStringLiteral("SELECT id, name FROM brands_cat ORDER BY name"))) {
-        while (brandQuery.next())
-            m_brandCombo->addItem(brandQuery.value(1).toString(), brandQuery.value(0));
+    UIUtils::populateComboBox(m_brandCombo, "brands_cat");
 
-        m_brandCombo->setEditable(true);
-
-        QCompleter* completer = m_brandCombo->completer();
-        completer->setCompletionMode(QCompleter::PopupCompletion); // Muestra la lista desplegable al escribir
-        completer->setFilterMode(Qt::MatchContains);
-        m_brandCombo->setInsertPolicy(QComboBox::NoInsert);
-
-        connect(m_brandCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
-            QString wroteText = m_brandCombo->currentText();
-
-            int indexValido = m_brandCombo->findText(wroteText, Qt::MatchExactly);
-
-            if (indexValido == -1) {
-                m_brandCombo->setCurrentIndex(0);
-            }
-        });
-    }
 
     QSqlQuery umaQuery(db);
     umaQuery.prepare(QStringLiteral("SELECT value_param FROM global_configurations WHERE key_param = :key"));
