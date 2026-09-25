@@ -1,8 +1,13 @@
 #ifndef UIUTILS_H
 #define UIUTILS_H
 
+#include "db/connectionpool.h"
+
 #include <QVariant>
 #include <QDebug>
+#include <QComboBox>
+#include <QSqlQuery>
+#include <QSqlError>
 
 class UIUtils {
 public:
@@ -35,10 +40,13 @@ public:
             comboBox->addItem(placeholder, -1);
         }
 
+        ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
+        QSqlQuery query(handle.database());
+
         // Construcción y ejecución directa del query SQL
         QString queryString = QString("SELECT %1, %2 FROM %3 ORDER BY %2 ASC;")
                                 .arg(idColumn, displayColumn, tableName);
-        QSqlQuery query(queryString);
+        query.prepare(queryString);
 
         if (!query.exec()) {
             qCritical() << "UIUtils::populateComboBox Error al consultar la tabla" 
@@ -75,7 +83,8 @@ public:
             comboBox->addItem(placeholder, -1);
         }
 
-        QSqlQuery query;
+        ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
+        QSqlQuery query(handle.database());
 
         // Evaluamos si consultamos categorías padre o subcategorías de un padre específico
         if (parentId <= 0) {

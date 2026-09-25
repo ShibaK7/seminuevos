@@ -1,5 +1,6 @@
 #include "../../../include/vehiclewizard/steps/step1detailsview.h"
 #include "../../../include/db/connectionpool.h"
+#include "utils/UIUtils.h"
 
 #include <QComboBox>
 #include <QDateEdit>
@@ -366,19 +367,7 @@ void Step1DetailsView::reloadSubtypes()
     if (!parentId.isValid())
         return;
 
-    ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
-    QSqlDatabase &db = handle.database();
-    if (!db.isOpen())
-        return;
-
-    QSqlQuery query(db);
-    query.prepare(QStringLiteral(
-        "SELECT id, name FROM vehicle_categories_cat WHERE parent_id = :parent_id ORDER BY name"));
-    query.bindValue(QStringLiteral(":parent_id"), parentId);
-    if (query.exec()) {
-        while (query.next())
-            m_subtypeCombo->addItem(query.value(1).toString(), query.value(0));
-    }
+    UIUtils::populateCategoriesComboBox(m_subtypeCombo, parentId.toInt());
 }
 
 void Step1DetailsView::loadLookups()
@@ -388,20 +377,10 @@ void Step1DetailsView::loadLookups()
     if (!db.isOpen())
         return;
 
-    m_vehicleTypeCombo->clear();
-    QSqlQuery typeQuery(db);
-    if (typeQuery.exec(QStringLiteral(
-            "SELECT id, name FROM vehicle_categories_cat WHERE parent_id IS NULL ORDER BY name"))) {
-        while (typeQuery.next())
-            m_vehicleTypeCombo->addItem(typeQuery.value(1).toString(), typeQuery.value(0));
-    }
+    UIUtils::populateCategoriesComboBox(m_vehicleTypeCombo);
 
-    m_brandCombo->clear();
-    QSqlQuery brandQuery(db);
-    if (brandQuery.exec(QStringLiteral("SELECT id, name FROM brands_cat ORDER BY name"))) {
-        while (brandQuery.next())
-            m_brandCombo->addItem(brandQuery.value(1).toString(), brandQuery.value(0));
-    }
+    UIUtils::populateComboBox(m_brandCombo, "brands_cat");
+
 
     QSqlQuery umaQuery(db);
     umaQuery.prepare(QStringLiteral("SELECT value_param FROM global_configurations WHERE key_param = :key"));

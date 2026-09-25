@@ -8,27 +8,31 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # If you already have a local PostgreSQL instance running on port 5432,
+      # change the host port by setting POSTGRES_PORT in your .env file (e.g., POSTGRES_PORT=5433)
+      # or update the host port value on the left side (HOST_PORT:CONTAINER_PORT).
+      - "${POSTGRES_PORT:-5432}:5432" 
     volumes:
       - seminuevos_pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    restart: always
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@admin.com  # Correo ficticio para iniciar sesión
-      - PGADMIN_DEFAULT_PASSWORD=admin         # Contraseña para iniciar sesión
-    ports:
-      - "5050:80" # <-- Puerto para entrar desde el navegador
-  #adminer:
-  #  image: adminer:latest
+  #pgadmin:
+  #  image: dpage/pgadmin4:latest
   #  restart: always
+  #  environment:
+  #    - PGADMIN_DEFAULT_EMAIL=admin@admin.com  # Correo ficticio para iniciar sesión
+  #    - PGADMIN_DEFAULT_PASSWORD=admin         # Contraseña para iniciar sesión
   #  ports:
-  #    - "8081:8081"
+  #    - "5050:80" # <-- Puerto para entrar desde el navegador
+  adminer:
+    image: adminer:latest
+    restart: always
+    ports:
+      - "8081:8081"
 
 volumes:
   seminuevos_pgdata:
