@@ -389,9 +389,35 @@ QCheckBox::indicator:disabled, QRadioButton::indicator:disabled {
    Inventario QCSS Estilos
    ===================================================================== */
 
-/* ======== CONTENEDOR DE LA FILA DE PESTAÑAS ======== */
-QFrame[class="navBar"] {
-    background-color: #FFFFFF;
+/* Fondo de la columna de inventario: un gris muy claro que arranca en la fila
+   de pestañas y llega al fondo de la ventana. Es lo que convierte las tarjetas
+   en superficies que flotan sobre la página; sobre blanco, su borde gris claro
+   era lo único que las separaba del fondo y se leían como una lista plana.
+
+   OJO: inventoryPage es un QWidget pelado, no un QFrame, y Qt NO pinta el
+   background de QSS en un QWidget a menos que lleve WA_StyledBackground. Ese
+   atributo lo activa MainWindow; sin él esta regla no hace nada y el gris no
+   aparece. */
+QWidget#inventoryPage {
+    background-color: #F4F5F7;
+}
+
+/* ======== CONTENEDOR DE LA FILA DE PESTAÑAS ========
+   Se selecciona por objectName (#navBar) y NO por [class="navBar"]. El
+   selector de clase no estaba casando aquí: la fila se quedaba blanca, con el
+   fondo que le da la regla base de QWidget, y antes tampoco había llegado a
+   pintar su border-bottom.
+
+   La diferencia entre los dos selectores está en cómo los genera uic: el
+   objectName se asigna en setupUi() directamente, mientras que la propiedad
+   `class` se asigna al final, dentro de retranslateUi(), y pasando por
+   QCoreApplication::translate(). El objectName no depende de nada de eso.
+
+   Mismo gris que inventoryPage, y no `transparent`: así no depende tampoco de
+   que la transparencia se propague desde el padre. Si cambia el gris de la
+   página, hay que cambiarlo aquí también. */
+QFrame#navBar {
+    background-color: #F4F5F7;
     border: none;
 }
 
@@ -494,6 +520,11 @@ QLabel[class="nav-tab-title"][itemState="selected"] {
    13pt ese gris se leía lavado contra el blanco, más como texto deshabilitado
    que como rótulo. */
 #filterBar QLabel {
+    /* Sin esto, cada rótulo sale con un recuadro BLANCO sobre el gris de la
+       página: la regla base QWidget (sección 1) le da fondo blanco a todo, y
+       un QLabel que no lo anule lo hereda. Es invisible mientras la página es
+       blanca y salta en cuanto deja de serlo. */
+    background: transparent;
     font-size: 11pt;
     font-weight: 600;
     color: #374151;
@@ -690,6 +721,16 @@ QListWidget#vehicleList {
     background-color: transparent;
     border: none;
     outline: none;
+}
+
+/* Mensaje de "no hay vehículos" / error de lectura, que MainWindow inserta
+   como renglón de la lista. Transparente por el mismo motivo que los rótulos
+   de los filtros: si no, hereda el blanco de la regla base de QWidget y se ve
+   como una banda blanca sobre el gris de la página. */
+QLabel#inventoryMessage {
+    background: transparent;
+    font-size: 11pt;
+    color: #6B7280;
 }
 
 /* El renglón es solo el hueco donde vive la tarjeta: no debe pintar nada

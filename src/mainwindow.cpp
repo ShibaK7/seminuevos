@@ -88,6 +88,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->vehicleList->setSpacing(0);
     ui->vehicleList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
+    // Sin esto, la regla QWidget#inventoryPage del QSS no pinta nada: Qt solo
+    // dibuja el fondo declarado en la hoja de estilos cuando el widget es de
+    // una clase que lo pinta por su cuenta (QFrame y derivados) o cuando lleva
+    // este atributo. inventoryPage es un QWidget pelado del Designer.
+    ui->inventoryPage->setAttribute(Qt::WA_StyledBackground, true);
+
     buildSidebarMenu();
     buildNavTabs();
 
@@ -397,6 +403,10 @@ void MainWindow::reloadInventory()
 void MainWindow::showInventoryMessage(const QString &message)
 {
     auto *label = new QLabel(message, ui->vehicleList);
+    // Sin objectName se queda con el fondo blanco de la regla base de QWidget,
+    // que sobre el gris de la página se ve como una banda blanca cruzando la
+    // lista. El QSS lo deja transparente por este nombre.
+    label->setObjectName(QStringLiteral("inventoryMessage"));
     label->setAlignment(Qt::AlignCenter);
     label->setWordWrap(true);
 
