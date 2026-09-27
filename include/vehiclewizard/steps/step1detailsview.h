@@ -51,6 +51,7 @@ public:
 private slots:
     void reloadSubtypes();
     void onBrowseInvoiceFile();
+    void generateCfdiRequest();
     // Muestra los campos de la rama elegida y repuebla el combo de factura.
     void onAcquisitionTypeChanged();
 

@@ -12,12 +12,15 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QTextEdit>
 #include <QVBoxLayout>
+#include <QStandardPaths>
+#include <QDesktopServices>
 
 namespace {
 
@@ -254,6 +257,12 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     invoiceFileLayout->addWidget(m_invoiceFileLabel, 1);
     invoiceFileLayout->addWidget(invoiceFileButton);
 
+    auto *invoiceFileButton2 = new QPushButton(QStringLiteral("Generar solicitud CFDI"), invoiceFileWidget);
+    invoiceFileButton2->setProperty("class", QStringLiteral("secondary"));
+    connect(invoiceFileButton2, &QPushButton::clicked, this, &Step1DetailsView::generateCfdiRequest);
+    invoiceFileLayout->addWidget(m_invoiceFileLabel, 1);
+    invoiceFileLayout->addWidget(invoiceFileButton2);
+
     auto *invoiceFileRowLabel = new QLabel(QStringLiteral("Factura:"), card);
     grid->addWidget(invoiceFileRowLabel, row, 2);
     grid->addWidget(invoiceFileWidget, row, 3);
@@ -356,6 +365,43 @@ void Step1DetailsView::onBrowseInvoiceFile()
 
     m_invoiceFilePath = path;
     m_invoiceFileLabel->setText(QFileInfo(path).fileName());
+}
+
+void Step1DetailsView::generateCfdiRequest() {
+    constexpr const char *kCfdiTemplateResourcePath =
+        ":/templates/request_issuance_cfdi.html";
+    QFile resourceFile(kCfdiTemplateResourcePath);
+    if (!resourceFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+            tr("No se encontro el recurso:\n%1")
+                .arg(kCfdiTemplateResourcePath));
+        return;
+    }
+
+    const QByteArray htmlContent = resourceFile.readAll();
+    resourceFile.close();
+
+    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    const QString tempFilePath = QDir(tempDir).filePath("request_issuance_cfdi.html");
+
+    QFile tempFile(tempFilePath);
+    if (!tempFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo crear el archivo temporal en:\n%1")
+                                .arg(tempFilePath));
+        return;
+    }
+
+    tempFile.write(htmlContent);
+    tempFile.close();
+
+    const bool opened = QDesktopServices::openUrl(QUrl::fromLocalFile(tempFilePath));
+    if (!opened) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo abrir el navegador para mostrar:\n%1")
+                                .arg(tempFilePath));
+    }
+    return;
 }
 
 void Step1DetailsView::reloadSubtypes()
