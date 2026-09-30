@@ -105,6 +105,8 @@ private:
     QComboBox *m_paymentTypeCombo;
     QComboBox *m_paymentMethodCombo;
     QDoubleSpinBox *m_salePriceSpin;
+    QLabel *m_priceErrorLabel;
+    QLabel *m_purchasePriceErrorLabel;
 
     // --- Solo Consignación ---
     QDoubleSpinBox *m_basePriceSpin;
@@ -120,6 +122,8 @@ private:
     QLabel *m_errorLabel;
 
     double m_umaValue = 108.57;
+
+    void validatePurchaseConditions();
 };
 
 #endif // STEP1DETAILSVIEW_H

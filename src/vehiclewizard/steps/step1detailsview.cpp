@@ -18,6 +18,8 @@
 #include <QSqlQuery>
 #include <QTextEdit>
 #include <QVBoxLayout>
+#include <QCompleter>
+#include "loginwindow.h"
 
 namespace {
 
@@ -108,6 +110,10 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
     m_folioLabel = new QLabel(QStringLiteral("(auto)"), card);
     m_dateEdit = new QDateEdit(QDate::currentDate(), card);
     m_dateEdit->setCalendarPopup(true);
+    m_dateEdit->setMaximumDate(QDate::currentDate());
+    QDate minimumDate(2000, 1, 1);
+    m_dateEdit->setMinimumDate(minimumDate);
+    m_dateEdit->setMaximumDate(QDate::currentDate());
     m_vehicleTypeCombo = new QComboBox(card);
     m_subtypeCombo = new QComboBox(card);
     m_brandCombo = new QComboBox(card);
@@ -298,16 +304,56 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     auto *paymentMethodLabel = new QLabel(QStringLiteral("Método de Pago:"), card);
     grid->addWidget(paymentMethodLabel, row, 0);
     grid->addWidget(m_paymentMethodCombo, row, 1);
+    m_purchasePriceErrorLabel = new QLabel(QStringLiteral("El precio de compra en efectivo no puede superar las 3210 UMAs."), card);
+    m_purchasePriceErrorLabel->setStyleSheet(QStringLiteral("color: red; font-size: 11px; font-weight: bold;"));
+    m_purchasePriceErrorLabel->setVisible(false); // Oculto por defecto
+    grid->addWidget(m_purchasePriceErrorLabel, row + 1, 1);
+
+    connect(m_purchasePriceSpin, &QDoubleSpinBox::valueChanged, this, [this](double value) {
+        validatePurchaseConditions();
+    });
+
+    connect(m_paymentMethodCombo, &QComboBox::currentIndexChanged, this, [this](int index){
+        validatePurchaseConditions();
+    });
+
 
     m_salePriceSpin = new QDoubleSpinBox(card);
     m_salePriceSpin->setRange(0, 99999999);
     m_salePriceSpin->setPrefix(QStringLiteral("$ "));
     auto *salePriceLabel = new QLabel(QStringLiteral("Precio Venta:"), card);
+    m_priceErrorLabel = new QLabel(QStringLiteral("El precio de venta debe ser mayor a 0"), card);
+    m_priceErrorLabel->setStyleSheet(QStringLiteral("color: red; font-size: 11px; font-weight: bold;"));
+    m_priceErrorLabel->setVisible(false); // Oculto por defecto
     grid->addWidget(salePriceLabel, row, 2);
     grid->addWidget(m_salePriceSpin, row, 3);
+    grid->addWidget(m_priceErrorLabel, row + 1, 3);
     m_acquisitionOnlyWidgets << paymentMethodLabel << m_paymentMethodCombo
                              << salePriceLabel << m_salePriceSpin;
     ++row;
+
+    if (m_salePriceSpin->value() <= 0.0) {
+        m_salePriceSpin->setStyleSheet(QStringLiteral(
+            "QDoubleSpinBox { border: 1px solid red; background-color: #FFF0F0; }"
+        ));
+        m_priceErrorLabel->setVisible(true);
+        m_salePriceSpin->setFocus();
+    }
+
+    connect(m_salePriceSpin, &QDoubleSpinBox::valueChanged, this, [this](double value) {
+        if (value > 0.0) {
+            m_salePriceSpin->setStyleSheet(QStringLiteral(""));
+            m_priceErrorLabel->setVisible(false);
+        } else
+        {
+            m_salePriceSpin->setStyleSheet(QStringLiteral(
+                "QDoubleSpinBox { border: 1px solid red; background-color: #FFF0F0; }"
+            ));
+            m_priceErrorLabel->setVisible(true);
+            m_salePriceSpin->setFocus();
+        }
+    });
+
 
     // --- Solo Consignación ---
     // No hay precio de venta que capturar: sale de base + comisión, igual que
@@ -401,6 +447,23 @@ void Step1DetailsView::loadLookups()
     if (brandQuery.exec(QStringLiteral("SELECT id, name FROM brands_cat ORDER BY name"))) {
         while (brandQuery.next())
             m_brandCombo->addItem(brandQuery.value(1).toString(), brandQuery.value(0));
+
+        m_brandCombo->setEditable(true);
+
+        QCompleter* completer = m_brandCombo->completer();
+        completer->setCompletionMode(QCompleter::PopupCompletion); // Muestra la lista desplegable al escribir
+        completer->setFilterMode(Qt::MatchContains);
+        m_brandCombo->setInsertPolicy(QComboBox::NoInsert);
+
+        connect(m_brandCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
+            QString wroteText = m_brandCombo->currentText();
+
+            int indexValido = m_brandCombo->findText(wroteText, Qt::MatchExactly);
+
+            if (indexValido == -1) {
+                m_brandCombo->setCurrentIndex(0);
+            }
+        });
     }
 
     QSqlQuery umaQuery(db);
@@ -498,4 +561,33 @@ void Step1DetailsView::applyTo(domain::VehicleBuilder &builder) const
         builder.setPurchasePrice(m_purchasePriceSpin->value());
     if (m_basePriceSpin->value() > 0.0)
         builder.setBasePrice(m_basePriceSpin->value());
+}
+
+void Step1DetailsView::validatePurchaseConditions()
+{
+    double umaSum = m_umaValue * 3210;
+
+    if (m_paymentMethodCombo->currentIndex() == 0)
+    {
+        if (m_purchasePriceSpin->value() < umaSum) {
+            m_purchasePriceSpin->setStyleSheet(QStringLiteral(""));
+            m_paymentMethodCombo->setStyleSheet(QStringLiteral(""));
+            m_purchasePriceErrorLabel->setVisible(false);
+        } else {
+            m_purchasePriceSpin->setStyleSheet(QStringLiteral(
+                "QDoubleSpinBox { border: 1px solid red; background-color: #FFF0F0; }"
+            ));
+            m_paymentMethodCombo->setStyleSheet(QStringLiteral(
+                "QComboBox { border: 1px solid red; background-color: #FFF0F0; }"
+            ));
+            m_purchasePriceErrorLabel->setVisible(true);
+            m_purchasePriceSpin->setFocus();
+        }
+    }
+    else
+    {
+        m_purchasePriceSpin->setStyleSheet(QStringLiteral(""));
+        m_paymentMethodCombo->setStyleSheet(QStringLiteral(""));
+        m_purchasePriceErrorLabel->setVisible(false);
+    }
 }
