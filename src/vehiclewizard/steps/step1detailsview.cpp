@@ -340,7 +340,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     auto *salePriceLabel = UIUtils::createRequiredLabel("Precio Venta: ", card);
     m_priceErrorLabel = new QLabel(QStringLiteral("El precio de venta debe ser mayor a 0"), card);
     m_priceErrorLabel->setStyleSheet(QStringLiteral("color: red; font-size: 11px; font-weight: bold;"));
-    m_priceErrorLabel->setVisible(false); // Oculto por defecto
+    m_priceErrorLabel->setVisible(false); 
     grid->addWidget(salePriceLabel, row, 2);
     grid->addWidget(m_salePriceSpin, row, 3);
     grid->addWidget(m_priceErrorLabel, row + 1, 3);
