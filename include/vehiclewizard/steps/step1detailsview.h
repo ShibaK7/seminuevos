@@ -12,6 +12,7 @@ class QDateEdit;
 class QDoubleSpinBox;
 class QLabel;
 class QLineEdit;
+class QPushButton;
 class QSpinBox;
 class QTextEdit;
 
@@ -54,11 +55,36 @@ private slots:
     void generateCfdiRequest();
     // Muestra los campos de la rama elegida y repuebla el combo de factura.
     void onAcquisitionTypeChanged();
+    // Lo que dispara un cambio de tipo de factura: primero la regla sobre el
+    // archivo ya elegido y después los botones. Es un slot aparte porque
+    // refreshInvoiceFileControls() también corre al construir la vista y al
+    // generar la solicitud, y en ninguno de esos dos casos procede quitar la
+    // factura.
+    void onInvoiceTypeChanged();
+    // Único sitio que decide si se ve el botón de CFDI y si se puede subir la
+    // factura. Recalcula los dos a partir del tipo de factura y de
+    // m_cfdiRequestGenerated, en vez de que cada evento toque los botones por
+    // su cuenta: así ninguna secuencia de cambios los deja desfasados. Solo
+    // toca los botones: qué pasa con el archivo ya elegido lo decide
+    // discardInvoiceFileIfCfdiRequestPending().
+    void refreshInvoiceFileControls();
 
 private:
     QWidget *buildGeneralInfoCard();
     QWidget *buildOwnerAndAcquisitionCard();
     domain::AcquisitionType selectedAcquisitionType() const;
+    // Lo comparten refreshInvoiceFileControls() y
+    // discardInvoiceFileIfCfdiRequestPending() para que los dos lean el combo
+    // igual, también en el instante en que onAcquisitionTypeChanged() lo deja
+    // vacío para repoblarlo.
+    bool isAutofacturaSelected() const;
+    // En autofactura la factura se sube después de generar la solicitud de
+    // CFDI, y bloquear el botón no alcanza para garantizarlo: con Facturado,
+    // el tipo por omisión, la subida está libre, y una factura elegida ahí
+    // seguiría adjunta al cambiar a Autofactura sin que la solicitud se
+    // hubiera generado nunca. Por eso, si el tipo pasa a Autofactura sin
+    // solicitud, se quita el archivo.
+    void discardInvoiceFileIfCfdiRequestPending();
 
     // --- Datos generales ---
     QLabel *m_folioLabel;
@@ -96,6 +122,24 @@ private:
     QComboBox *m_invoiceTypeCombo;
     QLabel *m_invoiceFileLabel;
     QString m_invoiceFilePath;
+    // Miembros y no variables locales del armado de la tarjeta: su estado
+    // cambia después de construidos, cada vez que cambia el tipo de factura o
+    // se genera la solicitud de CFDI.
+    QPushButton *m_cfdiRequestButton;
+    QPushButton *m_invoiceUploadButton;
+    // Se enciende la primera vez que la solicitud de CFDI llega a abrirse y ya
+    // no se apaga: ir y volver entre Facturado y Autofactura no obliga a
+    // generarla otra vez ni quita la factura que ya se haya subido. Tampoco
+    // hay que reiniciarla a mano entre un vehículo y otro: cada apertura del
+    // asistente construye un Step1DetailsView nuevo, y la bandera nace en
+    // false con él.
+    bool m_cfdiRequestGenerated = false;
+    // true mientras la etiqueta del archivo muestra el aviso de "factura
+    // quitada" en lugar de un nombre de archivo. Hace falta llevar la cuenta
+    // porque el aviso caduca: en cuanto la subida deja de estar bloqueada (se
+    // generó la solicitud, o se volvió a Facturado) ya no describe nada real,
+    // y refreshInvoiceFileControls() debe devolver la etiqueta a "Sin archivo".
+    bool m_invoiceRemovedNoticeShown = false;
     QLineEdit *m_invoiceNumberEdit;
     QLineEdit *m_invoiceIssuerEdit;
     QDoubleSpinBox *m_maintenanceCostSpin;

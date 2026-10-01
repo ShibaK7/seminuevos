@@ -242,6 +242,19 @@ QPushButton[class="secondary"]:hover {
     border-color: #0A25C9;
 }
 
+/* Sin esta regla un secundario deshabilitado se pinta igual que uno activo:
+   la regla base fija fondo, texto y borde sin distinguir estados, así que Qt
+   nunca llega a agrisarlo. Dependen de ella todos los secundarios que se
+   deshabilitan, no solo "Subir documento" del Paso 3 mientras no se elige el
+   tipo: también el "Subir documento" de la factura del Paso 1, bloqueado en
+   autofactura hasta generar la solicitud de CFDI, e "Imprimir Contrato" y
+   "Cancelar" del pie del wizard. Sin el gris, parecerían rotos. */
+QPushButton[class="secondary"]:disabled {
+    background-color: #F4F6F9;
+    color: #ADB5BD;
+    border-color: #DEE2E6;
+}
+
 /* Danger / Delete Action Button */
 QPushButton[class="danger"] {
     background-color: #D90429;   /* DE LA HOZ Crimson Red */
