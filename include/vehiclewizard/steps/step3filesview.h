@@ -5,18 +5,17 @@
 
 #include <QList>
 #include <QMap>
+#include <QSet>
 #include <QWidget>
 
-class QComboBox;
 class QLabel;
-class QPushButton;
 class QVBoxLayout;
 
 // Paso 3 del wizard: galería de fotos (drag-and-drop + selector, con
-// marcar-portada/quitar) y documentos. Un documento se sube eligiendo primero
-// su tipo y después el archivo; el checklist de abajo muestra qué tipos ya
-// tienen archivo (Ver/Reemplazar). Qué formatos admite cada panel lo decide
-// UploadFormatPolicy, no esta vista.
+// marcar-portada/quitar) y documentos. Cada documento del checklist se marca
+// primero con su casilla, y solo entonces se habilita el botón para subir su
+// archivo; los que ya tienen archivo ofrecen Ver/Reemplazar. Qué formatos
+// admite cada panel lo decide UploadFormatPolicy, no esta vista.
 // Nada se copia a storage/ ni se guarda en BD desde aquí -- solo junta rutas
 // de origen en memoria; VehicleRegistrationWorker es quien copia los
 // archivos al confirmar el wizard completo.
@@ -45,16 +44,11 @@ private:
     void addImages(const QStringList &paths);
     void rebuildGallery();
     void rebuildDocuments();
-    // Si ese tipo ya tiene archivo. Lo consultan el checklist y el botón del
-    // selector, para que nunca discrepen sobre qué tipos están cubiertos.
+    // Si ese tipo ya tiene archivo. Por la ruta y no por contains(): capturar
+    // el número de póliza del Seguro crea su entrada aunque no tenga archivo.
     bool hasDocumentFile(const QString &type) const;
-    // El botón del selector dice lo que su clic va a hacer: "Reemplazar
-    // documento" si el tipo elegido ya tiene archivo -- el nuevo sustituiría
-    // al anterior --, "Subir documento" si no lo tiene o si no hay tipo
-    // elegido.
-    void refreshDocumentUploadButtonText();
     // Diálogo + validación + registro de un documento del tipo dado. Lo
-    // comparten el botón del selector y el "Reemplazar" de cada fila para que
+    // comparten el "Subir documento" y el "Reemplazar" de cada fila para que
     // no exista un camino de carga que se salte la validación de formato.
     // Devuelve true solo si el tipo quedó con un archivo nuevo: cancelar o
     // elegir uno inválido no cambian lo que ya estaba cargado.
@@ -71,14 +65,14 @@ private:
     QVBoxLayout *m_documentsLayout;
 
     QLabel *m_galleryErrorLabel = nullptr;
-
-    // Selector "primero el tipo, luego el archivo". Vive fuera de
-    // m_documentsLayout porque rebuildDocuments() vacía ese layout en cada
-    // carga (también al Reemplazar desde una fila), y el selector -- con el
-    // tipo que el usuario ya haya elegido en él -- tiene que sobrevivir.
-    QComboBox *m_documentTypeCombo = nullptr;
-    QPushButton *m_documentUploadButton = nullptr;
     QLabel *m_documentsErrorLabel = nullptr;
+
+    // Tipos cuya casilla se marcó. Se guardan aparte porque rebuildDocuments()
+    // vuelve a crear las filas en cada carga, y sin esto una casilla recién
+    // marcada se desmarcaría al subir el archivo de otra fila. Una fila con
+    // archivo sale marcada de todos modos: solo pudo subirse con la casilla
+    // puesta.
+    QSet<QString> m_checkedDocumentTypes;
 
     static const QStringList &documentTypes();
 };

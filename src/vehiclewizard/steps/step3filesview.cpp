@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-#include <QComboBox>
+#include <QCheckBox>
 #include <QDesktopServices>
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
@@ -15,10 +15,12 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QMimeData>
 #include <QPixmap>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSignalBlocker>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -31,13 +33,6 @@ namespace {
 // galería fuera de la pantalla. Del tope en adelante solo se nombran, todos
 // en un mismo párrafo.
 constexpr int kMaxDetailedRejections = 3;
-
-// Los dos textos del botón principal de documentos. Viven aquí porque se usan
-// en tres sitios: al crear el botón, al medir su ancho mínimo y al cambiar de
-// tipo; con el literal repetido bastaría corregir uno para que el ancho
-// calculado dejara de corresponder al texto que de verdad se muestra.
-const QString kUploadDocumentText = QStringLiteral("Subir documento");
-const QString kReplaceDocumentText = QStringLiteral("Reemplazar documento");
 
 // Saca de circulación un widget que acaba de salir de su layout. No se borra
 // en el acto porque quien pide la reconstrucción suele ser un botón que vive
@@ -189,64 +184,6 @@ QWidget *Step3FilesView::buildDocumentsPanel()
     title->setProperty("class", QStringLiteral("h3"));
     cardLayout->addWidget(title);
 
-    // Selector "primero el tipo, luego el archivo". Antes cada fila del
-    // checklist tenía su propio botón de subir y el tipo quedaba implícito en
-    // la fila donde caía el clic; ahora es una decisión explícita, y el botón
-    // no se habilita hasta que se toma.
-    m_documentTypeCombo = new QComboBox(card);
-    m_documentTypeCombo->setObjectName(QStringLiteral("documentTypeCombo"));
-    // Arranca sin tipo: índice -1, con el placeholder a la vista. Un combo que
-    // se llena sin placeholder selecciona solo su primer elemento, y un tipo
-    // que nadie eligió es justo lo que este selector existe para evitar; el
-    // setCurrentIndex(-1) lo deja explícito en vez de depender del orden de
-    // estas líneas. El texto es el placeholder estándar del equipo, genérico
-    // porque sirve para cualquier combo; qué se elige en este lo dice la
-    // etiqueta que va encima.
-    m_documentTypeCombo->setPlaceholderText(QStringLiteral("Seleccione una opción..."));
-    for (const QString &type : documentTypes())
-        m_documentTypeCombo->addItem(type, type);
-    m_documentTypeCombo->setCurrentIndex(-1);
-
-    m_documentUploadButton = new QPushButton(kReplaceDocumentText, card);
-    m_documentUploadButton->setObjectName(QStringLiteral("documentUploadButton"));
-    m_documentUploadButton->setProperty("class", QStringLiteral("secondary"));
-    // El texto alterna entre "Subir documento" y "Reemplazar documento" según
-    // el tipo elegido, y el combo de al lado ocupa el espacio que el botón
-    // deja: sin un ancho fijo para el texto más largo, el combo se encogía y
-    // estiraba cada vez que cambiaba la selección. Se mide con el texto largo
-    // puesto y DESPUÉS de ensurePolished(): antes de pulir, el botón todavía
-    // no tiene la fuente ni el padding de la hoja de estilos, y la medida
-    // saldría corta -- la misma trampa que documenta ConditionChecklistRow.
-    m_documentUploadButton->ensurePolished();
-    m_documentUploadButton->setMinimumWidth(m_documentUploadButton->sizeHint().width());
-    m_documentUploadButton->setText(kUploadDocumentText);
-    m_documentUploadButton->setEnabled(false); // el combo arranca sin tipo elegido
-
-    // Sin esta etiqueta, el placeholder genérico sería la única pista de qué se
-    // elige en el combo. Va sin clase, con la tipografía base: es el nombre de
-    // un campo, no letra chica como la de los formatos de abajo. setBuddy() la
-    // asocia al combo para que un lector de pantalla lo anuncie con este
-    // nombre.
-    // Ocupa su propio renglón, justo encima de la fila del combo, y no un
-    // lugar dentro de ella: ahí su ancho se sumaba al mínimo de la tarjeta, y
-    // como las dos tarjetas se reparten el ancho del paso, lo que ganaba la de
-    // documentos lo perdía la galería. Con la hoja de estilos de la rama de
-    // integración, cuyos controles ya son más anchos, era peor: una sola foto
-    // llegaba a necesitar barra de desplazamiento horizontal.
-    // Y no lleva el asterisco de las etiquetas de campos obligatorios, ni debe
-    // llevarlo: elegir un tipo no es requisito para guardar, solo para subir
-    // un documento, y eso ya lo exige el botón, deshabilitado mientras no haya
-    // un tipo elegido.
-    auto *documentTypeLabel = new QLabel(QStringLiteral("Tipo de documento:"), card);
-    documentTypeLabel->setObjectName(QStringLiteral("documentTypeLabel"));
-    documentTypeLabel->setBuddy(m_documentTypeCombo);
-
-    auto *selectorRow = new QHBoxLayout;
-    selectorRow->addWidget(m_documentTypeCombo, 1);
-    selectorRow->addWidget(m_documentUploadButton);
-    cardLayout->addWidget(documentTypeLabel);
-    cardLayout->addLayout(selectorRow);
-
     // Los formatos se anuncian antes de abrir el diálogo, no solo en el error
     // después de equivocarse. form-label es la letra chica y gris de la hoja
     // global; con la tipografía base se leería como un renglón más del
@@ -264,27 +201,6 @@ QWidget *Step3FilesView::buildDocumentsPanel()
     m_documentsErrorLabel->setWordWrap(true);
     m_documentsErrorLabel->setVisible(false);
     cardLayout->addWidget(m_documentsErrorLabel);
-
-    connect(m_documentTypeCombo, &QComboBox::currentIndexChanged, this, [this](int index) {
-        m_documentUploadButton->setEnabled(index >= 0);
-        refreshDocumentUploadButtonText();
-        // Elegir un tipo es empezar un intento nuevo: el aviso del anterior ya
-        // no describe lo que está en pantalla.
-        if (index >= 0)
-            m_documentsErrorLabel->setVisible(false);
-    });
-
-    connect(m_documentUploadButton, &QPushButton::clicked, this, [this]() {
-        const QString type = m_documentTypeCombo->currentData().toString();
-        if (type.isEmpty() || !uploadDocument(type))
-            return;
-        // Cada carga vuelve a empezar por el tipo. Si el combo se quedara con
-        // el último, el siguiente clic iría directo al diálogo con ese mismo
-        // tipo, y el segundo archivo (las Placas después de la Tarjeta, por
-        // ejemplo) reemplazaría al primero: justo el error que pedir el tipo
-        // primero quiere evitar.
-        m_documentTypeCombo->setCurrentIndex(-1);
-    });
 
     m_documentsLayout = new QVBoxLayout;
     cardLayout->addLayout(m_documentsLayout);
@@ -430,8 +346,9 @@ void Step3FilesView::rebuildDocuments()
 {
     QLayoutItem *item;
     while ((item = m_documentsLayout->takeAt(0)) != nullptr) {
-        // Reemplazar llama a esta función desde el clic de un botón que vive
-        // en una de estas filas, así que se retiran diferidas (ver
+        // Los botones de subir y reemplazar, y la casilla al quitar un
+        // documento, llaman a esta función desde una señal de un widget que
+        // vive en una de estas filas, así que se retiran diferidas (ver
         // retireWidget()). item es el QWidgetItem que envuelve a la fila, no
         // la fila misma, y sí se puede borrar ya.
         if (QWidget *row = item->widget())
@@ -442,29 +359,36 @@ void Step3FilesView::rebuildDocuments()
     QWidget *rowParent = m_documentsLayout->parentWidget();
     for (const QString &type : documentTypes()) {
         const bool hasFile = hasDocumentFile(type);
+        const bool checked = hasFile || m_checkedDocumentTypes.contains(type);
 
         auto *row = new QWidget(rowParent);
         // Nombre y tipo identifican la fila sin depender del texto visible:
         // con ellos se ubica por nombre la fila de cada tipo (findChildren() +
-        // la propiedad documentType) y, dentro de ella, documentCheck, la
-        // marca que dice si ese tipo ya tiene archivo.
+        // la propiedad documentType) y, dentro de ella, sus controles.
         row->setObjectName(QStringLiteral("documentRow"));
         row->setProperty("documentType", type);
         auto *rowLayout = new QHBoxLayout(row);
         rowLayout->setContentsMargins(0, 2, 0, 2);
 
-        auto *checkLabel = new QLabel(hasFile ? QStringLiteral("☑") : QStringLiteral("☐"), row);
-        checkLabel->setObjectName(QStringLiteral("documentCheck"));
-        rowLayout->addWidget(checkLabel);
+        // Primero se marca qué documento se va a subir y después se elige el
+        // archivo: sin la casilla, el botón de la fila no se habilita. El
+        // nombre va como texto de la propia casilla para que un clic sobre él
+        // también la marque.
+        auto *checkBox = new QCheckBox(type, row);
+        checkBox->setObjectName(QStringLiteral("documentCheck"));
+        checkBox->setChecked(checked);
+        rowLayout->addWidget(checkBox, 1);
 
-        auto *nameLabel = new QLabel(type, row);
-        rowLayout->addWidget(nameLabel, 1);
-
+        QLineEdit *policyEdit = nullptr;
         if (type == QStringLiteral("Seguro")) {
-            auto *policyEdit = new QLineEdit(row);
+            policyEdit = new QLineEdit(row);
+            policyEdit->setObjectName(QStringLiteral("policyNumberEdit"));
             policyEdit->setPlaceholderText(QStringLiteral("No. Póliza"));
             policyEdit->setText(m_documents.value(type).documentNumber);
             policyEdit->setMaximumWidth(120);
+            // La póliza es del documento Seguro: sin él marcado no hay de qué
+            // capturarla.
+            policyEdit->setEnabled(checked);
             connect(policyEdit, &QLineEdit::textChanged, this, [this, type](const QString &text) {
                 m_documents[type].documentType = type;
                 m_documents[type].documentNumber = text;
@@ -472,9 +396,7 @@ void Step3FilesView::rebuildDocuments()
             rowLayout->addWidget(policyEdit);
         }
 
-        // Una fila sin archivo ya no tiene botón propio: subir empieza por el
-        // selector de arriba. Reemplazar sí se queda en la fila, porque ahí la
-        // fila misma ya dice de qué tipo es el archivo.
+        QPushButton *uploadButton = nullptr;
         if (hasFile) {
             auto *viewButton = new QPushButton(QStringLiteral("Ver"), row);
             viewButton->setProperty("class", QStringLiteral("secondary"));
@@ -487,32 +409,65 @@ void Step3FilesView::rebuildDocuments()
             replaceButton->setProperty("class", QStringLiteral("secondary"));
             connect(replaceButton, &QPushButton::clicked, this, [this, type]() { uploadDocument(type); });
             rowLayout->addWidget(replaceButton);
+        } else {
+            uploadButton = new QPushButton(QStringLiteral("Subir documento"), row);
+            uploadButton->setObjectName(QStringLiteral("documentUploadButton"));
+            uploadButton->setProperty("class", QStringLiteral("secondary"));
+            uploadButton->setEnabled(checked);
+            connect(uploadButton, &QPushButton::clicked, this, [this, type]() { uploadDocument(type); });
+            rowLayout->addWidget(uploadButton);
         }
+
+        // La casilla como contexto: si la fila se retira, la conexión se va
+        // con ella y la lambda nunca ve punteros a widgets ya borrados.
+        connect(checkBox, &QCheckBox::toggled, checkBox,
+                [this, type, checkBox, uploadButton, policyEdit](bool on) {
+            if (!on && hasDocumentFile(type)) {
+                // Desmarcar dice que ese documento ya no aplica, y el archivo
+                // que tenía se perdería con él. Se pregunta antes para que un
+                // clic de más no lo descarte en silencio.
+                const auto answer = QMessageBox::question(
+                    this, QStringLiteral("Quitar documento"),
+                    QStringLiteral("¿Quitar %1? Se descarta el archivo que ya se había subido.").arg(type));
+                if (answer != QMessageBox::Yes) {
+                    // Sin bloquear la señal, volver a marcarla entraría otra vez
+                    // aquí como si el usuario la hubiera marcado.
+                    const QSignalBlocker blocker(checkBox);
+                    checkBox->setChecked(true);
+                    return;
+                }
+                // La entrada completa, número de póliza incluido: es del
+                // documento que se acaba de quitar.
+                m_documents.remove(type);
+                m_checkedDocumentTypes.remove(type);
+                // La fila cambia de Ver/Reemplazar a "Subir documento".
+                // rebuildDocuments() la retira diferida (ver retireWidget()),
+                // así que esta casilla sigue viva mientras termina su señal.
+                rebuildDocuments();
+                return;
+            }
+
+            if (on) {
+                m_checkedDocumentTypes.insert(type);
+                // Marcar un documento es empezar un intento nuevo: el aviso del
+                // anterior ya no describe lo que está en pantalla.
+                m_documentsErrorLabel->setVisible(false);
+            } else {
+                m_checkedDocumentTypes.remove(type);
+            }
+            if (uploadButton)
+                uploadButton->setEnabled(on);
+            if (policyEdit)
+                policyEdit->setEnabled(on);
+        });
 
         m_documentsLayout->addWidget(row);
     }
-
-    // Todo cambio de archivos pasa por esta función, así que es aquí donde se
-    // pone al día el texto del botón del selector, en vez de que cada camino
-    // de carga tenga que acordarse de hacerlo.
-    refreshDocumentUploadButtonText();
 }
 
 bool Step3FilesView::hasDocumentFile(const QString &type) const
 {
-    // Por la ruta y no por contains(): capturar el número de póliza del Seguro
-    // crea su entrada en m_documents aunque todavía no tenga archivo.
     return !m_documents.value(type).path.isEmpty();
-}
-
-void Step3FilesView::refreshDocumentUploadButtonText()
-{
-    // Sin tipo elegido, currentData() es un QVariant inválido y type queda
-    // vacío: m_documents no tiene nada bajo esa clave, así que el botón
-    // vuelve a "Subir documento".
-    const QString type = m_documentTypeCombo->currentData().toString();
-    m_documentUploadButton->setText(hasDocumentFile(type) ? kReplaceDocumentText
-                                                          : kUploadDocumentText);
 }
 
 bool Step3FilesView::uploadDocument(const QString &type)

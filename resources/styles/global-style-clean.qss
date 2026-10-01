@@ -53,6 +53,7 @@ QDateEdit:hover {
 }
 
 /* Inputs: disabled */
+QLineEdit:disabled,
 QComboBox:disabled {
     background-color: #F8F9FA;
     border-color: #E9ECEF;
