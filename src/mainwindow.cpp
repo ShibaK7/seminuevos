@@ -16,6 +16,7 @@
 #include <QComboBox>
 #include <QDateEdit>
 #include <QEvent>
+#include <QFile>
 #include <QFrame>
 #include <QMargins>
 #include <QLabel>
@@ -85,6 +86,13 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    QFile styleFile(":/resourcess/styles/styles/global-style-clean.qss");
+    if (styleFile.open(QFile::ReadOnly)) {
+        this->setStyleSheet(styleFile.readAll()); // Or apply to qApp
+    }
+
+
     ui->vehicleList->setSpacing(0);
     ui->vehicleList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
@@ -108,8 +116,15 @@ MainWindow::MainWindow(QWidget *parent)
     // chica.
     ui->estado->setMinimumWidth(kStatusFilterMinWidth);
     ui->estado->setFixedHeight(kFilterControlHeight);
-    attachCalendarIcon(ui->fechaInicio);
-    attachCalendarIcon(ui->fechaFin);
+    //attachCalendarIcon(ui->fechaInicio);
+    //attachCalendarIcon(ui->fechaFin);
+
+    /*ui->estado->setProperty("class", "filterCombo");
+    ui->estado->style()->unpolish(ui->estado);
+    ui->estado->style()->polish(ui->estado);
+    ui->estado->update();*/
+
+    /*ui->estado->setView(new QListView(ui->estado));*/
 
     m_addVehicleButton =
         new OutlineButton(QStringLiteral("Agregar Vehículo"), QStringLiteral(":/icons/plus.png"),

@@ -65,13 +65,6 @@
       <property name="class" stdset="0">
        <string>side-bar</string>
       </property>
-      <!-- Sin atributo `stretch`: los cuatro renglones del menú los inserta
-           MainWindow::buildSidebarMenu() en tiempo de ejecución, y los factores
-           de estiramiento del .ui se fijan por ÍNDICE durante setupUi(). Al
-           insertar widgets después, los índices se corren y el estiramiento
-           acabaría aplicado al renglón equivocado: el primer módulo se
-           comería el espacio libre en vez del espaciador. El espaciador final
-           es Expanding, así que empuja el menú hacia arriba por sí solo. -->
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <property name="spacing">
         <number>12</number>
@@ -99,16 +92,6 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <!-- Altura fija de 60 px, antes 90. El logo es de 625x263 (2.376:1) y
-              con scaledContents se estiraba para llenar la caja completa: a lo
-              ancho de la barra daba casi 2:1, o sea aplastado a lo alto.
-              AspectRatioImageLabel respeta la proporción, así que a 60 px de
-              alto el pixmap sale de 142 px de ancho y queda centrado, con el
-              aire lateral saliendo solo de la diferencia contra el ancho de la
-              barra. El pixmap NO se declara aquí: lo carga MainWindow con
-              setSourcePixmap(), porque la propiedad `pixmap` del Designer
-              llamaría a QLabel::setPixmap y dejaría vacío el original que el
-              componente necesita para reescalar. -->
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -187,8 +170,6 @@
           <string>top-bar</string>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0">
-          <!-- spacing 10, antes 6: separa el avatar del rol. Con 6 el texto
-               quedaba pegado al círculo. -->
           <property name="spacing">
            <number>10</number>
           </property>
@@ -198,10 +179,6 @@
           <property name="topMargin">
            <number>12</number>
           </property>
-          <!-- 32 px, antes 12: es el mismo margen derecho que usan la barra de
-               filtros y las tarjetas, para que "Administrador" termine en la
-               misma vertical que el botón "Agregar Vehículo" y el borde de las
-               tarjetas en lugar de sobresalir 20 px. -->
           <property name="rightMargin">
            <number>32</number>
           </property>
@@ -219,15 +196,6 @@
            </spacer>
           </item>
           <item>
-           <!-- Antes era un QFrame con `background-color: rgb(0,170,255)`
-                escrito a mano: un marcador de posición, el cuadro azul.
-
-                El círculo viene dibujado en el PNG y no de un border-radius de
-                QSS, para que no dependa de que la hoja de estilos se aplique
-                (en esta aplicación ya ha fallado en varios sitios) ni de que
-                el alto del widget coincida con el doble del radio, que es lo
-                que dejó cuadrado el botón de agregar vehículo. Se genera con
-                scratchpad/makeavatar.cpp, con su variante @2x. -->
            <widget class="QLabel" name="avatarLabel">
             <property name="minimumSize">
              <size>
@@ -299,18 +267,6 @@
             </property>
             <widget class="QWidget" name="inventoryPage">
              <layout class="QVBoxLayout" name="inventoryPageLayout" stretch="0,0,1">
-              <!-- Esta columna va SIN márgenes laterales: los 24 px de sangría
-                   los pone cada zona por su cuenta (la fila de pestañas, la
-                   barra de filtros y la tarjeta del inventario). Se hizo así
-                   para que el divisor, que es un hermano más de esta columna,
-                   pueda llegar de orilla a orilla mientras el contenido se
-                   queda sangrado. Si la sangría viviera aquí, el divisor la
-                   heredaría y se quedaría corto en los dos extremos.
-
-                   spacing 0: con separación el divisor se despegaría de las
-                   pestañas y el subrayado de la activa quedaría flotando por
-                   encima de él. El aire bajo la línea lo pone el margen
-                   superior de la barra de filtros. -->
               <property name="spacing">
                <number>0</number>
               </property>
@@ -326,224 +282,197 @@
               <property name="bottomMargin">
                <number>0</number>
               </property>
-          <item>
-           <widget class="QFrame" name="navBar">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="styleSheet">
-             <string notr="true"/>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::Shape::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Shadow::Raised</enum>
-            </property>
-            <property name="class" stdset="0">
-             <string>navBar</string>
-            </property>
-            <!-- Sin atributo `stretch`, por lo mismo que verticalLayout_2: las
-                 pestañas las inserta MainWindow::buildNavTabs() en tiempo de
-                 ejecución y los factores del .ui se fijan por ÍNDICE en
-                 setupUi(), así que al insertar se aplicarían al widget
-                 equivocado. El espaciador final es Expanding y ya empuja las
-                 pestañas hacia la izquierda por sí solo. -->
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <!-- Los 24 px de sangría de las pestañas viven aquí y no en la
-                  columna, para que el divisor de abajo pueda ir de orilla a
-                  orilla. spacing 20 separa una pestaña de la otra. -->
-             <property name="spacing">
-              <number>20</number>
-             </property>
-             <property name="leftMargin">
-              <number>24</number>
-             </property>
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <property name="rightMargin">
-              <number>32</number>
-             </property>
-             <property name="bottomMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <spacer name="horizontalSpacer">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>333</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QFrame" name="filterBar">
-            <property name="frameShape">
-             <enum>QFrame::Shape::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Shadow::Raised</enum>
-            </property>
-            <!-- stretch: antes "0,3,0,3,0,3,4,0". El 3 de cada control hacía que
-                 el combo y los dos campos de fecha se repartieran el ancho
-                 sobrante de la ventana: en pantalla grande quedaban enormes y
-                 en pantalla chica, diminutos. Ahora TODO el sobrante se lo lleva
-                 el espaciador (índice 6), así que los controles conservan su
-                 tamaño natural (el min-width del QSS) sea cual sea la ventana, y
-                 el botón se queda pegado a la derecha. -->
-            <!-- Siete items: el botón "Agregar Vehículo" ya no está aquí, lo
-                 agrega MainWindow al final (OutlineButton recibe el título por
-                 constructor y el Designer no sabe instanciarlo). Al añadirse
-                 después queda en el índice 7, sin factor de estiramiento, que
-                 es justo lo que necesita. -->
-            <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0,0,1">
-             <!-- Sangría de 24 px por su cuenta, igual que la fila de pestañas:
-                  la columna que las contiene ya no la aporta, para no
-                  arrastrar al divisor. topMargin 14 (antes 0) es el aire entre
-                  el divisor y los filtros; con la columna en spacing 0, sin
-                  esto los controles quedarían pegados a la línea. -->
-             <property name="spacing">
-              <number>7</number>
-             </property>
-             <property name="leftMargin">
-              <number>24</number>
-             </property>
-             <property name="topMargin">
-              <number>14</number>
-             </property>
-             <property name="rightMargin">
-              <number>32</number>
-             </property>
-             <property name="bottomMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>Estado:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="estado">
-               <property name="editable">
-                <bool>false</bool>
-               </property>
-               <property name="insertPolicy">
-                <enum>QComboBox::InsertPolicy::InsertAtBottom</enum>
-               </property>
-               <property name="minimumContentsLength">
-                <number>0</number>
-               </property>
-               <property name="placeholderText">
-                <string>Todos</string>
-               </property>
-               <property name="class" stdset="0">
-                <string>filterCombo</string>
-               </property>
-               <!-- Sin items: los estados los puebla MainWindow desde
-                    domain::allVehicleStatuses(), que es la misma fuente que el
-                    CHECK de vehicles.status. Escribirlos aquí permitiría
-                    filtrar por valores que la base no admite. -->
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>Fecha inicio:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDateEdit" name="fechaInicio">
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
-               </property>
-               <property name="minimumDateTime">
-                <datetime>
-                 <hour>12</hour>
-                 <minute>0</minute>
-                 <second>0</second>
-                 <year>2015</year>
-                 <month>1</month>
-                 <day>11</day>
-                </datetime>
-               </property>
-               <property name="calendarPopup">
-                <bool>true</bool>
-               </property>
-               <property name="class" stdset="0">
-                <string>dateFilter</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_4">
-               <property name="text">
-                <string>Fecha fin:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDateEdit" name="fechaFin">
-               <property name="minimumDateTime">
-                <datetime>
-                 <hour>12</hour>
-                 <minute>0</minute>
-                 <second>0</second>
-                 <year>2015</year>
-                 <month>1</month>
-                 <day>11</day>
-                </datetime>
-               </property>
-               <property name="calendarPopup">
-                <bool>true</bool>
-               </property>
-               <property name="class" stdset="0">
-                <string>dateFilter</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_2">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>23</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QListWidget" name="vehicleList">
-            <property name="autoFillBackground">
-             <bool>false</bool>
-            </property>
-            <property name="selectionMode">
-             <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
-            </property>
-            <property name="class" stdset="0">
-             <string>vehicleList</string>
-            </property>
-           </widget>
-          </item>
+              <item>
+               <widget class="QFrame" name="navBar">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true"/>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::Shape::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Shadow::Raised</enum>
+                </property>
+                <property name="class" stdset="0">
+                 <string>navBar</string>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_2">
+                 <property name="spacing">
+                  <number>20</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>32</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <spacer name="horizontalSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>333</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="filterBar">
+                <property name="frameShape">
+                 <enum>QFrame::Shape::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Shadow::Raised</enum>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0,0,1">
+                 <property name="spacing">
+                  <number>7</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>14</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>32</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="label_2">
+                   <property name="text">
+                    <string>Estado:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QComboBox" name="estado">
+                   <property name="styleSheet">
+                    <string notr="true"/>
+                   </property>
+                   <property name="editable">
+                    <bool>false</bool>
+                   </property>
+                   <property name="insertPolicy">
+                    <enum>QComboBox::InsertPolicy::InsertAtBottom</enum>
+                   </property>
+                   <property name="minimumContentsLength">
+                    <number>0</number>
+                   </property>
+                   <property name="placeholderText">
+                    <string>Todos</string>
+                   </property>
+                   <property name="class" stdset="0">
+                    <string>filterCombo</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label_3">
+                   <property name="text">
+                    <string>Fecha inicio:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QDateEdit" name="fechaInicio">
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
+                   </property>
+                   <property name="minimumDateTime">
+                    <datetime>
+                     <hour>18</hour>
+                     <minute>0</minute>
+                     <second>0</second>
+                     <year>2015</year>
+                     <month>1</month>
+                     <day>11</day>
+                    </datetime>
+                   </property>
+                   <property name="calendarPopup">
+                    <bool>true</bool>
+                   </property>
+                   <property name="class" stdset="0">
+                    <string>dateFilter</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label_4">
+                   <property name="text">
+                    <string>Fecha fin:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QDateEdit" name="fechaFin">
+                   <property name="minimumDateTime">
+                    <datetime>
+                     <hour>18</hour>
+                     <minute>0</minute>
+                     <second>0</second>
+                     <year>2015</year>
+                     <month>1</month>
+                     <day>11</day>
+                    </datetime>
+                   </property>
+                   <property name="calendarPopup">
+                    <bool>true</bool>
+                   </property>
+                   <property name="class" stdset="0">
+                    <string>dateFilter</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="horizontalSpacer_2">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>23</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QListWidget" name="vehicleList">
+                <property name="autoFillBackground">
+                 <bool>false</bool>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
+                </property>
+                <property name="class" stdset="0">
+                 <string>vehicleList</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </widget>
            </widget>
@@ -562,7 +491,7 @@
      <x>0</x>
      <y>0</y>
      <width>1060</width>
-     <height>33</height>
+     <height>30</height>
     </rect>
    </property>
   </widget>

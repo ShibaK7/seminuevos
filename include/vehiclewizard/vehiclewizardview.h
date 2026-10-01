@@ -59,6 +59,7 @@ private:
     // diálogo de guardado o si falló la generación, para que quien lo llame
     // pueda dejarlo intentar de nuevo en vez de cerrar la pantalla.
     bool printContract();
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
     WizardStepper *m_stepper;
     QStackedWidget *m_stack;

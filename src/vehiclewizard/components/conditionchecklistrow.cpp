@@ -66,8 +66,8 @@ ConditionChecklistRow::ConditionChecklistRow(const ConditionCatalogItem &item,
 
     m_optimalRadio = new QRadioButton(QStringLiteral("Estado óptimo"), this);
     m_optimalRadio->setChecked(true);
-    m_faultyRadio = new QRadioButton(item.negativeLabel, this);
-    m_faultyRadio->setFixedWidth(columns.faultyRadio);
+    m_faultyRadio = new QRadioButton(QStringLiteral("Con fallos"), this);
+    //m_faultyRadio->setFixedWidth(columns.faultyRadio);
 
     m_observationsEdit = new QLineEdit(this);
     m_observationsEdit->setPlaceholderText(QStringLiteral("Observaciones"));
@@ -78,6 +78,7 @@ ConditionChecklistRow::ConditionChecklistRow(const ConditionCatalogItem &item,
     layout->addWidget(m_optimalRadio);
     layout->addSpacing(16); // aire extra entre "Estado óptimo" y el siguiente radio
     layout->addWidget(m_faultyRadio);
+    layout->addSpacing(16);
     layout->addWidget(m_observationsEdit, 1);
 
     connect(m_checkBox, &QCheckBox::toggled, this, &ConditionChecklistRow::updateRowState);
@@ -99,6 +100,11 @@ void ConditionChecklistRow::updateRowState()
 void ConditionChecklistRow::setChecked(bool checked)
 {
     m_checkBox->setChecked(checked);
+}
+
+bool ConditionChecklistRow::isChecked() const
+{
+    return m_checkBox->isChecked();
 }
 
 const QString &ConditionChecklistRow::category() const

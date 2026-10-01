@@ -89,24 +89,31 @@ void Step1DetailsView::onAcquisitionTypeChanged()
 
     // En una compra la contraparte vende la unidad; en una consignación sigue
     // siendo su dueña.
-    m_counterpartyLabel->setText(isAcquisition ? QStringLiteral("Vendedor:")
-                                               : QStringLiteral("Propietario:"));
+    m_counterpartyLabel->setText(isAcquisition ? QStringLiteral("Vendedor: <span style='color: #D90429; font-weight: bold;'>*</span>")
+                                               : QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"));
 }
 
 QWidget *Step1DetailsView::buildGeneralInfoCard()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
+    UIUtils::applyFloatingShadow(card);
+
     auto *cardLayout = new QVBoxLayout(card);
     // Folio es la primera fila del formulario -- que quede pegada arriba
     // del contenedor, con solo unos pocos px de aire, no el margen grande
     // por defecto del layout.
-    cardLayout->setContentsMargins(16, 8, 16, 16);
+    cardLayout->setContentsMargins(16, 16, 16, 16);
 
     auto *grid = new QGridLayout;
+    grid->setHorizontalSpacing(25);
+    grid->setVerticalSpacing(8);
+
     int row = 0;
 
-    m_folioLabel = new QLabel(QStringLiteral("(auto)"), card);
+    m_folioEdit = new QLineEdit(card);
+    m_folioEdit->setPlaceholderText(QStringLiteral("(auto)"));
+    m_folioEdit->setDisabled(true);
     m_dateEdit = new QDateEdit(QDate::currentDate(), card);
     m_dateEdit->setCalendarPopup(true);
     m_vehicleTypeCombo = new QComboBox(card);
@@ -118,25 +125,26 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
     m_yearModelSpin->setRange(1980, QDate::currentDate().year() + 1);
     m_yearModelSpin->setValue(QDate::currentDate().year());
 
-    grid->addWidget(new QLabel(QStringLiteral("Folio:"), card), row, 0);
-    grid->addWidget(m_folioLabel, row, 1);
-    grid->addWidget(new QLabel(QStringLiteral("Fecha:"), card), row, 2);
+
+    grid->addWidget(UIUtils::createRequiredLabel("Folio: ", card), row, 0);
+    grid->addWidget(m_folioEdit, row, 1);
+    grid->addWidget(UIUtils::createRequiredLabel("Fecha: ", card), row, 2);
     grid->addWidget(m_dateEdit, row, 3);
     ++row;
 
-    grid->addWidget(new QLabel(QStringLiteral("Tipo Vehículo:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Tipo Vehículo: ", card), row, 0);
     grid->addWidget(m_vehicleTypeCombo, row, 1);
-    grid->addWidget(new QLabel(QStringLiteral("Subtipo:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Subtipo: ", card), row, 2);
     grid->addWidget(m_subtypeCombo, row, 3);
     ++row;
 
-    grid->addWidget(new QLabel(QStringLiteral("Marca:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Marca: ", card), row, 0);
     grid->addWidget(m_brandCombo, row, 1);
-    grid->addWidget(new QLabel(QStringLiteral("Modelo (tipo):"), card), row, 2);
+    grid->addWidget(new QLabel(QStringLiteral("Modelo:"), card), row, 2);
     grid->addWidget(m_modelEdit, row, 3);
     ++row;
 
-    grid->addWidget(new QLabel(QStringLiteral("Año Modelo:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Año Modelo: ", card), row, 0);
     grid->addWidget(m_yearModelSpin, row, 1);
 
     m_colorEdit = new QLineEdit(card);
@@ -151,26 +159,26 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
     grid->addWidget(m_mileageSpin, row, 1);
 
     m_motorNumberEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("No. Motor:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("No. Motor: ", card), row, 2);
     grid->addWidget(m_motorNumberEdit, row, 3);
     ++row;
 
     m_serialNumberEdit = new QLineEdit(card);
     m_serialNumberEdit->setPlaceholderText(QStringLiteral("VIN"));
-    grid->addWidget(new QLabel(QStringLiteral("No. Serie (VIN):"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("No. Serie (VIN): ", card), row, 0);
     grid->addWidget(m_serialNumberEdit, row, 1);
 
     m_repuveEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("REPUVE:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("REPUVE: ", card), row, 2);
     grid->addWidget(m_repuveEdit, row, 3);
     ++row;
 
     m_platesEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("Placas:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Placas: ", card), row, 0);
     grid->addWidget(m_platesEdit, row, 1);
 
     m_platesHolderEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("Titular Placas:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Titular Placas: ", card), row, 2);
     grid->addWidget(m_platesHolderEdit, row, 3);
     ++row;
 
@@ -187,9 +195,16 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
+    UIUtils::applyFloatingShadow(card);
+
     auto *cardLayout = new QVBoxLayout(card);
 
+    cardLayout->setContentsMargins(16, 16, 16, 16);
+
     auto *grid = new QGridLayout;
+    grid->setHorizontalSpacing(25);
+    grid->setVerticalSpacing(8);
+
     int row = 0;
 
     // El tipo de operación va primero porque condiciona todo lo demás: qué
@@ -198,17 +213,17 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_acquisitionTypeCombo->setObjectName(QStringLiteral("acquisitionTypeCombo"));
     for (domain::AcquisitionType value : domain::allAcquisitionTypes())
         m_acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    grid->addWidget(new QLabel(QStringLiteral("Tipo de Operación:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Tipo Operación: ", card), row, 0);
     grid->addWidget(m_acquisitionTypeCombo, row, 1);
     ++row;
 
     m_ownerNameEdit = new QLineEdit(card);
-    m_counterpartyLabel = new QLabel(QStringLiteral("Propietario:"), card);
+    m_counterpartyLabel = new QLabel(QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"), card);
     grid->addWidget(m_counterpartyLabel, row, 0);
     grid->addWidget(m_ownerNameEdit, row, 1);
 
     m_ownerIdEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("Identificación:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Identificación: ", card), row, 2);
     grid->addWidget(m_ownerIdEdit, row, 3);
     ++row;
 
@@ -239,7 +254,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     // dependen de la rama y los conjuntos son disjuntos.
     m_invoiceTypeCombo = new QComboBox(card);
     m_invoiceTypeCombo->setObjectName(QStringLiteral("invoiceTypeCombo"));
-    grid->addWidget(new QLabel(QStringLiteral("Tipo Factura:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Tipo Factura: ", card), row, 0);
     grid->addWidget(m_invoiceTypeCombo, row, 1);
 
     // El archivo de factura solo existe en la compra: el esquema pone
@@ -262,7 +277,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     ++row;
 
     m_invoiceNumberEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("No. Factura:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("No. Factura: ", card), row, 0);
     grid->addWidget(m_invoiceNumberEdit, row, 1);
 
     m_invoiceIssuerEdit = new QLineEdit(card);
@@ -279,14 +294,14 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_purchasePriceSpin->setRange(0, 99999999);
     m_purchasePriceSpin->setPrefix(QStringLiteral("$ "));
     m_purchasePriceSpin->setDecimals(2);
-    auto *purchasePriceLabel = new QLabel(QStringLiteral("Precio Compra:"), card);
+    auto *purchasePriceLabel = UIUtils::createRequiredLabel("Precio Compra: ", card);
     grid->addWidget(purchasePriceLabel, row, 0);
     grid->addWidget(m_purchasePriceSpin, row, 1);
 
     m_paymentTypeCombo = new QComboBox(card);
     for (domain::PaymentType value : domain::allPaymentTypes())
         m_paymentTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    auto *paymentTypeLabel = new QLabel(QStringLiteral("Tipo Pago:"), card);
+    auto *paymentTypeLabel = UIUtils::createRequiredLabel("Tipo Pago: ", card);
     grid->addWidget(paymentTypeLabel, row, 2);
     grid->addWidget(m_paymentTypeCombo, row, 3);
     m_acquisitionOnlyWidgets << purchasePriceLabel << m_purchasePriceSpin
@@ -296,14 +311,14 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_paymentMethodCombo = new QComboBox(card);
     for (domain::PaymentMethod value : domain::allPaymentMethods())
         m_paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    auto *paymentMethodLabel = new QLabel(QStringLiteral("Método de Pago:"), card);
+    auto *paymentMethodLabel = UIUtils::createRequiredLabel("Método Pago: ", card);
     grid->addWidget(paymentMethodLabel, row, 0);
     grid->addWidget(m_paymentMethodCombo, row, 1);
 
     m_salePriceSpin = new QDoubleSpinBox(card);
     m_salePriceSpin->setRange(0, 99999999);
     m_salePriceSpin->setPrefix(QStringLiteral("$ "));
-    auto *salePriceLabel = new QLabel(QStringLiteral("Precio Venta:"), card);
+    auto *salePriceLabel = UIUtils::createRequiredLabel("Precio Venta: ", card);
     grid->addWidget(salePriceLabel, row, 2);
     grid->addWidget(m_salePriceSpin, row, 3);
     m_acquisitionOnlyWidgets << paymentMethodLabel << m_paymentMethodCombo

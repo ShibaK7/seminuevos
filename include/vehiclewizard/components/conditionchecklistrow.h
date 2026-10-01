@@ -53,6 +53,7 @@ public:
     // "ítem ausente", que es justo el estado que se quiso eliminar.
     std::optional<domain::InspectionItem> value() const;
     void setChecked(bool checked);
+    bool isChecked() const;
 
 private slots:
     void updateRowState();

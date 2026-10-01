@@ -19,6 +19,7 @@
 #include <QMessageBox>
 #include <QSqlDatabase>
 #include <QSqlError>
+#include <QStyleFactory>
 
 namespace {
 
@@ -80,12 +81,20 @@ protected:
 } // namespace
 
 void applyGlobalStyle(QApplication &app) {
-    QFile styleFile(":/resourcess/styles/styles/global-style.qss");
+    QFont globalFont = QApplication::font();
+    globalFont.setStyleHint(QFont::SansSerif);
+    globalFont.setFamilies({"Open Sans", "Segoe UI", "Roboto", "Arial"});
+    globalFont.setPointSize(15);
+    QApplication::setFont(globalFont);
+
+    QFile styleFile(":/resourcess/styles/styles/global-style-clean.qss");
     if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
-        printf("Loading style sheet...");
+        qDebug() << "Loading stylesheet from:" << styleFile.fileName();
         QTextStream stream(&styleFile);
         app.setStyleSheet(stream.readAll());
         styleFile.close();
+    } else {
+        qWarning() << "Could not open QSS file:" << styleFile.fileName();
     }
 }
 
@@ -93,6 +102,8 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setApplicationName("Seminuevos");
+
+    QApplication::setStyle(QStyleFactory::create("Fusion"));
 
     // La aplicación termina SOLO cuando se destruye la ventana principal (ver
     // el connect más abajo). Sin esto habría un segundo camino de salida: Qt

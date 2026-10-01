@@ -60,7 +60,7 @@ private:
     domain::AcquisitionType selectedAcquisitionType() const;
 
     // --- Datos generales ---
-    QLabel *m_folioLabel;
+    QLineEdit *m_folioEdit;
     QDateEdit *m_dateEdit;
     QComboBox *m_vehicleTypeCombo;
     QComboBox *m_subtypeCombo;

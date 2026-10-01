@@ -8,6 +8,8 @@
 #include <QComboBox>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QtWidgets/qgraphicseffect.h>
+#include <QtWidgets/qlabel.h>
 
 class UIUtils {
 public:
@@ -37,7 +39,7 @@ public:
 
         // Si se define un placeholder, lo asignamos con ID invalido (-1)
         if (!placeholder.isEmpty()) {
-            comboBox->addItem(placeholder, -1);
+            comboBox->setPlaceholderText(placeholder);
         }
 
         ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
@@ -80,7 +82,7 @@ public:
         comboBox->clear();
 
         if (!placeholder.isEmpty()) {
-            comboBox->addItem(placeholder, -1);
+            comboBox->setPlaceholderText(placeholder);
         }
 
         ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
@@ -104,6 +106,28 @@ public:
         }
 
         return true;
+    }
+
+    static void applyFloatingShadow(QWidget* widget, int xOffset = 0, int yOffset = 5, int blur = 25, int opacity = 25) {
+        if (!widget) return;
+
+        QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(widget);
+        shadow->setXOffset(xOffset);
+        shadow->setYOffset(yOffset);
+        shadow->setBlurRadius(blur);
+        shadow->setColor(QColor(0, 0, 0, opacity));
+
+        widget->setGraphicsEffect(shadow);
+    }
+
+    static QLabel* createRequiredLabel(const QString& text, QWidget* parent = nullptr) {
+        QLabel* label = new QLabel(parent);
+
+        // Formateamos el texto con el asterisco rojo usando Rich Text
+        QString formattedText = QString("%1 <span style='color: #D90429; font-weight: bold;'>*</span>").arg(text);
+        label->setText(formattedText);
+
+        return label;
     }
 };
 
