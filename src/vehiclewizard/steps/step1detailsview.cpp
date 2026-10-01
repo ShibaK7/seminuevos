@@ -13,6 +13,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QSqlDatabase>
@@ -21,6 +22,8 @@
 #include <QVBoxLayout>
 #include <QCompleter>
 #include "loginwindow.h"
+#include <QStandardPaths>
+#include <QDesktopServices>
 
 namespace {
 
@@ -37,6 +40,11 @@ domain::CatalogRef catalogRefFrom(const QComboBox *combo)
     ref.name = combo->currentText();
     return ref;
 }
+
+// Texto de la etiqueta de factura cuando no hay archivo. Constante porque se
+// escribe en dos sitios -- al armar la tarjeta y al retirar el aviso de
+// "factura quitada" -- y deben coincidir.
+const QString kNoInvoiceFileText = QStringLiteral("Sin archivo");
 
 } // namespace
 
@@ -56,13 +64,34 @@ Step1DetailsView::Step1DetailsView(QWidget *parent)
     connect(m_vehicleTypeCombo, &QComboBox::currentIndexChanged, this, &Step1DetailsView::reloadSubtypes);
     connect(m_acquisitionTypeCombo, &QComboBox::currentIndexChanged, this,
             &Step1DetailsView::onAcquisitionTypeChanged);
+    connect(m_invoiceTypeCombo, &QComboBox::currentIndexChanged, this,
+            &Step1DetailsView::onInvoiceTypeChanged);
     // Deja la vista coherente con la rama seleccionada por omisión.
     onAcquisitionTypeChanged();
+    // Llamada explícita aunque el repoblado de arriba ya haya emitido
+    // currentIndexChanged: así el estado inicial de los botones de factura no
+    // depende de que esa señal se emita ni del orden en que se conectó. Basta
+    // con refrescar los botones, sin pasar por onInvoiceTypeChanged(): al
+    // construir todavía no hay factura elegida que quitar.
+    refreshInvoiceFileControls();
 }
 
 domain::AcquisitionType Step1DetailsView::selectedAcquisitionType() const
 {
     return static_cast<domain::AcquisitionType>(m_acquisitionTypeCombo->currentData().toInt());
+}
+
+bool Step1DetailsView::isAutofacturaSelected() const
+{
+    // onAcquisitionTypeChanged() vacía el combo antes de repoblarlo, y en ese
+    // instante currentData() es un QVariant inválido. Se revisa explícitamente
+    // en vez de confiar en que toInt() devuelva 0: hoy 0 es Facturado y el
+    // resultado saldría bien por casualidad, pero bastaría reordenar el enum
+    // para que un combo vacío contara como autofactura, y entonces el solo
+    // hecho de cambiar de rama quitaría la factura ya elegida.
+    const QVariant invoiceData = m_invoiceTypeCombo->currentData();
+    return invoiceData.isValid()
+           && static_cast<domain::InvoiceType>(invoiceData.toInt()) == domain::InvoiceType::Autofactura;
 }
 
 void Step1DetailsView::onAcquisitionTypeChanged()
@@ -93,6 +122,68 @@ void Step1DetailsView::onAcquisitionTypeChanged()
     // siendo su dueña.
     m_counterpartyLabel->setText(isAcquisition ? QStringLiteral("Vendedor: <span style='color: #D90429; font-weight: bold;'>*</span>")
                                                : QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"));
+}
+
+void Step1DetailsView::onInvoiceTypeChanged()
+{
+    discardInvoiceFileIfCfdiRequestPending();
+    refreshInvoiceFileControls();
+}
+
+void Step1DetailsView::discardInvoiceFileIfCfdiRequestPending()
+{
+    // Solo se llama desde onInvoiceTypeChanged(), así que si se cumple la
+    // condición es porque el tipo ACABA de pasar a Autofactura; mientras siga
+    // en él, el botón bloqueado impide elegir otro archivo. Con la solicitud
+    // ya generada no se quita nada: cualquier factura adjunta se subió
+    // después de generarla, que es justo el orden que se pide.
+    if (!isAutofacturaSelected() || m_cfdiRequestGenerated || m_invoiceFilePath.isEmpty())
+        return;
+
+    // Se quita, pero no en silencio: la etiqueta, que mostraba el nombre del
+    // archivo, pasa a explicar por qué ya no está, para que nadie guarde
+    // creyendo que la factura sigue adjunta.
+    m_invoiceFilePath.clear();
+    m_invoiceFileLabel->setText(QStringLiteral("Factura quitada: primero genera la solicitud de CFDI"));
+    m_invoiceRemovedNoticeShown = true;
+}
+
+void Step1DetailsView::refreshInvoiceFileControls()
+{
+    const bool isAutofactura = isAutofacturaSelected();
+
+    // Ocultar el botón por su cuenta no choca con que la fila entera se oculte
+    // en la consignación: un hijo ocultado explícitamente sigue oculto cuando
+    // su padre se vuelve a mostrar, así que un mecanismo no deshace al otro.
+    m_cfdiRequestButton->setVisible(isAutofactura);
+
+    // Con cualquier otro tipo de factura la subida queda libre, como antes.
+    // Aquí solo se bloquea el botón; el archivo ya elegido no se toca. Al
+    // cambiar de tipo ese archivo se conserva, porque descartarlo en silencio
+    // dejaría al usuario guardando sin la factura que cree haber subido. La
+    // excepción es pasar a autofactura sin la solicitud: conservarlo ahí
+    // equivaldría a saltarse el paso que la autofactura exige, así que
+    // discardInvoiceFileIfCfdiRequestPending() lo quita y deja el aviso en la
+    // etiqueta.
+    const bool uploadLocked = isAutofactura && !m_cfdiRequestGenerated;
+    m_invoiceUploadButton->setEnabled(!uploadLocked);
+    // Qt muestra el tooltip aun con el botón deshabilitado, así que ahí se
+    // explica el bloqueo. Se limpia al desbloquear para no dejar un aviso que
+    // ya no aplica.
+    m_invoiceUploadButton->setToolTip(uploadLocked
+                                          ? QStringLiteral("Primero genera la solicitud de CFDI.")
+                                          : QString());
+
+    // El aviso de "factura quitada" solo dice algo cierto mientras la subida
+    // siga bloqueada. Si ya se generó la solicitud, o se volvió a un tipo sin
+    // CFDI, seguir mostrándolo invitaría a buscar un botón que ya no hace falta
+    // (en Facturado ni siquiera se ve). La etiqueta vuelve a su texto neutro;
+    // con el aviso a la vista no hay archivo adjunto, así que "Sin archivo" es
+    // exacto.
+    if (m_invoiceRemovedNoticeShown && !uploadLocked) {
+        m_invoiceFileLabel->setText(kNoInvoiceFileText);
+        m_invoiceRemovedNoticeShown = false;
+    }
 }
 
 QWidget *Step1DetailsView::buildGeneralInfoCard()
@@ -269,12 +360,30 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     auto *invoiceFileWidget = new QWidget(card);
     auto *invoiceFileLayout = new QHBoxLayout(invoiceFileWidget);
     invoiceFileLayout->setContentsMargins(0, 0, 0, 0);
-    m_invoiceFileLabel = new QLabel(QStringLiteral("Sin archivo"), invoiceFileWidget);
-    auto *invoiceFileButton = new QPushButton(QStringLiteral("Subir documento"), invoiceFileWidget);
-    invoiceFileButton->setProperty("class", QStringLiteral("secondary"));
-    connect(invoiceFileButton, &QPushButton::clicked, this, &Step1DetailsView::onBrowseInvoiceFile);
+    m_invoiceFileLabel = new QLabel(kNoInvoiceFileText, invoiceFileWidget);
+
+    // Solo aplica a la autofactura, y en ella hay que usarlo antes de poder
+    // subir la factura. Ni la visibilidad ni el bloqueo se fijan aquí: los
+    // aplica refreshInvoiceFileControls() cada vez que cambia el tipo de
+    // factura o se genera la solicitud.
+    m_cfdiRequestButton = new QPushButton(QStringLiteral("Generar solicitud CFDI"), invoiceFileWidget);
+    m_cfdiRequestButton->setObjectName(QStringLiteral("cfdiRequestButton"));
+    m_cfdiRequestButton->setProperty("class", QStringLiteral("secondary"));
+    connect(m_cfdiRequestButton, &QPushButton::clicked, this, &Step1DetailsView::generateCfdiRequest);
+
+    m_invoiceUploadButton = new QPushButton(QStringLiteral("Subir documento"), invoiceFileWidget);
+    m_invoiceUploadButton->setObjectName(QStringLiteral("invoiceUploadButton"));
+    m_invoiceUploadButton->setProperty("class", QStringLiteral("secondary"));
+    connect(m_invoiceUploadButton, &QPushButton::clicked, this, &Step1DetailsView::onBrowseInvoiceFile);
+
+    // Cada widget se agrega una sola vez: un segundo addWidget() con el mismo
+    // widget no lo duplica, lo MUEVE (Qt lo saca de su lugar anterior), y así
+    // la etiqueta acababa entre los dos botones. El de CFDI va antes que el de
+    // subir porque en autofactura hay que usarlo primero: leída de izquierda a
+    // derecha, la fila repite la secuencia que se exige.
     invoiceFileLayout->addWidget(m_invoiceFileLabel, 1);
-    invoiceFileLayout->addWidget(invoiceFileButton);
+    invoiceFileLayout->addWidget(m_cfdiRequestButton);
+    invoiceFileLayout->addWidget(m_invoiceUploadButton);
 
     auto *invoiceFileRowLabel = new QLabel(QStringLiteral("Factura:"), card);
     grid->addWidget(invoiceFileRowLabel, row, 2);
@@ -418,6 +527,66 @@ void Step1DetailsView::onBrowseInvoiceFile()
 
     m_invoiceFilePath = path;
     m_invoiceFileLabel->setText(QFileInfo(path).fileName());
+    // El nombre del archivo reemplaza al aviso que pudiera haber.
+    m_invoiceRemovedNoticeShown = false;
+}
+
+void Step1DetailsView::generateCfdiRequest() {
+    constexpr const char *kCfdiTemplateResourcePath =
+        ":/templates/request_issuance_cfdi.html";
+    QFile resourceFile(kCfdiTemplateResourcePath);
+    if (!resourceFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+            tr("No se encontró el recurso:\n%1")
+                .arg(kCfdiTemplateResourcePath));
+        return;
+    }
+
+    const QByteArray htmlContent = resourceFile.readAll();
+    resourceFile.close();
+
+    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    const QString tempFilePath = QDir(tempDir).filePath("request_issuance_cfdi.html");
+
+    QFile tempFile(tempFilePath);
+    if (!tempFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo crear el archivo temporal en:\n%1")
+                                .arg(tempFilePath));
+        return;
+    }
+
+    // Que el temporal quede completo es condición para seguir: el éxito
+    // desbloquea la subida, y un temporal truncado la desbloquearía con una
+    // solicitud a medias. En modo Text, write() cuenta los bytes de
+    // htmlContent y no el \r que Windows agrega a cada salto, así que se
+    // compara contra size() tal cual. Y flush() se llama a mano porque una
+    // plantilla de pocos KB se queda entera en el búfer de QFile: un error de
+    // disco no aparecería hasta vaciarlo, y close() no lo reporta.
+    const bool fullyWritten =
+        tempFile.write(htmlContent) == htmlContent.size() && tempFile.flush();
+    tempFile.close();
+    if (!fullyWritten) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo escribir por completo el archivo temporal en:\n%1")
+                                .arg(tempFilePath));
+        return;
+    }
+
+    const bool opened = QDesktopServices::openUrl(QUrl::fromLocalFile(tempFilePath));
+    if (!opened) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo abrir el navegador para mostrar:\n%1")
+                                .arg(tempFilePath));
+        return;
+    }
+
+    // Solo cuenta como generada cuando todo salió bien: se leyó la plantilla,
+    // el temporal se creó y se escribió completo, y openUrl() lo abrió. Cada
+    // falla anterior sale por su propio return sin tocar la bandera, para no
+    // desbloquear la subida con una solicitud que el usuario nunca llegó a ver.
+    m_cfdiRequestGenerated = true;
+    refreshInvoiceFileControls();
 }
 
 void Step1DetailsView::reloadSubtypes()

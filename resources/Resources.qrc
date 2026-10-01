@@ -37,5 +37,6 @@
     </qresource>
     <qresource prefix="/templates">
         <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
+        <file>request_issuance_cfdi.html</file>
     </qresource>
 </RCC>
