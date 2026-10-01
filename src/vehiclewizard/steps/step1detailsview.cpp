@@ -39,8 +39,8 @@ domain::CatalogRef catalogRefFrom(const QComboBox *combo)
 }
 
 // Texto de la etiqueta de factura cuando no hay archivo. Constante porque se
-// escribe en dos sitios -- al armar la tarjeta y al retirar el aviso de
-// "factura quitada" -- y deben coincidir.
+// escribe en dos sitios -- al armar la tarjeta y al descartar la factura
+// apartada cuando se genera la solicitud de CFDI -- y deben coincidir.
 const QString kNoInvoiceFileText = QStringLiteral("Sin archivo");
 
 } // namespace
@@ -69,7 +69,8 @@ Step1DetailsView::Step1DetailsView(QWidget *parent)
     // currentIndexChanged: así el estado inicial de los botones de factura no
     // depende de que esa señal se emita ni del orden en que se conectó. Basta
     // con refrescar los botones, sin pasar por onInvoiceTypeChanged(): al
-    // construir todavía no hay factura elegida que quitar.
+    // construir todavía no hay factura que apartar ni una apartada que
+    // recuperar.
     refreshInvoiceFileControls();
 }
 
@@ -85,7 +86,8 @@ bool Step1DetailsView::isAutofacturaSelected() const
     // en vez de confiar en que toInt() devuelva 0: hoy 0 es Facturado y el
     // resultado saldría bien por casualidad, pero bastaría reordenar el enum
     // para que un combo vacío contara como autofactura, y entonces el solo
-    // hecho de cambiar de rama quitaría la factura ya elegida.
+    // hecho de cambiar de rama apartaría la factura ya elegida, y recuperarla
+    // quedaría en manos de la señal siguiente.
     const QVariant invoiceData = m_invoiceTypeCombo->currentData();
     return invoiceData.isValid()
            && static_cast<domain::InvoiceType>(invoiceData.toInt()) == domain::InvoiceType::Autofactura;
@@ -123,26 +125,65 @@ void Step1DetailsView::onAcquisitionTypeChanged()
 
 void Step1DetailsView::onInvoiceTypeChanged()
 {
-    discardInvoiceFileIfCfdiRequestPending();
+    // Sin solicitud, entrar a Autofactura aparta la factura y salir de ella la
+    // devuelve. El índice -1 que deja onAcquisitionTypeChanged() mientras
+    // vacía el combo cuenta como salir, así que cambiar de rama también la
+    // recupera: al volver a Adquisición, ya en Facturado, sigue adjunta, igual
+    // que cualquier factura sobrevive a ir y volver por la consignación.
+    if (isAutofacturaSelected())
+        suspendInvoiceFileIfCfdiRequestPending();
+    else
+        restoreSuspendedInvoiceFile();
     refreshInvoiceFileControls();
 }
 
-void Step1DetailsView::discardInvoiceFileIfCfdiRequestPending()
+void Step1DetailsView::suspendInvoiceFileIfCfdiRequestPending()
 {
-    // Solo se llama desde onInvoiceTypeChanged(), así que si se cumple la
-    // condición es porque el tipo ACABA de pasar a Autofactura; mientras siga
-    // en él, el botón bloqueado impide elegir otro archivo. Con la solicitud
-    // ya generada no se quita nada: cualquier factura adjunta se subió
-    // después de generarla, que es justo el orden que se pide.
+    // El tipo se revisa aquí aunque onInvoiceTypeChanged() solo llama a esta
+    // función con Autofactura elegida, para que sea segura desde cualquier
+    // sitio: con otro tipo no aparta nada, igual que
+    // restoreSuspendedInvoiceFile() no recupera nada con Autofactura elegida.
+    // Con Autofactura y sin solicitud, si hay archivo es porque el tipo ACABA
+    // de pasar a Autofactura; mientras siga en él, el botón bloqueado impide
+    // elegir otro. Con la solicitud ya generada no se aparta nada: cualquier
+    // factura adjunta se subió después de generarla, que es justo el orden
+    // que se pide.
     if (!isAutofacturaSelected() || m_cfdiRequestGenerated || m_invoiceFilePath.isEmpty())
         return;
 
-    // Se quita, pero no en silencio: la etiqueta, que mostraba el nombre del
-    // archivo, pasa a explicar por qué ya no está, para que nadie guarde
-    // creyendo que la factura sigue adjunta.
+    // Se aparta, pero no en silencio: la etiqueta, que mostraba el nombre del
+    // archivo, pasa a decir que ya no está adjunto, para que nadie guarde
+    // creyendo que la factura sigue ahí. El aviso es corto a propósito: la
+    // etiqueta no parte el texto en renglones y comparte columna con los dos
+    // botones, así que uno largo ensancharía todo el paso y se cortaría en una
+    // ventana de tamaño normal. El porqué, y cómo recuperarla, van en el
+    // tooltip.
+    m_suspendedInvoiceFilePath = m_invoiceFilePath;
     m_invoiceFilePath.clear();
-    m_invoiceFileLabel->setText(QStringLiteral("Factura quitada: primero genera la solicitud de CFDI"));
-    m_invoiceRemovedNoticeShown = true;
+    m_invoiceFileLabel->setText(QStringLiteral("Factura retirada"));
+    m_invoiceFileLabel->setToolTip(QStringLiteral(
+        "La autofactura pide generar primero la solicitud de CFDI y subir la factura después. "
+        "Si regresas a Facturado, se recupera la que habías elegido."));
+}
+
+void Step1DetailsView::restoreSuspendedInvoiceFile()
+{
+    // También revisa el tipo por su cuenta, igual que
+    // suspendInvoiceFileIfCfdiRequestPending(): con Autofactura elegida,
+    // recuperarla volvería a adjuntar una factura elegida antes de la
+    // solicitud, justo lo que apartarla evita. El índice -1 que deja
+    // onAcquisitionTypeChanged() al vaciar el combo no cuenta como
+    // Autofactura, así que cambiar de rama la sigue recuperando.
+    if (isAutofacturaSelected() || m_suspendedInvoiceFilePath.isEmpty())
+        return;
+
+    // Vuelve tal como estaba antes de apartarse: adjunta, con la etiqueta
+    // diciendo lo mismo que puso onBrowseInvoiceFile() al elegirla, y sin el
+    // tooltip, que solo explicaba por qué no estaba.
+    m_invoiceFilePath = m_suspendedInvoiceFilePath;
+    m_suspendedInvoiceFilePath.clear();
+    m_invoiceFileLabel->setText(QFileInfo(m_invoiceFilePath).fileName());
+    m_invoiceFileLabel->setToolTip(QString());
 }
 
 void Step1DetailsView::refreshInvoiceFileControls()
@@ -158,10 +199,10 @@ void Step1DetailsView::refreshInvoiceFileControls()
     // Aquí solo se bloquea el botón; el archivo ya elegido no se toca. Al
     // cambiar de tipo ese archivo se conserva, porque descartarlo en silencio
     // dejaría al usuario guardando sin la factura que cree haber subido. La
-    // excepción es pasar a autofactura sin la solicitud: conservarlo ahí
+    // excepción es pasar a autofactura sin la solicitud: dejarlo adjunto ahí
     // equivaldría a saltarse el paso que la autofactura exige, así que
-    // discardInvoiceFileIfCfdiRequestPending() lo quita y deja el aviso en la
-    // etiqueta.
+    // suspendInvoiceFileIfCfdiRequestPending() lo aparta, sin tirarlo, y la
+    // etiqueta lo avisa.
     const bool uploadLocked = isAutofactura && !m_cfdiRequestGenerated;
     m_invoiceUploadButton->setEnabled(!uploadLocked);
     // Qt muestra el tooltip aun con el botón deshabilitado, así que ahí se
@@ -170,17 +211,6 @@ void Step1DetailsView::refreshInvoiceFileControls()
     m_invoiceUploadButton->setToolTip(uploadLocked
                                           ? QStringLiteral("Primero genera la solicitud de CFDI.")
                                           : QString());
-
-    // El aviso de "factura quitada" solo dice algo cierto mientras la subida
-    // siga bloqueada. Si ya se generó la solicitud, o se volvió a un tipo sin
-    // CFDI, seguir mostrándolo invitaría a buscar un botón que ya no hace falta
-    // (en Facturado ni siquiera se ve). La etiqueta vuelve a su texto neutro;
-    // con el aviso a la vista no hay archivo adjunto, así que "Sin archivo" es
-    // exacto.
-    if (m_invoiceRemovedNoticeShown && !uploadLocked) {
-        m_invoiceFileLabel->setText(kNoInvoiceFileText);
-        m_invoiceRemovedNoticeShown = false;
-    }
 }
 
 QWidget *Step1DetailsView::buildGeneralInfoCard()
@@ -465,8 +495,13 @@ void Step1DetailsView::onBrowseInvoiceFile()
 
     m_invoiceFilePath = path;
     m_invoiceFileLabel->setText(QFileInfo(path).fileName());
-    // El nombre del archivo reemplaza al aviso que pudiera haber.
-    m_invoiceRemovedNoticeShown = false;
+    // El archivo nuevo deja sin efecto cualquier factura apartada, y su nombre
+    // sustituye al aviso, así que el tooltip que lo explicaba sobra. Hoy no
+    // puede haber una apartada al elegir archivo -- mientras la hay, la
+    // subida está bloqueada --, pero si eso cambiara, salir de Autofactura no
+    // debe reemplazar el archivo nuevo por el viejo.
+    m_suspendedInvoiceFilePath.clear();
+    m_invoiceFileLabel->setToolTip(QString());
 }
 
 void Step1DetailsView::generateCfdiRequest() {
@@ -521,9 +556,23 @@ void Step1DetailsView::generateCfdiRequest() {
 
     // Solo cuenta como generada cuando todo salió bien: se leyó la plantilla,
     // el temporal se creó y se escribió completo, y openUrl() lo abrió. Cada
-    // falla anterior sale por su propio return sin tocar la bandera, para no
-    // desbloquear la subida con una solicitud que el usuario nunca llegó a ver.
+    // falla anterior sale por su propio return sin tocar la bandera ni la
+    // factura apartada: ni se desbloquea la subida con una solicitud que el
+    // usuario nunca llegó a ver, ni se pierde una factura que todavía puede
+    // recuperar volviendo a Facturado.
     m_cfdiRequestGenerated = true;
+
+    // Generada la solicitud, la factura apartada se descarta para siempre: en
+    // autofactura la factura se sube DESPUÉS de la solicitud, así que una
+    // elegida antes ya no cuenta, y la etiqueta vuelve a "Sin archivo", que
+    // ahora es exacto. Solo si había una apartada: generar la solicitud otra
+    // vez, con una factura subida después de la primera, no debe borrar de la
+    // etiqueta el nombre de esa factura, que sí vale.
+    if (!m_suspendedInvoiceFilePath.isEmpty()) {
+        m_suspendedInvoiceFilePath.clear();
+        m_invoiceFileLabel->setText(kNoInvoiceFileText);
+        m_invoiceFileLabel->setToolTip(QString());
+    }
     refreshInvoiceFileControls();
 }
 
