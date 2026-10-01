@@ -146,7 +146,7 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
 
     grid->addWidget(UIUtils::createRequiredLabel("Marca: ", card), row, 0);
     grid->addWidget(m_brandCombo, row, 1);
-    grid->addWidget(new QLabel(QStringLiteral("Modelo:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Modelo: ", card), row, 2);
     grid->addWidget(m_modelEdit, row, 3);
     ++row;
 
