@@ -122,15 +122,6 @@ MainWindow::MainWindow(QWidget *parent)
     // chica.
     ui->estado->setMinimumWidth(kStatusFilterMinWidth);
     ui->estado->setFixedHeight(kFilterControlHeight);
-    //attachCalendarIcon(ui->fechaInicio);
-    //attachCalendarIcon(ui->fechaFin);
-
-    /*ui->estado->setProperty("class", "filterCombo");
-    ui->estado->style()->unpolish(ui->estado);
-    ui->estado->style()->polish(ui->estado);
-    ui->estado->update();*/
-
-    /*ui->estado->setView(new QListView(ui->estado));*/
 
     m_addVehicleButton =
         new OutlineButton(QStringLiteral("Agregar Vehículo"), QStringLiteral(":/icons/plus.png"),
