@@ -401,6 +401,18 @@ QPushButton[class="secondary"]:hover {
     border-color: #0A25C9;
 }
 
+/* Sin esta regla un secundario deshabilitado se pinta igual que uno activo:
+   la regla base fija fondo, texto y borde sin distinguir estados, así que Qt
+   nunca llega a agrisarlo. Dependen de ella el "Subir documento" del Paso 3,
+   que espera a que se elija el tipo, y el de la factura en el Paso 1, que en
+   autofactura espera a la solicitud de CFDI: sin el gris, parecerían rotos.
+   Va también en global-style.qss para que las dos hojas no diverjan. */
+QPushButton[class="secondary"]:disabled {
+    background-color: #F4F6F9;
+    color: #ADB5BD;
+    border-color: #DEE2E6;
+}
+
 QPushButton[class="danger"] {
     background-color: #D90429;
     color: #FFFFFF;
