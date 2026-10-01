@@ -442,6 +442,22 @@ void Step1DetailsView::loadLookups()
 
     UIUtils::populateComboBox(m_brandCombo, "brands_cat");
 
+    m_brandCombo->setEditable(true);
+
+    QCompleter* completer = m_brandCombo->completer();
+    completer->setCompletionMode(QCompleter::PopupCompletion); // Muestra la lista desplegable al escribir
+    completer->setFilterMode(Qt::MatchContains);
+    m_brandCombo->setInsertPolicy(QComboBox::NoInsert);
+
+    connect(m_brandCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
+        QString wroteText = m_brandCombo->currentText();
+
+        int indexValido = m_brandCombo->findText(wroteText, Qt::MatchExactly);
+
+        if (indexValido == -1) {
+            m_brandCombo->setCurrentIndex(0);
+        }
+    });
 
     QSqlQuery umaQuery(db);
     umaQuery.prepare(QStringLiteral("SELECT value_param FROM global_configurations WHERE key_param = :key"));
