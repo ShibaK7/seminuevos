@@ -199,9 +199,9 @@ QWidget *Step3FilesView::buildDocumentsPanel()
     // se llena sin placeholder selecciona solo su primer elemento, y un tipo
     // que nadie eligió es justo lo que este selector existe para evitar; el
     // setCurrentIndex(-1) lo deja explícito en vez de depender del orden de
-    // estas líneas. El texto es el estándar del equipo para todos los combos
-    // (el valor por omisión de UIUtils::populateComboBox y el que usa el Paso
-    // 2), para que el selector no se lea distinto de los demás.
+    // estas líneas. El texto es el placeholder estándar del equipo, genérico
+    // porque sirve para cualquier combo; qué se elige en este lo dice la
+    // etiqueta que va encima.
     m_documentTypeCombo->setPlaceholderText(QStringLiteral("Seleccione una opción..."));
     for (const QString &type : documentTypes())
         m_documentTypeCombo->addItem(type, type);
@@ -222,9 +222,29 @@ QWidget *Step3FilesView::buildDocumentsPanel()
     m_documentUploadButton->setText(kUploadDocumentText);
     m_documentUploadButton->setEnabled(false); // el combo arranca sin tipo elegido
 
+    // Sin esta etiqueta, el placeholder genérico sería la única pista de qué se
+    // elige en el combo. Va sin clase, con la tipografía base: es el nombre de
+    // un campo, no letra chica como la de los formatos de abajo. setBuddy() la
+    // asocia al combo para que un lector de pantalla lo anuncie con este
+    // nombre.
+    // Ocupa su propio renglón, justo encima de la fila del combo, y no un
+    // lugar dentro de ella: ahí su ancho se sumaba al mínimo de la tarjeta, y
+    // como las dos tarjetas se reparten el ancho del paso, lo que ganaba la de
+    // documentos lo perdía la galería. Con la hoja de estilos de la rama de
+    // integración, cuyos controles ya son más anchos, era peor: una sola foto
+    // llegaba a necesitar barra de desplazamiento horizontal.
+    // Y no lleva el asterisco de las etiquetas de campos obligatorios, ni debe
+    // llevarlo: elegir un tipo no es requisito para guardar, solo para subir
+    // un documento, y eso ya lo exige el botón, deshabilitado mientras no haya
+    // un tipo elegido.
+    auto *documentTypeLabel = new QLabel(QStringLiteral("Tipo de documento:"), card);
+    documentTypeLabel->setObjectName(QStringLiteral("documentTypeLabel"));
+    documentTypeLabel->setBuddy(m_documentTypeCombo);
+
     auto *selectorRow = new QHBoxLayout;
     selectorRow->addWidget(m_documentTypeCombo, 1);
     selectorRow->addWidget(m_documentUploadButton);
+    cardLayout->addWidget(documentTypeLabel);
     cardLayout->addLayout(selectorRow);
 
     // Los formatos se anuncian antes de abrir el diálogo, no solo en el error
