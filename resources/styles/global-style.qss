@@ -5,11 +5,15 @@
 /* 1. GLOBAL RESET & BASE TYPOGRAPHY
    --------------------------------------------------------------------------- */
 QWidget {
-    font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
-    font-size: 12pt;
+    /*font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;*/
+    font-size: 20pt;
     font-weight: 400;
     color: #212529;               /* Primary Dark Charcoal */
     background-color: #FFFFFF;     /* Light Surface Canvas */
+}
+
+QComboBox {
+    combobox-popup: 0;
 }
 
 /* Chrome de la ventana principal.
@@ -108,30 +112,37 @@ QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QTextEdit {
 
 /* Input Focused State */
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus, QTextEdit:focus {
-    border: 1.5px solid #0A25C9;   /* DE LA HOZ Royal Blue */
-    background-color: #FFFFFF;
+    /*border: 1.5px solid #0A25C9;
+    background-color: #FFFFFF;*/
+    border: 2px solid #0A25C9;
 }
 
 /* Input Hover State */
 QLineEdit:hover, QComboBox:hover, QSpinBox:hover, QDateEdit:hover {
-    border-color: #ADB5BD;
+    border: 1px solid #ADB5BD;
 }
 
-/* Combo Box Dropdown Styling */
 QComboBox::drop-down {
     border: none;
     width: 24px;
 }
 
-/* En cuanto se estiliza ::drop-down, Qt deja de dibujar la flecha nativa. Sin
-   esta regla, TODOS los combos de la aplicación quedan sin indicador -- que es
-   como estaban los del asistente hasta que US-03.1 trajo este ícono y lo
-   aplicó solo a la barra de filtros. Va global por eso. */
 QComboBox::down-arrow {
     image: url(:/icons/chevron_down.png);
     width: 12px;
     height: 12px;
 }
+
+QComboBox::down-arrow:on {
+    image: url(:/icons/chevron_up.png);
+}
+
+QComboBox:disabled {
+    background-color: #F8F9FA;
+    border-color: #E9ECEF;
+    color: #ADB5BD;
+}
+
 
 /* 4. ERROR & VALIDATION STATES
    --------------------------------------------------------------------------- */
@@ -240,6 +251,19 @@ QPushButton[class="secondary"]:hover {
     background-color: #0A25C9;
     color: #FFFFFF;
     border-color: #0A25C9;
+}
+
+/* Sin esta regla un secundario deshabilitado se pinta igual que uno activo:
+   la regla base fija fondo, texto y borde sin distinguir estados, así que Qt
+   nunca llega a agrisarlo. Dependen de ella todos los secundarios que se
+   deshabilitan, no solo "Subir documento" del Paso 3 mientras no se elige el
+   tipo: también el "Subir documento" de la factura del Paso 1, bloqueado en
+   autofactura hasta generar la solicitud de CFDI, e "Imprimir Contrato" y
+   "Cancelar" del pie del wizard. Sin el gris, parecerían rotos. */
+QPushButton[class="secondary"]:disabled {
+    background-color: #F4F6F9;
+    color: #ADB5BD;
+    border-color: #DEE2E6;
 }
 
 /* Danger / Delete Action Button */
@@ -575,57 +599,57 @@ QLabel[class="outline-button-icon"] {
    igual en una pantalla grande que en una chica. */
 QComboBox[class="filterCombo"] {
     background-color: #FFFFFF;
-    border: 1px solid #E1E4EA;
-    border-radius: 8px;
+    border: 1px solid #E0E0E0;
+    border-radius: 10px;
     padding: 6px 14px;
+    font-size: 12px;
+    color: #212529;
+    min-height: 24px;
     min-width: 200px;
-    font-size: 11pt;
-    color: #111827;
 }
 
 QComboBox[class="filterCombo"]:hover {
     border: 1px solid #ADB5BD;
 }
 
+QComboBox[class="filterCombo"]:on, QComboBox[class="filterCombo"]:focus {
+    border: 2px solid #0A25C9;
+}
+
 QComboBox[class="filterCombo"]::drop-down {
-    border: none;
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
     width: 24px;
-}
-
-/* La flecha ya la pone la regla global de QComboBox::down-arrow (sección 3);
-   aquí no hace falta repetirla. */
-
-/* Cada opción de la lista */
-/* ATENCIÓN: de aquí en adelante y hasta el final del bloque de calendario, las
-   reglas NO llevan filtro de clase, así que son GLOBALES pese a estar bajo el
-   rótulo de Inventario. Aplican también a los doce combos y al calendario del
-   asistente de registro. Es deliberado -- dos estilos de popup para el mismo
-   control se ve peor que uno solo --, pero conviene saberlo antes de tocarlas
-   creyendo que solo afectan a esta pantalla. */
-QComboBox QAbstractItemView::item {
-    padding: 8px 12px;
-    border-radius: 6px;
-    color: #2c3856;
-    min-height: 26px;
-}
-
-/* Hover al pasar el mouse sobre una opción */
-QComboBox QAbstractItemView::item:hover {
-    background-color: #c3cbdb;
-    color: #46527a;
-}
-
-/* Opción seleccionada (con o sin mouse encima) */
-QComboBox QAbstractItemView::item:selected {
-    background-color: #081ca2;
-    color: #ffffff;
+    border: none;
+    background: transparent;
+    margin-right: 8px;
 }
 
 QComboBox QAbstractItemView {
-    background-color: #ffffff;
-    border: 1px solid #c2c9d6;
-    outline: none;
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 12px;
     padding: 4px;
+    outline: 0px;
+    selection-background-color: transparent;  /*Handled via QListView::item */
+}
+
+
+QComboBox QAbstractItemView::item {
+    min-height: 24px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    color: #212529;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #E6E9FC;
+    color: #0A25C9;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #E6E9FC;
+    color: #0A25C9;
 }
 
 /* ---------- QDateEdit (mismo look que QComboBox, sin botón cuadrado) ---------- */
@@ -644,6 +668,10 @@ QDateEdit[class="dateFilter"] {
 
 QDateEdit[class="dateFilter"]:hover {
     border: 1px solid #ADB5BD;
+}
+
+QDateEdit[class="dateFilter"]:open, QDateEdit[class="dateFilter"]:focus {
+    border: 2px solid #0A25C9;
 }
 
 /* Elimina el relieve/recuadro del botón de flecha */
@@ -666,9 +694,9 @@ QDateEdit[class="dateFilter"]::drop-down {
    cambio, se dibuja sin problema: la diferencia entre las dos reglas era que
    esta lleva width/height explícitos. */
 QDateEdit[class="dateFilter"]::down-arrow {
-    image: url(:/icons/chevron_down.png);
     width: 12px;
     height: 12px;
+    image: url(:/icons/chevron_down.png);
 }
 
 /* La caja del icono no pinta fondo propio: la regla base de QWidget (sección

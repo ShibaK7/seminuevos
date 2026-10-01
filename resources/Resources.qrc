@@ -3,10 +3,12 @@
         <file>images/background.png</file>
         <file>images/logo-seminuevos.jpeg</file>
         <file>images/logo-seminuevos.svg</file>
+        <file>images/background.png</file>
     </qresource>
     <qresource prefix="/resources/styles"/>
     <qresource prefix="/resourcess/styles">
         <file>styles/global-style.qss</file>
+        <file>styles/global-style-clean.qss</file>
     </qresource>
     <qresource prefix="/resources/icons"/>
     <qresource prefix="/">
@@ -24,14 +26,17 @@
         <file>icons/chevron_down.png</file>
         <file>icons/checkmark.png</file>
         <file>icons/check-badge-green.png</file>
+        <file>icons/chevron_up.png</file>
+        <file>icons/save.png</file>
+        <file>icons/printer.png</file>
+        <file>icons/cancel_dark.png</file>
+        <file>icons/cancel_white.png</file>
     </qresource>
-  <qresource prefix="/resources/images/">
-    <file>images/background.png</file>
-  </qresource>
-  <qresource prefix="/db/">
-    <file alias="001_init_schema.sql">../db/001_init_schema.sql</file>
-  </qresource>
-  <qresource prefix="/templates/">
-    <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
-  </qresource>
+    <qresource prefix="/db">
+        <file alias="001_init_schema.sql">../db/001_init_schema.sql</file>
+    </qresource>
+    <qresource prefix="/templates">
+        <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
+        <file>request_issuance_cfdi.html</file>
+    </qresource>
 </RCC>

@@ -1,5 +1,6 @@
 #include "../../../include/vehiclewizard/steps/step1detailsview.h"
 #include "../../../include/db/connectionpool.h"
+#include "utils/UIUtils.h"
 
 #include <QComboBox>
 #include <QDateEdit>
@@ -12,6 +13,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QSqlDatabase>
@@ -20,6 +22,8 @@
 #include <QVBoxLayout>
 #include <QCompleter>
 #include "loginwindow.h"
+#include <QStandardPaths>
+#include <QDesktopServices>
 
 namespace {
 
@@ -36,6 +40,11 @@ domain::CatalogRef catalogRefFrom(const QComboBox *combo)
     ref.name = combo->currentText();
     return ref;
 }
+
+// Texto de la etiqueta de factura cuando no hay archivo. Constante porque se
+// escribe en dos sitios -- al armar la tarjeta y al descartar la factura
+// apartada cuando se genera la solicitud de CFDI -- y deben coincidir.
+const QString kNoInvoiceFileText = QStringLiteral("Sin archivo");
 
 } // namespace
 
@@ -55,13 +64,36 @@ Step1DetailsView::Step1DetailsView(QWidget *parent)
     connect(m_vehicleTypeCombo, &QComboBox::currentIndexChanged, this, &Step1DetailsView::reloadSubtypes);
     connect(m_acquisitionTypeCombo, &QComboBox::currentIndexChanged, this,
             &Step1DetailsView::onAcquisitionTypeChanged);
+    connect(m_invoiceTypeCombo, &QComboBox::currentIndexChanged, this,
+            &Step1DetailsView::onInvoiceTypeChanged);
     // Deja la vista coherente con la rama seleccionada por omisión.
     onAcquisitionTypeChanged();
+    // Llamada explícita aunque el repoblado de arriba ya haya emitido
+    // currentIndexChanged: así el estado inicial de los botones de factura no
+    // depende de que esa señal se emita ni del orden en que se conectó. Basta
+    // con refrescar los botones, sin pasar por onInvoiceTypeChanged(): al
+    // construir todavía no hay factura que apartar ni una apartada que
+    // recuperar.
+    refreshInvoiceFileControls();
 }
 
 domain::AcquisitionType Step1DetailsView::selectedAcquisitionType() const
 {
     return static_cast<domain::AcquisitionType>(m_acquisitionTypeCombo->currentData().toInt());
+}
+
+bool Step1DetailsView::isAutofacturaSelected() const
+{
+    // onAcquisitionTypeChanged() vacía el combo antes de repoblarlo, y en ese
+    // instante currentData() es un QVariant inválido. Se revisa explícitamente
+    // en vez de confiar en que toInt() devuelva 0: hoy 0 es Facturado y el
+    // resultado saldría bien por casualidad, pero bastaría reordenar el enum
+    // para que un combo vacío contara como autofactura, y entonces el solo
+    // hecho de cambiar de rama apartaría la factura ya elegida, y recuperarla
+    // quedaría en manos de la señal siguiente.
+    const QVariant invoiceData = m_invoiceTypeCombo->currentData();
+    return invoiceData.isValid()
+           && static_cast<domain::InvoiceType>(invoiceData.toInt()) == domain::InvoiceType::Autofactura;
 }
 
 void Step1DetailsView::onAcquisitionTypeChanged()
@@ -90,24 +122,121 @@ void Step1DetailsView::onAcquisitionTypeChanged()
 
     // En una compra la contraparte vende la unidad; en una consignación sigue
     // siendo su dueña.
-    m_counterpartyLabel->setText(isAcquisition ? QStringLiteral("Vendedor:")
-                                               : QStringLiteral("Propietario:"));
+    m_counterpartyLabel->setText(isAcquisition ? QStringLiteral("Vendedor: <span style='color: #D90429; font-weight: bold;'>*</span>")
+                                               : QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"));
+}
+
+void Step1DetailsView::onInvoiceTypeChanged()
+{
+    // Sin solicitud, entrar a Autofactura aparta la factura y salir de ella la
+    // devuelve. El índice -1 que deja onAcquisitionTypeChanged() mientras
+    // vacía el combo cuenta como salir, así que cambiar de rama también la
+    // recupera: al volver a Adquisición, ya en Facturado, sigue adjunta, igual
+    // que cualquier factura sobrevive a ir y volver por la consignación.
+    if (isAutofacturaSelected())
+        suspendInvoiceFileIfCfdiRequestPending();
+    else
+        restoreSuspendedInvoiceFile();
+    refreshInvoiceFileControls();
+}
+
+void Step1DetailsView::suspendInvoiceFileIfCfdiRequestPending()
+{
+    // El tipo se revisa aquí aunque onInvoiceTypeChanged() solo llama a esta
+    // función con Autofactura elegida, para que sea segura desde cualquier
+    // sitio: con otro tipo no aparta nada, igual que
+    // restoreSuspendedInvoiceFile() no recupera nada con Autofactura elegida.
+    // Con Autofactura y sin solicitud, si hay archivo es porque el tipo ACABA
+    // de pasar a Autofactura; mientras siga en él, el botón bloqueado impide
+    // elegir otro. Con la solicitud ya generada no se aparta nada: cualquier
+    // factura adjunta se subió después de generarla, que es justo el orden
+    // que se pide.
+    if (!isAutofacturaSelected() || m_cfdiRequestGenerated || m_invoiceFilePath.isEmpty())
+        return;
+
+    // Se aparta, pero no en silencio: la etiqueta, que mostraba el nombre del
+    // archivo, pasa a decir que ya no está adjunto, para que nadie guarde
+    // creyendo que la factura sigue ahí. El aviso es corto a propósito: la
+    // etiqueta no parte el texto en renglones y comparte columna con los dos
+    // botones, así que uno largo ensancharía todo el paso y se cortaría en una
+    // ventana de tamaño normal. El porqué, y cómo recuperarla, van en el
+    // tooltip.
+    m_suspendedInvoiceFilePath = m_invoiceFilePath;
+    m_invoiceFilePath.clear();
+    m_invoiceFileLabel->setText(QStringLiteral("Factura retirada"));
+    m_invoiceFileLabel->setToolTip(QStringLiteral(
+        "La autofactura pide generar primero la solicitud de CFDI y subir la factura después. "
+        "Si regresas a Facturado, se recupera la que habías elegido."));
+}
+
+void Step1DetailsView::restoreSuspendedInvoiceFile()
+{
+    // También revisa el tipo por su cuenta, igual que
+    // suspendInvoiceFileIfCfdiRequestPending(): con Autofactura elegida,
+    // recuperarla volvería a adjuntar una factura elegida antes de la
+    // solicitud, justo lo que apartarla evita. El índice -1 que deja
+    // onAcquisitionTypeChanged() al vaciar el combo no cuenta como
+    // Autofactura, así que cambiar de rama la sigue recuperando.
+    if (isAutofacturaSelected() || m_suspendedInvoiceFilePath.isEmpty())
+        return;
+
+    // Vuelve tal como estaba antes de apartarse: adjunta, con la etiqueta
+    // diciendo lo mismo que puso onBrowseInvoiceFile() al elegirla, y sin el
+    // tooltip, que solo explicaba por qué no estaba.
+    m_invoiceFilePath = m_suspendedInvoiceFilePath;
+    m_suspendedInvoiceFilePath.clear();
+    m_invoiceFileLabel->setText(QFileInfo(m_invoiceFilePath).fileName());
+    m_invoiceFileLabel->setToolTip(QString());
+}
+
+void Step1DetailsView::refreshInvoiceFileControls()
+{
+    const bool isAutofactura = isAutofacturaSelected();
+
+    // Ocultar el botón por su cuenta no choca con que la fila entera se oculte
+    // en la consignación: un hijo ocultado explícitamente sigue oculto cuando
+    // su padre se vuelve a mostrar, así que un mecanismo no deshace al otro.
+    m_cfdiRequestButton->setVisible(isAutofactura);
+
+    // Con cualquier otro tipo de factura la subida queda libre, como antes.
+    // Aquí solo se bloquea el botón; el archivo ya elegido no se toca. Al
+    // cambiar de tipo ese archivo se conserva, porque descartarlo en silencio
+    // dejaría al usuario guardando sin la factura que cree haber subido. La
+    // excepción es pasar a autofactura sin la solicitud: dejarlo adjunto ahí
+    // equivaldría a saltarse el paso que la autofactura exige, así que
+    // suspendInvoiceFileIfCfdiRequestPending() lo aparta, sin tirarlo, y la
+    // etiqueta lo avisa.
+    const bool uploadLocked = isAutofactura && !m_cfdiRequestGenerated;
+    m_invoiceUploadButton->setEnabled(!uploadLocked);
+    // Qt muestra el tooltip aun con el botón deshabilitado, así que ahí se
+    // explica el bloqueo. Se limpia al desbloquear para no dejar un aviso que
+    // ya no aplica.
+    m_invoiceUploadButton->setToolTip(uploadLocked
+                                          ? QStringLiteral("Primero genera la solicitud de CFDI.")
+                                          : QString());
 }
 
 QWidget *Step1DetailsView::buildGeneralInfoCard()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
+    UIUtils::applyFloatingShadow(card);
+
     auto *cardLayout = new QVBoxLayout(card);
     // Folio es la primera fila del formulario -- que quede pegada arriba
     // del contenedor, con solo unos pocos px de aire, no el margen grande
     // por defecto del layout.
-    cardLayout->setContentsMargins(16, 8, 16, 16);
+    cardLayout->setContentsMargins(16, 16, 16, 16);
 
     auto *grid = new QGridLayout;
+    grid->setHorizontalSpacing(25);
+    grid->setVerticalSpacing(8);
+
     int row = 0;
 
-    m_folioLabel = new QLabel(QStringLiteral("(auto)"), card);
+    m_folioEdit = new QLineEdit(card);
+    m_folioEdit->setPlaceholderText(QStringLiteral("(auto)"));
+    m_folioEdit->setDisabled(true);
     m_dateEdit = new QDateEdit(QDate::currentDate(), card);
     m_dateEdit->setCalendarPopup(true);
     m_dateEdit->setMaximumDate(QDate::currentDate());
@@ -123,25 +252,26 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
     m_yearModelSpin->setRange(1980, QDate::currentDate().year() + 1);
     m_yearModelSpin->setValue(QDate::currentDate().year());
 
-    grid->addWidget(new QLabel(QStringLiteral("Folio:"), card), row, 0);
-    grid->addWidget(m_folioLabel, row, 1);
-    grid->addWidget(new QLabel(QStringLiteral("Fecha:"), card), row, 2);
+
+    grid->addWidget(UIUtils::createRequiredLabel("Folio: ", card), row, 0);
+    grid->addWidget(m_folioEdit, row, 1);
+    grid->addWidget(UIUtils::createRequiredLabel("Fecha: ", card), row, 2);
     grid->addWidget(m_dateEdit, row, 3);
     ++row;
 
-    grid->addWidget(new QLabel(QStringLiteral("Tipo Vehículo:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Tipo Vehículo: ", card), row, 0);
     grid->addWidget(m_vehicleTypeCombo, row, 1);
-    grid->addWidget(new QLabel(QStringLiteral("Subtipo:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Subtipo: ", card), row, 2);
     grid->addWidget(m_subtypeCombo, row, 3);
     ++row;
 
-    grid->addWidget(new QLabel(QStringLiteral("Marca:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Marca: ", card), row, 0);
     grid->addWidget(m_brandCombo, row, 1);
-    grid->addWidget(new QLabel(QStringLiteral("Modelo (tipo):"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Modelo: ", card), row, 2);
     grid->addWidget(m_modelEdit, row, 3);
     ++row;
 
-    grid->addWidget(new QLabel(QStringLiteral("Año Modelo:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Año Modelo: ", card), row, 0);
     grid->addWidget(m_yearModelSpin, row, 1);
 
     m_colorEdit = new QLineEdit(card);
@@ -156,26 +286,26 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
     grid->addWidget(m_mileageSpin, row, 1);
 
     m_motorNumberEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("No. Motor:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("No. Motor: ", card), row, 2);
     grid->addWidget(m_motorNumberEdit, row, 3);
     ++row;
 
     m_serialNumberEdit = new QLineEdit(card);
     m_serialNumberEdit->setPlaceholderText(QStringLiteral("VIN"));
-    grid->addWidget(new QLabel(QStringLiteral("No. Serie (VIN):"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("No. Serie (VIN): ", card), row, 0);
     grid->addWidget(m_serialNumberEdit, row, 1);
 
     m_repuveEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("REPUVE:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("REPUVE: ", card), row, 2);
     grid->addWidget(m_repuveEdit, row, 3);
     ++row;
 
     m_platesEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("Placas:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Placas: ", card), row, 0);
     grid->addWidget(m_platesEdit, row, 1);
 
     m_platesHolderEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("Titular Placas:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Titular Placas: ", card), row, 2);
     grid->addWidget(m_platesHolderEdit, row, 3);
     ++row;
 
@@ -192,9 +322,16 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
+    UIUtils::applyFloatingShadow(card);
+
     auto *cardLayout = new QVBoxLayout(card);
 
+    cardLayout->setContentsMargins(16, 16, 16, 16);
+
     auto *grid = new QGridLayout;
+    grid->setHorizontalSpacing(25);
+    grid->setVerticalSpacing(8);
+
     int row = 0;
 
     // El tipo de operación va primero porque condiciona todo lo demás: qué
@@ -203,17 +340,17 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_acquisitionTypeCombo->setObjectName(QStringLiteral("acquisitionTypeCombo"));
     for (domain::AcquisitionType value : domain::allAcquisitionTypes())
         m_acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    grid->addWidget(new QLabel(QStringLiteral("Tipo de Operación:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Tipo Operación: ", card), row, 0);
     grid->addWidget(m_acquisitionTypeCombo, row, 1);
     ++row;
 
     m_ownerNameEdit = new QLineEdit(card);
-    m_counterpartyLabel = new QLabel(QStringLiteral("Propietario:"), card);
+    m_counterpartyLabel = new QLabel(QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"), card);
     grid->addWidget(m_counterpartyLabel, row, 0);
     grid->addWidget(m_ownerNameEdit, row, 1);
 
     m_ownerIdEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("Identificación:"), card), row, 2);
+    grid->addWidget(UIUtils::createRequiredLabel("Identificación: ", card), row, 2);
     grid->addWidget(m_ownerIdEdit, row, 3);
     ++row;
 
@@ -244,7 +381,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     // dependen de la rama y los conjuntos son disjuntos.
     m_invoiceTypeCombo = new QComboBox(card);
     m_invoiceTypeCombo->setObjectName(QStringLiteral("invoiceTypeCombo"));
-    grid->addWidget(new QLabel(QStringLiteral("Tipo Factura:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("Tipo Factura: ", card), row, 0);
     grid->addWidget(m_invoiceTypeCombo, row, 1);
 
     // El archivo de factura solo existe en la compra: el esquema pone
@@ -253,12 +390,30 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     auto *invoiceFileWidget = new QWidget(card);
     auto *invoiceFileLayout = new QHBoxLayout(invoiceFileWidget);
     invoiceFileLayout->setContentsMargins(0, 0, 0, 0);
-    m_invoiceFileLabel = new QLabel(QStringLiteral("Sin archivo"), invoiceFileWidget);
-    auto *invoiceFileButton = new QPushButton(QStringLiteral("Subir documento"), invoiceFileWidget);
-    invoiceFileButton->setProperty("class", QStringLiteral("secondary"));
-    connect(invoiceFileButton, &QPushButton::clicked, this, &Step1DetailsView::onBrowseInvoiceFile);
+    m_invoiceFileLabel = new QLabel(kNoInvoiceFileText, invoiceFileWidget);
+
+    // Solo aplica a la autofactura, y en ella hay que usarlo antes de poder
+    // subir la factura. Ni la visibilidad ni el bloqueo se fijan aquí: los
+    // aplica refreshInvoiceFileControls() cada vez que cambia el tipo de
+    // factura o se genera la solicitud.
+    m_cfdiRequestButton = new QPushButton(QStringLiteral("Generar solicitud CFDI"), invoiceFileWidget);
+    m_cfdiRequestButton->setObjectName(QStringLiteral("cfdiRequestButton"));
+    m_cfdiRequestButton->setProperty("class", QStringLiteral("secondary"));
+    connect(m_cfdiRequestButton, &QPushButton::clicked, this, &Step1DetailsView::generateCfdiRequest);
+
+    m_invoiceUploadButton = new QPushButton(QStringLiteral("Subir documento"), invoiceFileWidget);
+    m_invoiceUploadButton->setObjectName(QStringLiteral("invoiceUploadButton"));
+    m_invoiceUploadButton->setProperty("class", QStringLiteral("secondary"));
+    connect(m_invoiceUploadButton, &QPushButton::clicked, this, &Step1DetailsView::onBrowseInvoiceFile);
+
+    // Cada widget se agrega una sola vez: un segundo addWidget() con el mismo
+    // widget no lo duplica, lo MUEVE (Qt lo saca de su lugar anterior), y así
+    // la etiqueta acababa entre los dos botones. El de CFDI va antes que el de
+    // subir porque en autofactura hay que usarlo primero: leída de izquierda a
+    // derecha, la fila repite la secuencia que se exige.
     invoiceFileLayout->addWidget(m_invoiceFileLabel, 1);
-    invoiceFileLayout->addWidget(invoiceFileButton);
+    invoiceFileLayout->addWidget(m_cfdiRequestButton);
+    invoiceFileLayout->addWidget(m_invoiceUploadButton);
 
     auto *invoiceFileRowLabel = new QLabel(QStringLiteral("Factura:"), card);
     grid->addWidget(invoiceFileRowLabel, row, 2);
@@ -267,7 +422,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     ++row;
 
     m_invoiceNumberEdit = new QLineEdit(card);
-    grid->addWidget(new QLabel(QStringLiteral("No. Factura:"), card), row, 0);
+    grid->addWidget(UIUtils::createRequiredLabel("No. Factura: ", card), row, 0);
     grid->addWidget(m_invoiceNumberEdit, row, 1);
 
     m_invoiceIssuerEdit = new QLineEdit(card);
@@ -284,14 +439,14 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_purchasePriceSpin->setRange(0, 99999999);
     m_purchasePriceSpin->setPrefix(QStringLiteral("$ "));
     m_purchasePriceSpin->setDecimals(2);
-    auto *purchasePriceLabel = new QLabel(QStringLiteral("Precio Compra:"), card);
+    auto *purchasePriceLabel = UIUtils::createRequiredLabel("Precio Compra: ", card);
     grid->addWidget(purchasePriceLabel, row, 0);
     grid->addWidget(m_purchasePriceSpin, row, 1);
 
     m_paymentTypeCombo = new QComboBox(card);
     for (domain::PaymentType value : domain::allPaymentTypes())
         m_paymentTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    auto *paymentTypeLabel = new QLabel(QStringLiteral("Tipo Pago:"), card);
+    auto *paymentTypeLabel = UIUtils::createRequiredLabel("Tipo Pago: ", card);
     grid->addWidget(paymentTypeLabel, row, 2);
     grid->addWidget(m_paymentTypeCombo, row, 3);
     m_acquisitionOnlyWidgets << purchasePriceLabel << m_purchasePriceSpin
@@ -301,7 +456,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_paymentMethodCombo = new QComboBox(card);
     for (domain::PaymentMethod value : domain::allPaymentMethods())
         m_paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    auto *paymentMethodLabel = new QLabel(QStringLiteral("Método de Pago:"), card);
+    auto *paymentMethodLabel = UIUtils::createRequiredLabel("Método Pago: ", card);
     grid->addWidget(paymentMethodLabel, row, 0);
     grid->addWidget(m_paymentMethodCombo, row, 1);
     m_purchasePriceErrorLabel = new QLabel(QStringLiteral("El precio de compra en efectivo no puede superar las 3210 UMAs."), card);
@@ -321,10 +476,10 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_salePriceSpin = new QDoubleSpinBox(card);
     m_salePriceSpin->setRange(0, 99999999);
     m_salePriceSpin->setPrefix(QStringLiteral("$ "));
-    auto *salePriceLabel = new QLabel(QStringLiteral("Precio Venta:"), card);
+    auto *salePriceLabel = UIUtils::createRequiredLabel("Precio Venta: ", card);
     m_priceErrorLabel = new QLabel(QStringLiteral("El precio de venta debe ser mayor a 0"), card);
     m_priceErrorLabel->setStyleSheet(QStringLiteral("color: red; font-size: 11px; font-weight: bold;"));
-    m_priceErrorLabel->setVisible(false); // Oculto por defecto
+    m_priceErrorLabel->setVisible(false); 
     grid->addWidget(salePriceLabel, row, 2);
     grid->addWidget(m_salePriceSpin, row, 3);
     grid->addWidget(m_priceErrorLabel, row + 1, 3);
@@ -402,6 +557,85 @@ void Step1DetailsView::onBrowseInvoiceFile()
 
     m_invoiceFilePath = path;
     m_invoiceFileLabel->setText(QFileInfo(path).fileName());
+    // El archivo nuevo deja sin efecto cualquier factura apartada, y su nombre
+    // sustituye al aviso, así que el tooltip que lo explicaba sobra. Hoy no
+    // puede haber una apartada al elegir archivo -- mientras la hay, la
+    // subida está bloqueada --, pero si eso cambiara, salir de Autofactura no
+    // debe reemplazar el archivo nuevo por el viejo.
+    m_suspendedInvoiceFilePath.clear();
+    m_invoiceFileLabel->setToolTip(QString());
+}
+
+void Step1DetailsView::generateCfdiRequest() {
+    constexpr const char *kCfdiTemplateResourcePath =
+        ":/templates/request_issuance_cfdi.html";
+    QFile resourceFile(kCfdiTemplateResourcePath);
+    if (!resourceFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+            tr("No se encontró el recurso:\n%1")
+                .arg(kCfdiTemplateResourcePath));
+        return;
+    }
+
+    const QByteArray htmlContent = resourceFile.readAll();
+    resourceFile.close();
+
+    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    const QString tempFilePath = QDir(tempDir).filePath("request_issuance_cfdi.html");
+
+    QFile tempFile(tempFilePath);
+    if (!tempFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo crear el archivo temporal en:\n%1")
+                                .arg(tempFilePath));
+        return;
+    }
+
+    // Que el temporal quede completo es condición para seguir: el éxito
+    // desbloquea la subida, y un temporal truncado la desbloquearía con una
+    // solicitud a medias. En modo Text, write() cuenta los bytes de
+    // htmlContent y no el \r que Windows agrega a cada salto, así que se
+    // compara contra size() tal cual. Y flush() se llama a mano porque una
+    // plantilla de pocos KB se queda entera en el búfer de QFile: un error de
+    // disco no aparecería hasta vaciarlo, y close() no lo reporta.
+    const bool fullyWritten =
+        tempFile.write(htmlContent) == htmlContent.size() && tempFile.flush();
+    tempFile.close();
+    if (!fullyWritten) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo escribir por completo el archivo temporal en:\n%1")
+                                .arg(tempFilePath));
+        return;
+    }
+
+    const bool opened = QDesktopServices::openUrl(QUrl::fromLocalFile(tempFilePath));
+    if (!opened) {
+        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
+                            tr("No se pudo abrir el navegador para mostrar:\n%1")
+                                .arg(tempFilePath));
+        return;
+    }
+
+    // Solo cuenta como generada cuando todo salió bien: se leyó la plantilla,
+    // el temporal se creó y se escribió completo, y openUrl() lo abrió. Cada
+    // falla anterior sale por su propio return sin tocar la bandera ni la
+    // factura apartada: ni se desbloquea la subida con una solicitud que el
+    // usuario nunca llegó a ver, ni se pierde una factura que todavía puede
+    // recuperar volviendo a Facturado.
+    m_cfdiRequestGenerated = true;
+
+    // Generada la solicitud, la factura apartada se descarta para siempre: en
+    // autofactura la factura se sube DESPUÉS de la solicitud, así que una
+    // elegida antes ya no cuenta, y la etiqueta vuelve a "Sin archivo", que
+    // ahora es exacto. Solo si había una apartada: generar la solicitud otra
+    // vez, con una factura subida después de la primera, no debe borrar de la
+    // etiqueta el nombre de esa factura, que sí vale.
+    if (!m_suspendedInvoiceFilePath.isEmpty()) {
+        m_suspendedInvoiceFilePath.clear();
+        m_invoiceFileLabel->setText(kNoInvoiceFileText);
+        m_invoiceFileLabel->setToolTip(QString());
+    }
+    refreshInvoiceFileControls();
 }
 
 void Step1DetailsView::reloadSubtypes()
@@ -412,19 +646,7 @@ void Step1DetailsView::reloadSubtypes()
     if (!parentId.isValid())
         return;
 
-    ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
-    QSqlDatabase &db = handle.database();
-    if (!db.isOpen())
-        return;
-
-    QSqlQuery query(db);
-    query.prepare(QStringLiteral(
-        "SELECT id, name FROM vehicle_categories_cat WHERE parent_id = :parent_id ORDER BY name"));
-    query.bindValue(QStringLiteral(":parent_id"), parentId);
-    if (query.exec()) {
-        while (query.next())
-            m_subtypeCombo->addItem(query.value(1).toString(), query.value(0));
-    }
+    UIUtils::populateCategoriesComboBox(m_subtypeCombo, parentId.toInt());
 }
 
 void Step1DetailsView::loadLookups()
@@ -434,37 +656,26 @@ void Step1DetailsView::loadLookups()
     if (!db.isOpen())
         return;
 
-    m_vehicleTypeCombo->clear();
-    QSqlQuery typeQuery(db);
-    if (typeQuery.exec(QStringLiteral(
-            "SELECT id, name FROM vehicle_categories_cat WHERE parent_id IS NULL ORDER BY name"))) {
-        while (typeQuery.next())
-            m_vehicleTypeCombo->addItem(typeQuery.value(1).toString(), typeQuery.value(0));
-    }
+    UIUtils::populateCategoriesComboBox(m_vehicleTypeCombo);
 
-    m_brandCombo->clear();
-    QSqlQuery brandQuery(db);
-    if (brandQuery.exec(QStringLiteral("SELECT id, name FROM brands_cat ORDER BY name"))) {
-        while (brandQuery.next())
-            m_brandCombo->addItem(brandQuery.value(1).toString(), brandQuery.value(0));
+    UIUtils::populateComboBox(m_brandCombo, "brands_cat");
 
-        m_brandCombo->setEditable(true);
+    m_brandCombo->setEditable(true);
 
-        QCompleter* completer = m_brandCombo->completer();
-        completer->setCompletionMode(QCompleter::PopupCompletion); // Muestra la lista desplegable al escribir
-        completer->setFilterMode(Qt::MatchContains);
-        m_brandCombo->setInsertPolicy(QComboBox::NoInsert);
+    QCompleter* completer = m_brandCombo->completer();
+    completer->setCompletionMode(QCompleter::PopupCompletion); // Muestra la lista desplegable al escribir
+    completer->setFilterMode(Qt::MatchContains);
+    m_brandCombo->setInsertPolicy(QComboBox::NoInsert);
 
-        connect(m_brandCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
-            QString wroteText = m_brandCombo->currentText();
+    connect(m_brandCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
+        QString wroteText = m_brandCombo->currentText();
 
-            int indexValido = m_brandCombo->findText(wroteText, Qt::MatchExactly);
+        int indexValido = m_brandCombo->findText(wroteText, Qt::MatchExactly);
 
-            if (indexValido == -1) {
-                m_brandCombo->setCurrentIndex(0);
-            }
-        });
-    }
+        if (indexValido == -1) {
+            m_brandCombo->setCurrentIndex(0);
+        }
+    });
 
     QSqlQuery umaQuery(db);
     umaQuery.prepare(QStringLiteral("SELECT value_param FROM global_configurations WHERE key_param = :key"));

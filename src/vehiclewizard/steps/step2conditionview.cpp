@@ -1,6 +1,7 @@
 #include "../../../include/vehiclewizard/steps/step2conditionview.h"
 #include "../../../include/db/connectionpool.h"
 #include "../../../include/vehiclewizard/components/conditionchecklistrow.h"
+#include "utils/UIUtils.h"
 
 #include <QComboBox>
 #include <QFormLayout>
@@ -27,12 +28,15 @@ QWidget *Step2ConditionView::buildBasicSpecsPanel()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
+    UIUtils::applyFloatingShadow(card);
 
     auto *title = new QLabel(QStringLiteral("Especificaciones básicas"), card);
     title->setProperty("class", QStringLiteral("h3"));
+    title->setStyleSheet("margin-bottom: 15px;");
 
     m_fuelTypeCombo = new QComboBox(card);
     m_cylindersCombo = new QComboBox(card);
+    m_cylindersCombo->setPlaceholderText("Seleccione una opción...");
     m_cylindersCombo->addItems({QStringLiteral("3"), QStringLiteral("4"), QStringLiteral("5"),
                                  QStringLiteral("6"), QStringLiteral("8")});
 
@@ -40,33 +44,39 @@ QWidget *Step2ConditionView::buildBasicSpecsPanel()
     // misma fuente que decide qué texto acepta la base. Antes eran literales
     // repetidos aquí, y cualquier retoque a una etiqueta rompía el CHECK.
     m_transmissionCombo = new QComboBox(card);
+    m_transmissionCombo->setPlaceholderText("Seleccione una opción...");
     for (domain::Transmission value : domain::allTransmissions())
         m_transmissionCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
     m_interiorMaterialCombo = new QComboBox(card);
-    m_interiorMaterialCombo->setEditable(true);
+    //m_interiorMaterialCombo->setEditable(true);
+    m_interiorMaterialCombo->setPlaceholderText("Seleccione una opción...");
     m_interiorMaterialCombo->addItems({QStringLiteral("Tela"), QStringLiteral("Piel"), QStringLiteral("Piel sintética")});
 
     m_windowRegulatorsCombo = new QComboBox(card);
+    m_windowRegulatorsCombo->setPlaceholderText("Seleccione una opción...");
     for (domain::WindowRegulators value : domain::allWindowRegulators())
         m_windowRegulatorsCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
     m_airConditioningCombo = new QComboBox(card);
+    m_airConditioningCombo->setPlaceholderText("Seleccione una opción...");
     for (domain::AirConditioning value : domain::allAirConditioningModes())
         m_airConditioningCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
     auto *form = new QFormLayout;
-    form->addRow(QStringLiteral("Combustible"), m_fuelTypeCombo);
-    form->addRow(QStringLiteral("Cilindros"), m_cylindersCombo);
-    form->addRow(QStringLiteral("Transmisión"), m_transmissionCombo);
-    form->addRow(QStringLiteral("Interiores"), m_interiorMaterialCombo);
-    form->addRow(QStringLiteral("Cristales"), m_windowRegulatorsCombo);
-    form->addRow(QStringLiteral("Aire Acondicionado"), m_airConditioningCombo);
+    form->addRow(QStringLiteral("Combustible <span style='color: #D90429; font-weight: bold;'>*</span>"), m_fuelTypeCombo);
+    form->addRow(QStringLiteral("Cilindros <span style='color: #D90429; font-weight: bold;'>*</span>"), m_cylindersCombo);
+    form->addRow(QStringLiteral("Transmisión <span style='color: #D90429; font-weight: bold;'>*</span>"), m_transmissionCombo);
+    form->addRow(QStringLiteral("Interiores <span style='color: #D90429; font-weight: bold;'>*</span>"), m_interiorMaterialCombo);
+    form->addRow(QStringLiteral("Cristales <span style='color: #D90429; font-weight: bold;'>*</span>"), m_windowRegulatorsCombo);
+    form->addRow(QStringLiteral("Aire Acondicionado <span style='color: #D90429; font-weight: bold;'>*</span>"), m_airConditioningCombo);
 
     auto *cardLayout = new QVBoxLayout(card);
     cardLayout->addWidget(title);
     cardLayout->addLayout(form);
     cardLayout->addStretch();
+
+    cardLayout->setContentsMargins(16, 16, 16, 16);
 
     return card;
 }
@@ -75,7 +85,12 @@ QWidget *Step2ConditionView::buildChecklistPanel()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
+    UIUtils::applyFloatingShadow(card);
+
+
     auto *cardLayout = new QVBoxLayout(card);
+
+    cardLayout->setContentsMargins(16, 16, 16, 16);
 
     auto *title = new QLabel(QStringLiteral("Detalles de la condición del vehículo"), card);
     title->setProperty("class", QStringLiteral("h3"));
@@ -111,14 +126,34 @@ void Step2ConditionView::showChecklistMessage(const QString &message)
 
 void Step2ConditionView::markAllInGroup(const QString &category, bool checked)
 {
+    bool allChecked = true;
+    int categoryCount = 0;
+
     for (ConditionChecklistRow *row : std::as_const(m_checklistRows)) {
-        if (row->category() == category)
-            row->setChecked(checked);
+        if (row->category() == category) {
+            categoryCount++;
+            if (!row->isChecked()) {
+                allChecked = false;
+                break;
+            }
+        }
+    }
+
+    if (categoryCount == 0) return;
+
+    bool targetState = !allChecked;
+
+    for (ConditionChecklistRow *row : std::as_const(m_checklistRows)) {
+        if (row->category() == category) {
+            row->setChecked(targetState);
+        }
     }
 }
 
 void Step2ConditionView::loadLookups()
 {
+    UIUtils::populateComboBox(m_fuelTypeCombo, "fuel_type_cat");
+
     QList<ConditionCatalogItem> catalog;
     QString catalogError;
 
@@ -130,13 +165,6 @@ void Step2ConditionView::loadLookups()
                 "No se pudo conectar con la base de datos, así que el checklist de condición "
                 "no está disponible."));
             return;
-        }
-
-        m_fuelTypeCombo->clear();
-        QSqlQuery query(db);
-        if (query.exec(QStringLiteral("SELECT id, name FROM fuel_type_cat ORDER BY name"))) {
-            while (query.next())
-                m_fuelTypeCombo->addItem(query.value(1).toString(), query.value(0));
         }
 
         catalog = ConditionCatalog::load(db, &catalogError);
@@ -176,7 +204,7 @@ void Step2ConditionView::populateChecklist(const QList<ConditionCatalogItem> &it
 
             auto *groupHeaderLayout = new QHBoxLayout;
             auto *groupLabel = new QLabel(currentCategory, m_checklistContent);
-            groupLabel->setProperty("class", QStringLiteral("form-label"));
+            groupLabel->setProperty("class", QStringLiteral("h4"));
             auto *markAllButton = new QPushButton(QStringLiteral("Marcar todo"), m_checklistContent);
             markAllButton->setProperty("class", QStringLiteral("secondary"));
             const QString category = currentCategory;

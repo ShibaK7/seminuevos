@@ -91,6 +91,8 @@ set(PROJECT_SOURCES
         src/vehiclewizard/steps/step2conditionview.cpp
         include/vehiclewizard/steps/step3filesview.h
         src/vehiclewizard/steps/step3filesview.cpp
+        include/vehiclewizard/uploadformatpolicy.h
+        src/vehiclewizard/uploadformatpolicy.cpp
         include/storage/localfilestoragemanager.h
         src/storage/localfilestoragemanager.cpp
         include/db/vehicleregistrationworker.h
@@ -110,6 +112,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
             resources/Resources.qrc
             include/mainwindow.h src/mainwindow.cpp ui/mainwindow.ui
             include/vehicleitemlist.h src/vehicleitemlist.cpp ui/vehicleitemlist.ui
+            include/utils/UIUtils.h
 
     )
 

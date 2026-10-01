@@ -17,8 +17,8 @@ QList<ConditionCatalogItem> ConditionCatalog::load(QSqlDatabase &db, QString *er
     // ejemplo insertados a mano con el DEFAULT 0) saldrían en orden
     // indefinido y la lista "bailaría" entre arranques.
     if (!query.exec(QStringLiteral(
-            "SELECT id, item_key, category, element, negative_label "
-            "FROM vehicle_conditions_cat ORDER BY sort_order, id"))) {
+            "SELECT id, category, element "
+            "FROM vehicle_conditions_cat ORDER BY id"))) {
         if (errorMessage)
             *errorMessage = query.lastError().text();
         return items;
@@ -27,10 +27,10 @@ QList<ConditionCatalogItem> ConditionCatalog::load(QSqlDatabase &db, QString *er
     while (query.next()) {
         ConditionCatalogItem item;
         item.id = query.value(0).toInt();
-        item.itemKey = query.value(1).toString();
-        item.category = query.value(2).toString();
-        item.element = query.value(3).toString();
-        item.negativeLabel = query.value(4).toString();
+        //item.itemKey = query.value(1).toString();
+        item.category = query.value(1).toString();
+        item.element = query.value(2).toString();
+        //item.negativeLabel = query.value(4).toString();
         items << item;
     }
 

@@ -19,6 +19,7 @@
 #include <QMessageBox>
 #include <QSqlDatabase>
 #include <QSqlError>
+#include <QStyleFactory>
 
 namespace {
 
@@ -80,12 +81,20 @@ protected:
 } // namespace
 
 void applyGlobalStyle(QApplication &app) {
-    QFile styleFile(":/resourcess/styles/styles/global-style.qss");
+    QFont globalFont = QApplication::font();
+    globalFont.setStyleHint(QFont::SansSerif);
+    globalFont.setFamilies({"Open Sans", "Segoe UI", "Roboto", "Arial"});
+    globalFont.setPointSize(15);
+    QApplication::setFont(globalFont);
+
+    QFile styleFile(":/resourcess/styles/styles/global-style-clean.qss");
     if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
-        printf("Loading style sheet...");
+        qDebug() << "Loading stylesheet from:" << styleFile.fileName();
         QTextStream stream(&styleFile);
         app.setStyleSheet(stream.readAll());
         styleFile.close();
+    } else {
+        qWarning() << "Could not open QSS file:" << styleFile.fileName();
     }
 }
 
@@ -93,6 +102,8 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setApplicationName("Seminuevos");
+
+    QApplication::setStyle(QStyleFactory::create("Fusion"));
 
     // La aplicación termina SOLO cuando se destruye la ventana principal (ver
     // el connect más abajo). Sin esto habría un segundo camino de salida: Qt
@@ -139,11 +150,15 @@ int main(int argc, char *argv[])
             return 1;
         }
 
+        /* TODO: Gradually remove schema initializer and seeders logic.
+        Let's let the infrastructure handle database creation and catalog filling. */
+
+
         // Aplicar el esquema BORRA la base. Por defecto se permite (estamos
         // en fase de definición y regenerar es más barato que migrar), pero
         // el .env puede desactivarlo para que un ambiente con datos reales
         // no se vacíe solo al instalar una build nueva.
-        const bool allowSchemaReset =
+        /*const bool allowSchemaReset =
             env.value(QStringLiteral("SCHEMA_AUTO_RESET"), QStringLiteral("true"))
                 .compare(QStringLiteral("false"), Qt::CaseInsensitive) != 0;
 
@@ -152,18 +167,18 @@ int main(int argc, char *argv[])
             QMessageBox::critical(nullptr, QStringLiteral("Error al inicializar la base de datos"),
                 schemaResult.errorMessage);
             return 1;
-        }
+        }*/
 
         // Catálogo REAL del checklist de condición (US-03.2). Va fuera de la
         // bandera SEED_TEST_USERS a propósito: el Paso 2 del wizard construye
         // sus renglones leyendo vehicle_conditions_cat, así que sin esto la
         // pantalla saldría vacía en cualquier ambiente. Es idempotente.
-        const ConditionCatalogSeeder::Result conditionCatalogResult = ConditionCatalogSeeder::run(db);
+        /*const ConditionCatalogSeeder::Result conditionCatalogResult = ConditionCatalogSeeder::run(db);
         if (!conditionCatalogResult.ok) {
             QMessageBox::critical(nullptr, QStringLiteral("Error al sembrar el catálogo de condiciones"),
                 conditionCatalogResult.errorMessage);
             return 1;
-        }
+        }*/
 
         // A diferencia del esquema, los usuarios de prueba son solo una
         // comodidad de desarrollo -- se insertan nada más si el .env lo pide
@@ -180,12 +195,12 @@ int main(int argc, char *argv[])
             // Catálogos dummy (tipos/subtipos de vehículo, marcas, combustibles)
             // para que los combos del wizard de registro no queden vacíos --
             // ver comentario en catalogseeder.h.
-            const CatalogSeeder::Result catalogResult = CatalogSeeder::run(db);
+            /*const CatalogSeeder::Result catalogResult = CatalogSeeder::run(db);
             if (!catalogResult.ok) {
                 QMessageBox::critical(nullptr, QStringLiteral("Error al crear catálogos de prueba"),
                     catalogResult.errorMessage);
                 return 1;
-            }
+            }*/
         }
 
         // El aviso del reset va AL FINAL, no justo después de aplicarlo: es un
@@ -193,7 +208,7 @@ int main(int argc, char *argv[])
         // de condiciones y los datos de desarrollo. Avisar antes dejaba la
         // aplicación esperando un clic con la base a medio poblar, y cerrarla
         // ahí la dejaba sin catálogo -- con el Paso 2 del wizard en blanco.
-        if (schemaResult.applied && schemaResult.hadExistingSchema) {
+        /*if (schemaResult.applied && schemaResult.hadExistingSchema) {
             QMessageBox::information(nullptr, QStringLiteral("Base de datos regenerada"),
                 QStringLiteral("La base se recreó desde cero y se perdieron los datos que "
                                 "tenía (esquema %1 -> %2).\n\n"
@@ -204,7 +219,7 @@ int main(int argc, char *argv[])
                              ? QStringLiteral("sin versionar")
                              : QString::number(schemaResult.previousVersion))
                     .arg(SchemaInitializer::kSchemaVersion));
-        }
+        }*/
     }
 
     LoginWindow login;

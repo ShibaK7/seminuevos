@@ -49,16 +49,23 @@ VehicleWizardView::VehicleWizardView(QWidget *parent)
     m_errorLabel->setVisible(false);
 
     m_cancelButton = new QPushButton(QStringLiteral("Cancelar"), this);
-    m_cancelButton->setProperty("class", QStringLiteral("secondary"));
+    m_cancelButton->setProperty("class", QStringLiteral("cancelButton"));
+    m_cancelButton->setIcon(QIcon(":/icons/cancel_dark.png"));
+    m_cancelButton->setIconSize(QSize(10, 10));
+    m_cancelButton->installEventFilter(this);
     connect(m_cancelButton, &QPushButton::clicked, this, &VehicleWizardView::onCancelClicked);
 
     m_printContractButton = new QPushButton(QStringLiteral("Imprimir Contrato"), this);
     m_printContractButton->setProperty("class", QStringLiteral("secondary"));
+    m_printContractButton->setIcon(QIcon(":/icons/printer.png"));
+    m_printContractButton->setIconSize(QSize(12, 12));
     m_printContractButton->setEnabled(false);
     connect(m_printContractButton, &QPushButton::clicked, this, &VehicleWizardView::onPrintContractClicked);
 
     m_saveButton = new QPushButton(QStringLiteral("Guardar"), this);
     m_saveButton->setProperty("class", QStringLiteral("primary"));
+    m_saveButton->setIcon(QIcon(":/icons/save.png"));
+    m_saveButton->setIconSize(QSize(12, 12));
     connect(m_saveButton, &QPushButton::clicked, this, &VehicleWizardView::onSaveClicked);
 
     auto *buttonsLayout = new QHBoxLayout;
@@ -109,14 +116,14 @@ void VehicleWizardView::onStepClicked(int index)
 void VehicleWizardView::onSaveClicked()
 {
     if (m_currentStep == 0) {
-        const domain::ValidationResult validation = m_step1->validate();
+        /*const domain::ValidationResult validation = m_step1->validate();
         if (!validation.isValid()) {
             m_step1->showError(validation.firstMessage());
             return;
         }
         m_step1->hideError();
         m_stepper->setStepCompleted(0, true);
-        m_maxUnlockedStep = std::max(m_maxUnlockedStep, 1);
+        m_maxUnlockedStep = std::max(m_maxUnlockedStep, 1);*/
         goToStep(1);
         return;
     }
@@ -266,4 +273,16 @@ void VehicleWizardView::showError(const QString &message)
 void VehicleWizardView::hideError()
 {
     m_errorLabel->setVisible(false);
+}
+
+bool VehicleWizardView::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == m_cancelButton) {
+        if (event->type() == QEvent::Enter) {
+            m_cancelButton->setIcon(QIcon(":/icons/cancel_white.png"));
+        } else if (event->type() == QEvent::Leave) {
+            m_cancelButton->setIcon(QIcon(":/icons/cancel_dark.png"));
+        }
+    }
+
+    return QWidget::eventFilter(watched, event);
 }
