@@ -32,7 +32,8 @@ services:
     image: adminer:latest
     restart: always
     ports:
-      - "8081:8081"
+      # Adminer listens on 8080 inside the container (HOST_PORT:CONTAINER_PORT).
+      - "8081:8080"
 
 volumes:
   seminuevos_pgdata:
