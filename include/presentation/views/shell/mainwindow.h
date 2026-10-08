@@ -19,15 +19,16 @@ namespace presentation {
 class InventoryPresenter;
 }
 
-class SidebarMenuItem;
-class NavTabItem;
-class OutlineButton;
 class VehicleWizardView;
 class QFrame;
 
 // Ventana principal: barra lateral de módulos y, dentro del área de contenido,
 // una pila que alterna entre la rejilla de inventario y el asistente de
 // registro.
+//
+// El menú lateral, las pestañas, el botón "Agregar Vehículo" y el logo vienen
+// de mainwindow.ui como widgets promovidos (ver docs/DESIGNER.md). Esta clase
+// solo los conecta.
 //
 // La rejilla es una vista pasiva (IInventoryView): no lee la base ni el disco.
 // InventoryPresenter le pide los filtros, lee fuera del hilo de la interfaz y
@@ -61,16 +62,12 @@ public:
 
 private:
     WizardFactory m_wizardFactory;
-    // --- Barra lateral ---
-    // Los renglones del menú no vienen del .ui: SidebarMenuItem recibe título
-    // e ícono por constructor, y el Designer solo sabe instanciar widgets con
-    // un constructor de (QWidget *).
-    void buildSidebarMenu();
 
     // --- Pestañas de contenido ---
-    // Mismo motivo que la barra lateral: NavTabItem recibe el título por
-    // constructor y el Designer no sabe instanciarlo.
-    void buildNavTabs();
+    // La línea gris bajo las pestañas es lo único de esa fila que no viene del
+    // .ui: el subrayado de la pestaña activa tiene que quedar encima de ella,
+    // y eso no se puede expresar con un layout.
+    void createNavDivider();
 
     // Recoloca el divisor de las pestañas. Va por filtro de eventos porque no
     // está en un layout: se superpone a la fila de pestañas.
@@ -94,17 +91,7 @@ private:
 
     Ui::MainWindow *ui;
 
-    // Propiedad del layout de la barra lateral, no de esta clase: se guardan
-    // los punteros solo para poder conectarlos y consultar su estado.
-    SidebarMenuItem *m_inventoryItem = nullptr;
-    SidebarMenuItem *m_commercialItem = nullptr;
-    SidebarMenuItem *m_financeItem = nullptr;
-    SidebarMenuItem *m_reportItem = nullptr;
-
-    NavTabItem *m_acquisitionTab = nullptr;
-    NavTabItem *m_consignmentTab = nullptr;
     QFrame *m_navDivider = nullptr;
-    OutlineButton *m_addVehicleButton = nullptr;
 
     // El asistente en curso, o nulo si no hay ninguno. Mientras no sea nulo,
     // openVehicleWizard() lo vuelve a mostrar en vez de crear otro: esto es

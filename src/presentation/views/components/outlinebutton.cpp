@@ -24,8 +24,8 @@ constexpr int kHeight = 34;
 
 } // namespace
 
-OutlineButton::OutlineButton(const QString &title, const QString &iconPath, QWidget *parent)
-    : StatefulTextButton(title, QStringLiteral("outline-button"), parent)
+OutlineButton::OutlineButton(QWidget *parent)
+    : StatefulTextButton(QString(), QStringLiteral("outline-button"), parent)
 {
     setFixedHeight(kHeight);
 
@@ -36,11 +36,26 @@ OutlineButton::OutlineButton(const QString &title, const QString &iconPath, QWid
 
     // Sin addStretch: el botón se ajusta a su contenido. Con él, el contorno se
     // estiraría por todo el espacio libre de la fila.
-    if (!iconPath.isEmpty())
-        setLeadingIcon(iconPath);
+}
+
+OutlineButton::OutlineButton(const QString &title, const QString &iconPath, QWidget *parent)
+    : OutlineButton(parent)
+{
+    setTitle(title);
+    setLeadingIcon(iconPath);
+}
+
+QString OutlineButton::leadingIcon() const
+{
+    return leadingIconPath();
 }
 
 void OutlineButton::setLeadingIcon(const QString &iconPath)
 {
+    // A diferencia del renglón del menú, aquí no hay hermanos con los que
+    // alinear el título: sin icono no se reserva la caja, porque el hueco
+    // vacío correría el texto hacia la derecha dentro de la pastilla.
+    if (iconPath.isEmpty() && leadingIconPath().isEmpty())
+        return;
     StatefulTextButton::setLeadingIcon(iconPath, kIconSize);
 }

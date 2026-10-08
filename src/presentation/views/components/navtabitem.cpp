@@ -16,8 +16,8 @@ constexpr int kBottomPadding = 10;
 
 } // namespace
 
-NavTabItem::NavTabItem(const QString &title, QWidget *parent)
-    : StatefulTextButton(title, QStringLiteral("nav-tab"), parent)
+NavTabItem::NavTabItem(QWidget *parent)
+    : StatefulTextButton(QString(), QStringLiteral("nav-tab"), parent)
     , m_underline(new QFrame(this))
 {
     setCheckable(true);
@@ -45,6 +45,12 @@ NavTabItem::NavTabItem(const QString &title, QWidget *parent)
     // este applyState(). Sin esta segunda llamada, la pestaña que arranca
     // seleccionada aparecería sin subrayado hasta el primer clic.
     refreshState();
+}
+
+NavTabItem::NavTabItem(const QString &title, QWidget *parent)
+    : NavTabItem(parent)
+{
+    setTitle(title);
 }
 
 void NavTabItem::applyState(const QString &state)

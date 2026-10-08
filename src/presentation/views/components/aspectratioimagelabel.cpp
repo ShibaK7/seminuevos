@@ -9,8 +9,28 @@ AspectRatioImageLabel::AspectRatioImageLabel(QWidget *parent)
 
 void AspectRatioImageLabel::setSourcePixmap(const QPixmap &pixmap)
 {
+    m_sourcePath.clear();
     m_sourcePixmap = pixmap;
     updateScaledPixmap();
+}
+
+QString AspectRatioImageLabel::sourcePath() const
+{
+    return m_sourcePath;
+}
+
+void AspectRatioImageLabel::setSourcePath(const QString &path)
+{
+    QPixmap pixmap;
+    if (path.startsWith(QStringLiteral(":/")))
+        pixmap.load(path);
+    else if (!path.isEmpty())
+        qWarning("AspectRatioImageLabel: sourcePath solo acepta recursos \":/\"; se ignora \"%s\"",
+                 qPrintable(path));
+
+    setSourcePixmap(pixmap);
+    // Después de setSourcePixmap(), que la borra.
+    m_sourcePath = path;
 }
 
 void AspectRatioImageLabel::resizeEvent(QResizeEvent *event)

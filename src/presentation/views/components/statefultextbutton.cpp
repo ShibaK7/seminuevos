@@ -63,6 +63,8 @@ QHBoxLayout *StatefulTextButton::contentLayout() const
 
 void StatefulTextButton::setLeadingIcon(const QString &iconPath, int size)
 {
+    m_leadingIconPath = iconPath;
+
     if (!m_iconLabel) {
         m_iconLabel = new QLabel(this);
         m_iconLabel->setProperty("class", m_styleClass + QStringLiteral("-icon"));
@@ -85,6 +87,11 @@ void StatefulTextButton::setLeadingIcon(const QString &iconPath, int size)
         return;
     }
     m_iconLabel->setPixmap(source.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
+QString StatefulTextButton::leadingIconPath() const
+{
+    return m_leadingIconPath;
 }
 
 QVBoxLayout *StatefulTextButton::rootLayout() const

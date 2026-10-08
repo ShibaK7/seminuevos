@@ -2,11 +2,8 @@
 #include "ui_mainwindow.h"
 
 #include "presentation/views/components/navtabitem.h"
-#include "presentation/views/components/outlinebutton.h"
-#include "presentation/views/components/sidebarmenuitem.h"
 #include "presentation/presenters/inventorypresenter.h"
 #include "presentation/views/inventory/vehicleitemlist.h"
-#include "presentation/views/components/aspectratioimagelabel.h"
 #include "presentation/views/wizard/vehiclewizardview.h"
 
 #include <QBoxLayout>
@@ -88,14 +85,14 @@ MainWindow::MainWindow(QWidget *parent)
     // este atributo. inventoryPage es un QWidget pelado del Designer.
     ui->inventoryPage->setAttribute(Qt::WA_StyledBackground, true);
 
-    buildSidebarMenu();
-    buildNavTabs();
+    createNavDivider();
 
-    // setChecked y no click(): click() emite clicked(), que dispararía una
-    // recarga del inventario antes de que los filtros estén poblados.
-    // autoExclusive ya se encarga de desmarcar a los hermanos.
-    m_inventoryItem->setChecked(true);
-    m_acquisitionTab->setChecked(true);
+    // La selección inicial va aquí y no como `checked` en el .ui: Designer ve
+    // los promovidos como QPushButton no checkable, y al guardar reescribe
+    // checked=true como false. setChecked y no click(): click() emite
+    // clicked(), que recargaría el inventario antes de poblar los filtros.
+    ui->inventoryItem->setChecked(true);
+    ui->acquisitionTab->setChecked(true);
 
     populateStatusFilter();
     applyDefaultDateRange();
@@ -112,12 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->estado->setMinimumWidth(kStatusFilterMinWidth);
     ui->estado->setFixedHeight(kFilterControlHeight);
 
-    m_addVehicleButton =
-        new OutlineButton(QStringLiteral("Agregar Vehículo"), QStringLiteral(":/icons/plus.png"),
-                          ui->filterBar);
-    ui->horizontalLayout_3->addWidget(m_addVehicleButton);
-
-    connect(m_addVehicleButton, &QPushButton::clicked, this, &MainWindow::openVehicleWizard);
+    connect(ui->addVehicleButton, &QPushButton::clicked, this, &MainWindow::openVehicleWizard);
 
     // Las pestañas e Inventario en el menú solo cambian de página. Un
     // asistente abierto no se cierra por eso: queda vivo y oculto, con lo
@@ -126,21 +118,21 @@ MainWindow::MainWindow(QWidget *parent)
     // Las sub-pestañas Adquisición / Consignación todavía no filtran: por ahora
     // la lista muestra las dos ramas. Solo aseguran que se vuelva a ver el
     // inventario si el asistente estaba encima.
-    connect(m_acquisitionTab, &QPushButton::clicked, this,
+    connect(ui->acquisitionTab, &QPushButton::clicked, this,
             [this] { ui->mainContentStack->setCurrentWidget(ui->inventoryPage); });
-    connect(m_consignmentTab, &QPushButton::clicked, this,
+    connect(ui->consignmentTab, &QPushButton::clicked, this,
             [this] { ui->mainContentStack->setCurrentWidget(ui->inventoryPage); });
 
-    connect(m_inventoryItem, &QPushButton::clicked, this,
+    connect(ui->inventoryItem, &QPushButton::clicked, this,
             [this] { ui->mainContentStack->setCurrentWidget(ui->inventoryPage); });
     // Los otros tres módulos no existen todavía. Se avisa y se devuelve el
     // resaltado a Inventario: con autoExclusive, un manejador vacío dejaría la
     // barra lateral marcando un módulo en el que el usuario no está.
-    connect(m_commercialItem, &QPushButton::clicked, this,
+    connect(ui->commercialItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Comercial")); });
-    connect(m_financeItem, &QPushButton::clicked, this,
+    connect(ui->financeItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Finanzas")); });
-    connect(m_reportItem, &QPushButton::clicked, this,
+    connect(ui->reportItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Reportes")); });
 }
 
@@ -153,66 +145,23 @@ void MainWindow::showModulePending(const QString &moduleName)
 {
     statusBar()->showMessage(
         QStringLiteral("El módulo de %1 todavía no está disponible.").arg(moduleName), 4000);
-    m_inventoryItem->setChecked(true);
+    ui->inventoryItem->setChecked(true);
 }
 
 // ---------------------------------------------------------------------------
-// Barra lateral
+// Pestañas de contenido
 // ---------------------------------------------------------------------------
 
-void MainWindow::buildSidebarMenu()
+void MainWindow::createNavDivider()
 {
-    // El logo se carga aquí y no con la propiedad `pixmap` del Designer:
-    // AspectRatioImageLabel reescala a partir de su pixmap ORIGINAL, y
-    // QLabel::setPixmap (que es lo que genera esa propiedad) no lo alimenta.
-    // Declararlo en el .ui dejaba el logo en blanco al primer resize.
-    ui->logoLabel->setSourcePixmap(
-        QPixmap(QStringLiteral(":/resources/images/images/logo-seminuevos.jpeg")));
-
-    // Los cuatro módulos, declarados en un solo lugar. Agregar uno nuevo es
-    // una línea aquí: el aspecto y el comportamiento los aporta el componente.
-    const struct
-    {
-        QString title;
-        QString iconPath;
-        SidebarMenuItem **target;
-    } entries[] = {
-        {QStringLiteral("Inventario"), QStringLiteral(":/icons/car.png"), &m_inventoryItem},
-        {QStringLiteral("Comercial"), QStringLiteral(":/icons/dollar.png"), &m_commercialItem},
-        {QStringLiteral("Finanzas"), QStringLiteral(":/icons/bank.png"), &m_financeItem},
-        {QStringLiteral("Reportes"), QStringLiteral(":/icons/bar-chart.png"), &m_reportItem},
-    };
-
-    // Se insertan DESPUÉS del logo y ANTES del espaciador, que es el que
-    // empuja el menú hacia arriba: agregándolos al final del layout quedarían
-    // debajo de él, es decir, pegados al fondo de la barra.
-    int position = 1; // 0 es el logo
-    for (const auto &entry : entries) {
-        auto *item = new SidebarMenuItem(entry.title, entry.iconPath, ui->sidebarFrame);
-        ui->verticalLayout_2->insertWidget(position++, item);
-        *entry.target = item;
-    }
-}
-
-void MainWindow::buildNavTabs()
-{
-    // El divisor se crea ANTES que las pestañas a propósito: entre hermanos
-    // que se solapan, Qt pinta primero al que se creó antes, así que el
-    // subrayado de la pestaña activa queda por encima de la línea gris. Si se
-    // creara después, la línea taparía el subrayado.
     m_navDivider = new QFrame(ui->navBar);
     m_navDivider->setObjectName(QStringLiteral("navDivider"));
     m_navDivider->setFrameShape(QFrame::NoFrame);
     m_navDivider->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-    // Se insertan al inicio y en orden, antes del espaciador que la fila trae
-    // del .ui: es ese espaciador el que las mantiene juntas a la izquierda en
-    // vez de repartidas por todo el ancho.
-    m_acquisitionTab = new NavTabItem(QStringLiteral("Adquisición"), ui->navBar);
-    m_consignmentTab = new NavTabItem(QStringLiteral("Consignación"), ui->navBar);
-
-    ui->horizontalLayout_2->insertWidget(0, m_acquisitionTab);
-    ui->horizontalLayout_2->insertWidget(1, m_consignmentTab);
+    // Entre hermanos que se solapan, Qt pinta encima al que se creó después.
+    // Las pestañas salen de setupUi, así que ya existían: sin lower(), la
+    // línea gris taparía el subrayado de la pestaña activa.
+    m_navDivider->lower();
 
     ui->navBar->installEventFilter(this);
     layoutNavDivider();
@@ -253,7 +202,7 @@ void MainWindow::layoutNavDivider()
     // borde de la marca de selección en lugar de cruzarla. Anclada a la
     // pestaña cae en el píxel superior de la franja, pase lo que pase con la
     // altura de la fila.
-    const int tabBottom = m_acquisitionTab->geometry().bottom() + 1;
+    const int tabBottom = ui->acquisitionTab->geometry().bottom() + 1;
     const int y = tabBottom - NavTabItem::kUnderlineHeight;
 
     const int width = ui->navBar->width() - leftInset - rightInset;

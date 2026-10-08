@@ -27,13 +27,45 @@ public:
 };
 } // namespace
 
-WizardStepper::WizardStepper(const QStringList &stepLabels, QWidget *parent)
+WizardStepper::WizardStepper(QWidget *parent)
     : QWidget(parent)
-    , m_labels(stepLabels)
+    , m_row(new QHBoxLayout(this))
 {
-    auto *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(24);
+    m_row->setContentsMargins(0, 0, 0, 0);
+    m_row->setSpacing(24);
+    // Mantiene los pasos juntos a la izquierda; setSteps() lo vuelve a poner
+    // al final de la fila cada vez que la reconstruye.
+    m_row->addStretch();
+}
+
+WizardStepper::WizardStepper(const QStringList &stepLabels, QWidget *parent)
+    : WizardStepper(parent)
+{
+    setSteps(stepLabels);
+}
+
+QStringList WizardStepper::steps() const
+{
+    return m_labels;
+}
+
+void WizardStepper::setSteps(const QStringList &stepLabels)
+{
+    // Fuera la fila anterior, con su stretch final. deleteLater() y no delete:
+    // si los pasos se cambian desde un manejador de stepClicked, el botón que
+    // emitió el clic todavía está a media ejecución.
+    while (QLayoutItem *item = m_row->takeAt(0)) {
+        if (QWidget *widget = item->widget()) {
+            widget->hide();
+            widget->deleteLater();
+        }
+        delete item;
+    }
+    m_buttons.clear();
+    m_textLabels.clear();
+    m_iconLabels.clear();
+    m_completed.clear();
+    m_labels = stepLabels;
 
     const QPixmap badgePixmap(QStringLiteral(":/icons/check-badge-green.png"));
 
@@ -65,13 +97,13 @@ WizardStepper::WizardStepper(const QStringList &stepLabels, QWidget *parent)
         innerLayout->addWidget(textLabel, 0, Qt::AlignVCenter);
         innerLayout->addWidget(iconLabel, 0, Qt::AlignVCenter);
 
-        layout->addWidget(button);
+        m_row->addWidget(button);
         m_buttons << button;
         m_textLabels << textLabel;
         m_iconLabels << iconLabel;
         m_completed << false;
     }
-    layout->addStretch();
+    m_row->addStretch();
 
     // Aspecto de arranque mientras nadie diga otra cosa: el primer paso como
     // actual y los demás pendientes. El wizard lo reemplaza en cuanto valida

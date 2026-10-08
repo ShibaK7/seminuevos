@@ -110,6 +110,49 @@
          <property name="alignment">
           <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
+         <property name="sourcePath" stdset="0">
+          <string notr="true">:/resources/images/images/logo-seminuevos.jpeg</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="SidebarMenuItem" name="inventoryItem">
+         <property name="title" stdset="0">
+          <string>Inventario</string>
+         </property>
+         <property name="leadingIcon" stdset="0">
+          <string notr="true">:/icons/car.png</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="SidebarMenuItem" name="commercialItem">
+         <property name="title" stdset="0">
+          <string>Comercial</string>
+         </property>
+         <property name="leadingIcon" stdset="0">
+          <string notr="true">:/icons/dollar.png</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="SidebarMenuItem" name="financeItem">
+         <property name="title" stdset="0">
+          <string>Finanzas</string>
+         </property>
+         <property name="leadingIcon" stdset="0">
+          <string notr="true">:/icons/bank.png</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="SidebarMenuItem" name="reportItem">
+         <property name="title" stdset="0">
+          <string>Reportes</string>
+         </property>
+         <property name="leadingIcon" stdset="0">
+          <string notr="true">:/icons/bar-chart.png</string>
+         </property>
         </widget>
        </item>
        <item>
@@ -213,7 +256,7 @@
              <string/>
             </property>
             <property name="pixmap">
-             <pixmap resource="../resources/Resources.qrc">:/icons/avatar.png</pixmap>
+             <pixmap resource="../../resources/Resources.qrc">:/icons/avatar.png</pixmap>
             </property>
            </widget>
           </item>
@@ -319,6 +362,20 @@
                   <number>0</number>
                  </property>
                  <item>
+                  <widget class="NavTabItem" name="acquisitionTab">
+                   <property name="title" stdset="0">
+                    <string>Adquisición</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="NavTabItem" name="consignmentTab">
+                   <property name="title" stdset="0">
+                    <string>Consignación</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <spacer name="horizontalSpacer">
                    <property name="orientation">
                     <enum>Qt::Orientation::Horizontal</enum>
@@ -342,7 +399,7 @@
                 <property name="frameShadow">
                  <enum>QFrame::Shadow::Raised</enum>
                 </property>
-                <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0,0,1">
+                <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0,0,1,0">
                  <property name="spacing">
                   <number>7</number>
                  </property>
@@ -457,6 +514,16 @@
                    </property>
                   </spacer>
                  </item>
+                 <item>
+                  <widget class="OutlineButton" name="addVehicleButton">
+                   <property name="title" stdset="0">
+                    <string>Agregar Vehículo</string>
+                   </property>
+                   <property name="leadingIcon" stdset="0">
+                    <string notr="true">:/icons/plus.png</string>
+                   </property>
+                  </widget>
+                 </item>
                 </layout>
                </widget>
               </item>
@@ -503,9 +570,37 @@
    <extends>QLabel</extends>
    <header>presentation/views/components/aspectratioimagelabel.h</header>
   </customwidget>
+  <customwidget>
+   <class>NavTabItem</class>
+   <extends>QPushButton</extends>
+   <header>presentation/views/components/navtabitem.h</header>
+  </customwidget>
+  <customwidget>
+   <class>OutlineButton</class>
+   <extends>QPushButton</extends>
+   <header>presentation/views/components/outlinebutton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SidebarMenuItem</class>
+   <extends>QPushButton</extends>
+   <header>presentation/views/components/sidebarmenuitem.h</header>
+  </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>estado</tabstop>
+  <tabstop>fechaInicio</tabstop>
+  <tabstop>fechaFin</tabstop>
+  <tabstop>vehicleList</tabstop>
+  <tabstop>inventoryItem</tabstop>
+  <tabstop>commercialItem</tabstop>
+  <tabstop>financeItem</tabstop>
+  <tabstop>reportItem</tabstop>
+  <tabstop>acquisitionTab</tabstop>
+  <tabstop>consignmentTab</tabstop>
+  <tabstop>addVehicleButton</tabstop>
+ </tabstops>
  <resources>
-  <include location="../resources/Resources.qrc"/>
+  <include location="../../resources/Resources.qrc"/>
  </resources>
  <connections/>
 </ui>

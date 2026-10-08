@@ -40,9 +40,17 @@ class QVBoxLayout;
 //
 // El constructor es protected: la clase no corresponde por sí sola a ningún
 // control de la interfaz, solo al comportamiento que sus herederas comparten.
+// Por lo mismo, en Qt Designer no se promueve a esta clase sino a sus
+// herederas (ver docs/DESIGNER.md).
 class StatefulTextButton : public QPushButton
 {
     Q_OBJECT
+    // Q_PROPERTY y no solo el par title()/setTitle(): el .ui declara el título
+    // como propiedad dinámica y uic lo aplica con setProperty("title", ...).
+    // setProperty solo llega a setTitle() si la propiedad está registrada en
+    // el metaobjeto; sin esto, Qt guardaría el valor aparte y el botón se
+    // quedaría sin texto.
+    Q_PROPERTY(QString title READ title WRITE setTitle)
 
 public:
     QString title() const;
@@ -72,6 +80,11 @@ protected:
     // tercera podría: escribir el escalado del pixmap tres veces era garantía
     // de que se escribiera distinto.
     void setLeadingIcon(const QString &iconPath, int size);
+
+    // La última ruta que recibió setLeadingIcon(), tal cual llegó (vacía si
+    // nunca se pidió icono). Es lo que leen las propiedades `leadingIcon` de
+    // las subclases: el pixmap ya escalado no permite saber de dónde salió.
+    QString leadingIconPath() const;
 
     // Layout raíz, para apilar algo bajo la fila de contenido.
     QVBoxLayout *rootLayout() const;
@@ -103,6 +116,7 @@ private:
     // Nulo mientras nadie pida icono: un control sin icono no paga por una
     // etiqueta vacía que además ocuparía espacio en la fila.
     QLabel *m_iconLabel = nullptr;
+    QString m_leadingIconPath;
     QString m_styleClass;
     bool m_hovered = false;
 };

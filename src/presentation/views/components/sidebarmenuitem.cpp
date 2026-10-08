@@ -22,8 +22,8 @@ constexpr int kVerticalPadding = 13;
 
 } // namespace
 
-SidebarMenuItem::SidebarMenuItem(const QString &title, const QString &iconPath, QWidget *parent)
-    : StatefulTextButton(title, QStringLiteral("menu-bar"), parent)
+SidebarMenuItem::SidebarMenuItem(QWidget *parent)
+    : StatefulTextButton(QString(), QStringLiteral("menu-bar"), parent)
 {
     setCheckable(true);
     // Los cuatro renglones del menú son hermanos, así que esto solo les basta
@@ -35,11 +35,26 @@ SidebarMenuItem::SidebarMenuItem(const QString &title, const QString &iconPath, 
     layout->setContentsMargins(kLeftPadding, kVerticalPadding, kRightPadding, kVerticalPadding);
     layout->setSpacing(kIconTextSpacing);
 
-    setLeadingIcon(iconPath);
+    // La caja del icono se crea desde ya, aunque la ruta llegue después (por
+    // la propiedad leadingIcon del .ui): así el renglón tiene su tamaño final
+    // desde el principio y un renglón sin icono conserva la sangría del título.
+    setLeadingIcon(QString());
 
     // Empuja icono y título a la izquierda: la pastilla ocupa todo el ancho de
     // la barra, pero su contenido se alinea al inicio.
     layout->addStretch();
+}
+
+SidebarMenuItem::SidebarMenuItem(const QString &title, const QString &iconPath, QWidget *parent)
+    : SidebarMenuItem(parent)
+{
+    setTitle(title);
+    setLeadingIcon(iconPath);
+}
+
+QString SidebarMenuItem::leadingIcon() const
+{
+    return leadingIconPath();
 }
 
 void SidebarMenuItem::setLeadingIcon(const QString &iconPath)

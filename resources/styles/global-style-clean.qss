@@ -753,3 +753,16 @@ QWidget#cardPanel {
     border-radius: 12px;
     margin-bottom: 16px;
 }
+
+/* Tarjeta por clase: lo que en Designer se pone como propiedad dinámica
+   class="card" (sin marcar Translatable). Es el resultado combinado de las dos
+   reglas #cardPanel de arriba, y convive con ellas hasta que el código deje de
+   usar ese objectName: un objectName se repite entre tarjetas y Designer no lo
+   permite dentro de un mismo .ui. */
+QFrame[class="card"],
+QWidget[class="card"] {
+    background-color: #FFFFFF;
+    border: 1px solid #E6EAF2;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}

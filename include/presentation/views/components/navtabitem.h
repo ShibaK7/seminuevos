@@ -24,6 +24,10 @@ class QFrame;
 // Comparte tipografía y colores con SidebarMenuItem por herencia de
 // StatefulTextButton: son dos controles de navegación y no tendría por qué
 // leerse distinto el texto de uno y de otro.
+//
+// Se promueve en Qt Designer (clase base QPushButton) con la propiedad
+// dinámica `title`. La clase de QSS, checkable y autoExclusive los fija el
+// constructor.
 class NavTabItem : public StatefulTextButton
 {
     Q_OBJECT
@@ -35,6 +39,9 @@ public:
     // cuanto alguien cambiara uno.
     static constexpr int kUnderlineHeight = 2;
 
+    // El que usa uic con el widget promovido; el título llega después, por la
+    // propiedad `title` del .ui.
+    explicit NavTabItem(QWidget *parent = nullptr);
     explicit NavTabItem(const QString &title, QWidget *parent = nullptr);
 
 protected:

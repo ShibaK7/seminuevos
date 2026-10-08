@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QWidget>
 
+class QHBoxLayout;
 class QPushButton;
 class QLabel;
 
@@ -31,12 +32,27 @@ class QLabel;
 // stepClicked(). Los pasos bloqueados también lo emiten: el wizard aprovecha
 // el clic para explicar por qué no se puede pasar, en vez de que el clic se
 // pierda sin respuesta.
+//
+// Se puede promover en Qt Designer (clase base QWidget) con la propiedad
+// dinámica `steps` (StringList). Los estados de los pasos son solo de
+// ejecución: no se declaran en el .ui.
 class WizardStepper : public QWidget
 {
     Q_OBJECT
+    // Títulos de los pasos, en orden. Q_PROPERTY para que el .ui pueda
+    // declararlos: uic los aplica con setProperty("steps", ...).
+    Q_PROPERTY(QStringList steps READ steps WRITE setSteps)
 
 public:
+    // El que usa uic con el widget promovido: arranca sin pasos.
+    explicit WizardStepper(QWidget *parent = nullptr);
     explicit WizardStepper(const QStringList &stepLabels, QWidget *parent = nullptr);
+
+    QStringList steps() const;
+    // Reconstruye la fila con un botón por título: el primero como "current" y
+    // los demás "pending", todos sin palomita. Lo que se haya pintado antes con
+    // setStepState() se pierde y hay que volver a pintarlo.
+    void setSteps(const QStringList &stepLabels);
 
     // Pinta el paso `index`. `state` es uno de los estados de arriba;
     // `complete` muestra u oculta la palomita; `hint` es el tooltip de un paso
@@ -49,6 +65,7 @@ signals:
     void stepClicked(int index);
 
 private:
+    QHBoxLayout *m_row;
     QStringList m_labels;
     QList<QPushButton *> m_buttons;
     QList<QLabel *> m_textLabels;
