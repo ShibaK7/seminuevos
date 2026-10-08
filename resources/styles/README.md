@@ -4,6 +4,19 @@ This document outlines the official User Interface Design System for the **DE LA
 
 ---
 
+## 📁 Style Sheet Files
+
+| File | Resource path | Applied to |
+| :--- | :--- | :--- |
+| `global-style-clean.qss` | `:/styles/global-style-clean.qss` | The whole application, once the main window opens (`CompositionRoot`). |
+| `login.qss` | `:/styles/login.qss` | The login window only. It is shown before the global sheet, which would override its background. |
+| `vehicle-card.qss` | `:/styles/vehicle-card.qss` | Each inventory card (`VehicleItemList`), on the card itself so its rules win over the generic global ones. |
+
+* **No `styleSheet` inside `.ui` files** and no `setStyleSheet()` for states: states are dynamic properties (`hasError`, `stepState`, `status`) matched by rules in these files. The `architecture` test rejects embedded style sheets.
+* Style classes go in the `class` dynamic property (for example `primary`, `secondary`, `card`); see `docs/DESIGNER.md`.
+
+---
+
 ## 🎨 1. Color Palette & Design Tokens
 
 The color system is derived from the official company branding. To prevent visual fatigue while keeping brand identity strong, **DE LA HOZ Royal Blue** is used for primary brand accents, and **DE LA HOZ Crimson Red** is reserved for high-priority alerts, errors, and status tags.
