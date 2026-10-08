@@ -133,6 +133,17 @@ int main(int argc, char *argv[])
         AppConfig::setStorageRoot(storageRoot);
     }
 
+    // Navegación libre en el asistente de registro, solo para desarrollo (ver
+    // .env.example). Se enciende únicamente con un "true" o un "1" explícitos:
+    // si la variable falta o trae otra cosa, el asistente valida, que es lo
+    // seguro.
+    {
+        const QString freeNavigation = env.value(QStringLiteral("WIZARD_FREE_NAVIGATION")).trimmed();
+        AppConfig::setWizardFreeNavigation(
+            freeNavigation.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0
+            || freeNavigation == QStringLiteral("1"));
+    }
+
     // Antes de mostrar el login dejamos el esquema al día. El script solo se
     // ejecuta cuando la versión instalada no coincide con
     // SchemaInitializer::kSchemaVersion; en un arranque normal esto no toca

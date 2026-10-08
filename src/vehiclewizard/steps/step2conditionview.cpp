@@ -239,14 +239,25 @@ void Step2ConditionView::applyTo(domain::VehicleBuilder &builder) const
     fuelType.name = m_fuelTypeCombo->currentText();
     conditions.setFuelType(fuelType);
 
-    (void)conditions.setCylinders(m_cylindersCombo->currentText().toInt());
-    conditions.setTransmission(
-        static_cast<domain::Transmission>(m_transmissionCombo->currentData().toInt()));
+    // Un combo sin elegir (índice -1) no se vuelca: así el dominio lo reporta
+    // como faltante. Leerlo de todos modos convertía el userData vacío en 0,
+    // es decir, en el primer valor del enum, y ese dato inventado llegaba a la
+    // base sin que nadie lo hubiera capturado.
+    if (m_cylindersCombo->currentIndex() >= 0)
+        (void)conditions.setCylinders(m_cylindersCombo->currentText().toInt());
+    if (m_transmissionCombo->currentIndex() >= 0) {
+        conditions.setTransmission(
+            static_cast<domain::Transmission>(m_transmissionCombo->currentData().toInt()));
+    }
     (void)conditions.setInteriorMaterial(m_interiorMaterialCombo->currentText());
-    conditions.setWindowRegulators(
-        static_cast<domain::WindowRegulators>(m_windowRegulatorsCombo->currentData().toInt()));
-    conditions.setAirConditioning(
-        static_cast<domain::AirConditioning>(m_airConditioningCombo->currentData().toInt()));
+    if (m_windowRegulatorsCombo->currentIndex() >= 0) {
+        conditions.setWindowRegulators(
+            static_cast<domain::WindowRegulators>(m_windowRegulatorsCombo->currentData().toInt()));
+    }
+    if (m_airConditioningCombo->currentIndex() >= 0) {
+        conditions.setAirConditioning(
+            static_cast<domain::AirConditioning>(m_airConditioningCombo->currentData().toInt()));
+    }
 
     builder.setConditions(conditions);
 
@@ -261,4 +272,14 @@ void Step2ConditionView::applyTo(domain::VehicleBuilder &builder) const
     }
 
     builder.setInspection(inspection);
+}
+
+domain::ValidationResult Step2ConditionView::validate() const
+{
+    // Mismo criterio que Step1DetailsView::validate(): un builder desechable
+    // con lo capturado, y las reglas las pone el dominio. validateConditionData()
+    // revisa solo las condiciones y el checklist, no los datos del Paso 1.
+    domain::VehicleBuilder builder;
+    applyTo(builder);
+    return builder.validateConditionData();
 }

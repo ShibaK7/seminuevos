@@ -2,6 +2,7 @@
 #define STEP2CONDITIONVIEW_H
 
 #include "../../db/conditioncatalog.h"
+#include "domain/validationresult.h"
 #include "domain/vehiclebuilder.h"
 
 #include <QList>
@@ -18,8 +19,12 @@ class ConditionChecklistRow;
 // vehicle_conditions_cat, así que agregar o renombrar un elemento no
 // requiere recompilar.
 //
-// Sin validación obligatoria -- consistente con el post-it del wireframe
-// original ("no hay mínimos definidos").
+// Las especificaciones básicas son obligatorias (combustible, cilindros,
+// transmisión, cristales y aire acondicionado), pero cuáles y con qué reglas
+// lo decide el dominio, no esta vista: validate() arma un VehicleBuilder y le
+// pregunta, igual que el Paso 1. El checklist, en cambio, no tiene mínimos --
+// consistente con el post-it del wireframe original ("no hay mínimos
+// definidos").
 class Step2ConditionView : public QWidget
 {
     Q_OBJECT
@@ -32,7 +37,15 @@ public:
     // armado pero vacío: sin conexión garantizada no se puede poblar.
     void loadLookups();
 
+    // Vuelca los widgets sobre el builder. Un combo sin elegir no se vuelca,
+    // para que el dominio lo reporte como faltante en vez de recibir un valor
+    // que nadie capturó.
     void applyTo(domain::VehicleBuilder &builder) const;
+
+    // Arma un builder desechable con lo capturado y le pregunta al dominio
+    // solo por lo de este paso (validateConditionData()), sin reclamar datos
+    // que se capturan en los otros.
+    domain::ValidationResult validate() const;
 
 private:
     QWidget *buildBasicSpecsPanel();

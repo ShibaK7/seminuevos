@@ -40,7 +40,6 @@ WizardStepper::WizardStepper(const QStringList &stepLabels, QWidget *parent)
     for (int i = 0; i < m_labels.size(); ++i) {
         auto *button = new StepButton(this);
         button->setProperty("class", QStringLiteral("wizard-step"));
-        button->setCursor(Qt::PointingHandCursor);
         button->setFlat(true);
         connect(button, &QPushButton::clicked, this, [this, i]() { emit stepClicked(i); });
 
@@ -74,46 +73,51 @@ WizardStepper::WizardStepper(const QStringList &stepLabels, QWidget *parent)
     }
     layout->addStretch();
 
-    refreshButton(0);
+    // Aspecto de arranque mientras nadie diga otra cosa: el primer paso como
+    // actual y los demás pendientes. El wizard lo reemplaza en cuanto valida
+    // sus pasos.
+    for (int i = 0; i < m_buttons.size(); ++i) {
+        setStepState(i, i == 0 ? QStringLiteral("current") : QStringLiteral("pending"), false,
+                     QString());
+    }
 }
 
-void WizardStepper::setCurrentStep(int index)
-{
-    if (index < 0 || index >= m_buttons.size() || index == m_currentStep)
-        return;
-
-    const int previous = m_currentStep;
-    m_currentStep = index;
-    refreshButton(previous);
-    refreshButton(m_currentStep);
-}
-
-void WizardStepper::setStepCompleted(int index, bool completed)
+void WizardStepper::setStepState(int index, const QString &state, bool complete, const QString &hint)
 {
     if (index < 0 || index >= m_buttons.size())
         return;
 
-    m_completed[index] = completed;
-    refreshButton(index);
-}
-
-void WizardStepper::refreshButton(int index)
-{
     QPushButton *button = m_buttons.at(index);
     QLabel *textLabel = m_textLabels.at(index);
-    QLabel *iconLabel = m_iconLabels.at(index);
-    const bool completed = m_completed.at(index);
-    const bool isCurrent = (index == m_currentStep);
 
-    iconLabel->setVisible(completed);
+    m_completed[index] = complete;
+    m_iconLabels.at(index)->setVisible(complete);
 
-    const QString state = isCurrent ? QStringLiteral("current")
-                                     : (completed ? QStringLiteral("done") : QStringLiteral("pending"));
+    // El cursor y el tooltip van en el botón: los QLabel de adentro no tienen
+    // los suyos, así que heredan el cursor y le pasan al botón el evento del
+    // tooltip. Los dos aparecen igual al pasar sobre el texto.
+    const bool locked = (state == QStringLiteral("locked"));
+    button->setCursor(locked ? Qt::ForbiddenCursor : Qt::PointingHandCursor);
+    button->setToolTip(locked ? hint : QString());
+
+    // El wizard vuelve a pintar todos los pasos después de cada edición, y casi
+    // siempre con el mismo estado. Lo único caro aquí es volver a aplicar el
+    // QSS, así que solo se hace cuando el estado cambió de verdad.
+    if (button->property("stepState").toString() == state)
+        return;
+
     button->setProperty("stepState", state);
     textLabel->setProperty("stepState", state);
 
+    // Qt no vuelve a aplicar el QSS cuando cambia una propiedad dinámica: hay
+    // que despulir y pulir otra vez para que se reevalúe [stepState="..."].
     button->style()->unpolish(button);
     button->style()->polish(button);
     textLabel->style()->unpolish(textLabel);
     textLabel->style()->polish(textLabel);
+}
+
+bool WizardStepper::isStepCompleted(int index) const
+{
+    return index >= 0 && index < m_completed.size() && m_completed.at(index);
 }

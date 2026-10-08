@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 
 project(desktop-win-car-dealership VERSION 0.1 LANGUAGES CXX)
 
@@ -9,8 +9,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport Test)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport Test)
 
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
@@ -93,6 +93,10 @@ set(PROJECT_SOURCES
         src/vehiclewizard/steps/step3filesview.cpp
         include/vehiclewizard/uploadformatpolicy.h
         src/vehiclewizard/uploadformatpolicy.cpp
+        include/presentation/navigation/wizardnavigator.h
+        src/presentation/navigation/wizardnavigator.cpp
+        include/presentation/views/support/formsupport.h
+        src/presentation/views/support/formsupport.cpp
         include/storage/localfilestoragemanager.h
         src/storage/localfilestoragemanager.cpp
         include/db/vehicleregistrationworker.h
@@ -180,4 +184,11 @@ install(TARGETS desktop-win-car-dealership
 
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(desktop-win-car-dealership)
+endif()
+
+# Pruebas unitarias (QtTest + ctest), ver tests/CMakeLists.txt. Solo con Qt 6:
+# las pruebas enlazan los targets Qt6:: por nombre.
+if(QT_VERSION_MAJOR EQUAL 6)
+    enable_testing()
+    add_subdirectory(tests)
 endif()

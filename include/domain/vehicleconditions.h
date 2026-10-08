@@ -7,6 +7,8 @@
 
 #include <QString>
 
+#include <optional>
+
 namespace domain {
 
 // Especificaciones técnicas de la unidad: el panel izquierdo del Paso 2 del
@@ -17,9 +19,13 @@ namespace domain {
 // distintos. Tenerlas aparte permite validar el Paso 1 sin que salten
 // errores de "faltan los cilindros", sin necesidad de banderas de alcance.
 //
-// Nótese que los setters de enum devuelven void: no pueden fallar. Es la
-// prueba de que cambiar esos campos de QString a enum eliminó una categoría
-// entera de validación en lugar de moverla de sitio.
+// Transmisión, cristales y aire acondicionado sí pueden faltar: "sin elegir"
+// es un estado real de la captura. Mientras no podía representarse, un combo
+// sin elegir se guardaba en silencio como el primer valor del enum, un dato
+// inventado que nadie capturó. Por eso sus getters devuelven std::optional y
+// validate() exige los tres. Los setters siguen devolviendo void: recibir un
+// valor del enum no puede fallar; lo único que puede pasar es que no llegue
+// ninguno.
 class VehicleConditions
 {
 public:
@@ -31,7 +37,7 @@ public:
     int cylinders() const;
     [[nodiscard]] bool setCylinders(int value);
 
-    Transmission transmission() const;
+    std::optional<Transmission> transmission() const;
     void setTransmission(Transmission value);
 
     // Texto libre a propósito: la columna no tiene CHECK y el combo de la
@@ -39,10 +45,10 @@ public:
     const QString &interiorMaterial() const;
     [[nodiscard]] bool setInteriorMaterial(const QString &value);
 
-    WindowRegulators windowRegulators() const;
+    std::optional<WindowRegulators> windowRegulators() const;
     void setWindowRegulators(WindowRegulators value);
 
-    AirConditioning airConditioning() const;
+    std::optional<AirConditioning> airConditioning() const;
     void setAirConditioning(AirConditioning value);
 
     ValidationResult validate() const;
@@ -50,10 +56,10 @@ public:
 private:
     CatalogRef m_fuelType;
     int m_cylinders = 0;
-    Transmission m_transmission = Transmission::Manual;
+    std::optional<Transmission> m_transmission;
     QString m_interiorMaterial;
-    WindowRegulators m_windowRegulators = WindowRegulators::Manuales;
-    AirConditioning m_airConditioning = AirConditioning::Manual;
+    std::optional<WindowRegulators> m_windowRegulators;
+    std::optional<AirConditioning> m_airConditioning;
 };
 
 } // namespace domain

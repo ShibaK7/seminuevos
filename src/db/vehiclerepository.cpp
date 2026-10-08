@@ -11,6 +11,8 @@
 #include <QSqlQuery>
 #include <QVariant>
 
+#include <optional>
+
 namespace {
 
 QVariant nullIfEmpty(const QString &value)
@@ -18,6 +20,19 @@ QVariant nullIfEmpty(const QString &value)
     if (value.isEmpty())
         return QVariant(QMetaType(QMetaType::QString));
     return value;
+}
+
+// Transmisión, cristales y aire acondicionado son opcionales en el dominio,
+// pero aquí llegan ya validados: build() no entrega una unidad a la que le
+// falte alguno, así que se usa el valor capturado. Si aun así faltara, se
+// manda NULL y el NOT NULL de la columna lo rechaza con un error claro, en
+// vez de leer un optional vacío.
+template <typename Enum>
+QVariant enumOrNull(const std::optional<Enum> &value)
+{
+    if (!value)
+        return QVariant(QMetaType(QMetaType::QString));
+    return domain::toDbString(*value);
 }
 
 // Una referencia de catálogo sin elegir tiene que llegar como NULL, no como
@@ -169,12 +184,10 @@ bool insertConditions(QSqlDatabase &db, int folio, const domain::VehicleConditio
     query.bindValue(QStringLiteral(":vehicle_folio"), folio);
     query.bindValue(QStringLiteral(":fuel_type_id"), catalogId(conditions.fuelType()));
     query.bindValue(QStringLiteral(":cylinders"), conditions.cylinders());
-    query.bindValue(QStringLiteral(":transmission"), domain::toDbString(conditions.transmission()));
+    query.bindValue(QStringLiteral(":transmission"), enumOrNull(conditions.transmission()));
     query.bindValue(QStringLiteral(":interior_material"), nullIfEmpty(conditions.interiorMaterial()));
-    query.bindValue(QStringLiteral(":window_regulators"),
-                    domain::toDbString(conditions.windowRegulators()));
-    query.bindValue(QStringLiteral(":air_conditioning"),
-                    domain::toDbString(conditions.airConditioning()));
+    query.bindValue(QStringLiteral(":window_regulators"), enumOrNull(conditions.windowRegulators()));
+    query.bindValue(QStringLiteral(":air_conditioning"), enumOrNull(conditions.airConditioning()));
 
     if (!query.exec()) {
         errorMessage = query.lastError().text();

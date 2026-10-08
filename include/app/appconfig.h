@@ -17,6 +17,13 @@ namespace AppConfig
 // Raíz del almacén de archivos: {storageRoot}/vehicles/{vin}/...
 void setStorageRoot(const QString &path);
 QString storageRoot();
+
+// Navegación libre en el asistente de registro: deja ir a cualquier paso sin
+// validar los anteriores (WIZARD_FREE_NAVIGATION en el .env). Es solo para
+// desarrollo, para trabajar estilos sin comentar la validación. Apagada por
+// omisión.
+void setWizardFreeNavigation(bool enabled);
+bool wizardFreeNavigation();
 } // namespace AppConfig
 
 #endif // APPCONFIG_H

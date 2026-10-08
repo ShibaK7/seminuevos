@@ -39,7 +39,7 @@ bool VehicleConditions::setCylinders(int value)
     return true;
 }
 
-Transmission VehicleConditions::transmission() const
+std::optional<Transmission> VehicleConditions::transmission() const
 {
     return m_transmission;
 }
@@ -63,7 +63,7 @@ bool VehicleConditions::setInteriorMaterial(const QString &value)
     return true;
 }
 
-WindowRegulators VehicleConditions::windowRegulators() const
+std::optional<WindowRegulators> VehicleConditions::windowRegulators() const
 {
     return m_windowRegulators;
 }
@@ -73,7 +73,7 @@ void VehicleConditions::setWindowRegulators(WindowRegulators value)
     m_windowRegulators = value;
 }
 
-AirConditioning VehicleConditions::airConditioning() const
+std::optional<AirConditioning> VehicleConditions::airConditioning() const
 {
     return m_airConditioning;
 }
@@ -96,6 +96,21 @@ ValidationResult VehicleConditions::validate() const
     if (m_cylinders < kMinCylinders) {
         result.addError(QStringLiteral("cylinders"),
                         QStringLiteral("Indica el número de cilindros."));
+    }
+    // Las tres columnas son NOT NULL y no tienen un valor neutro: cualquier
+    // valor que se pusiera por omisión afirmaría algo de la unidad que nadie
+    // capturó.
+    if (!m_transmission) {
+        result.addError(QStringLiteral("transmission"),
+                        QStringLiteral("Selecciona la transmisión."));
+    }
+    if (!m_windowRegulators) {
+        result.addError(QStringLiteral("windowRegulators"),
+                        QStringLiteral("Selecciona el tipo de cristales."));
+    }
+    if (!m_airConditioning) {
+        result.addError(QStringLiteral("airConditioning"),
+                        QStringLiteral("Selecciona el aire acondicionado."));
     }
 
     return result;

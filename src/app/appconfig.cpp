@@ -11,6 +11,14 @@ QString &storageRootStorage()
     return value;
 }
 
+// Mismo criterio que storageRootStorage(): se fija al arrancar y después solo
+// se lee. Nace en false para que, si nadie la configura, el asistente valide.
+bool &wizardFreeNavigationStorage()
+{
+    static bool value = false;
+    return value;
+}
+
 } // namespace
 
 void AppConfig::setStorageRoot(const QString &path)
@@ -21,4 +29,14 @@ void AppConfig::setStorageRoot(const QString &path)
 QString AppConfig::storageRoot()
 {
     return storageRootStorage();
+}
+
+void AppConfig::setWizardFreeNavigation(bool enabled)
+{
+    wizardFreeNavigationStorage() = enabled;
+}
+
+bool AppConfig::wizardFreeNavigation()
+{
+    return wizardFreeNavigationStorage();
 }
