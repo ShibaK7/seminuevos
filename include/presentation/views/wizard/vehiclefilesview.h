@@ -11,13 +11,22 @@
 #include <QSet>
 #include <QWidget>
 
-class QLabel;
-class QVBoxLayout;
+QT_BEGIN_NAMESPACE
+namespace Ui {
+    class VehicleFilesView;
+}
+QT_END_NAMESPACE
 
 // Paso 3 del wizard: galería de fotos (drag-and-drop + selector, con
 // marcar-portada/quitar) y documentos. Cada documento del checklist se marca
 // primero con su casilla, y solo entonces se habilita el botón para subir su
 // archivo; los que ya tienen archivo ofrecen Ver/Reemplazar.
+//
+// Las tarjetas, sus títulos y avisos, el área de scroll de la galería y el
+// botón "+ Agregar fotografía" están en src/ui/vehiclefilesview.ui. Las filas
+// de fotos y de documentos dependen de lo que se va cargando, así que se
+// arman en código (rebuildGallery() y rebuildDocuments()) dentro de los
+// layouts galleryLayout y documentsLayout del .ui.
 //
 // Vista pasiva (IVehicleFilesView): no abre ningún archivo. Avisa qué rutas
 // eligió el usuario (imagesChosen, documentChosen) y VehicleFilesPresenter
@@ -29,6 +38,7 @@ class VehicleFilesView : public QWidget, public presentation::IVehicleFilesView
 
 public:
     explicit VehicleFilesView(QWidget *parent = nullptr);
+    ~VehicleFilesView() override;
 
     // --- IVehicleFilesView ---
     application::VehicleFilesDto files() const override;
@@ -61,8 +71,10 @@ private:
         QPixmap thumbnail;
     };
 
-    QWidget *buildGalleryPanel();
-    QWidget *buildDocumentsPanel();
+    // Filas armadas a mano (QHBoxLayout por cada 2 fotos) en vez de
+    // QGridLayout -- así el espacio sobrante se reparte como stretch antes/
+    // entre/después de las tarjetas (efecto "space-around"), no como
+    // estiramiento de las tarjetas mismas.
     void rebuildGallery();
     void rebuildDocuments();
     // Si ese tipo ya tiene archivo. Por la ruta y no por contains(): capturar
@@ -82,16 +94,7 @@ private:
     application::UploadFormatsDto m_imageFormats;
     application::UploadFormatsDto m_documentFormats;
 
-    // Filas armadas a mano (QHBoxLayout por cada 2 fotos) en vez de
-    // QGridLayout -- así el espacio sobrante se reparte como stretch antes/
-    // entre/después de las tarjetas (efecto "space-around"), no como
-    // estiramiento de las tarjetas mismas.
-    QVBoxLayout *m_galleryLayout;
-    QVBoxLayout *m_documentsLayout;
-
-    QLabel *m_documentFormatsHint = nullptr;
-    QLabel *m_galleryErrorLabel = nullptr;
-    QLabel *m_documentsErrorLabel = nullptr;
+    Ui::VehicleFilesView *ui;
 
     // Tipos cuya casilla se marcó. Se guardan aparte porque rebuildDocuments()
     // vuelve a crear las filas en cada carga, y sin esto una casilla recién

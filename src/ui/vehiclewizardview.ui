@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VehicleWizardView</class>
+ <widget class="QWidget" name="VehicleWizardView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>760</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout" stretch="0,0,1,0,0">
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="text">
+      <string>Registrar Vehículo</string>
+     </property>
+     <property name="class" stdset="0">
+      <string notr="true">h1</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="stepperSlot">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+    </layout>
+   </item>
+   <item>
+    <widget class="QStackedWidget" name="stepStack">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="VehicleDetailsView" name="detailsPage"/>
+     <widget class="VehicleConditionsView" name="conditionsPage"/>
+     <widget class="VehicleFilesView" name="filesPage"/>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="errorLabel">
+     <property name="textFormat">
+      <enum>Qt::TextFormat::PlainText</enum>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="class" stdset="0">
+      <string notr="true">error-text</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonsLayout">
+     <item>
+      <widget class="QPushButton" name="cancelButton">
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../resources/Resources.qrc">
+         <normaloff>:/icons/cancel_dark.png</normaloff>:/icons/cancel_dark.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>10</width>
+         <height>10</height>
+        </size>
+       </property>
+       <property name="class" stdset="0">
+        <string notr="true">cancelButton</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="buttonsSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="printContractButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Imprimir Contrato</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../resources/Resources.qrc">
+         <normaloff>:/icons/printer.png</normaloff>:/icons/printer.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>12</width>
+         <height>12</height>
+        </size>
+       </property>
+       <property name="class" stdset="0">
+        <string notr="true">secondary</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="primaryButton">
+       <property name="iconSize">
+        <size>
+         <width>12</width>
+         <height>12</height>
+        </size>
+       </property>
+       <property name="class" stdset="0">
+        <string notr="true">primary</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>VehicleDetailsView</class>
+   <extends>QWidget</extends>
+   <header>presentation/views/wizard/vehicledetailsview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>VehicleConditionsView</class>
+   <extends>QWidget</extends>
+   <header>presentation/views/wizard/vehicleconditionsview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>VehicleFilesView</class>
+   <extends>QWidget</extends>
+   <header>presentation/views/wizard/vehiclefilesview.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../../resources/Resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

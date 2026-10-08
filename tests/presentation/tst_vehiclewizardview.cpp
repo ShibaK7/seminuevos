@@ -16,6 +16,7 @@
 #include <QAbstractSpinBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QFrame>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -152,6 +153,20 @@ private slots:
         QLabel *hint = m_view->filesView().findChild<QLabel *>(QStringLiteral("documentFormatsHint"));
         QVERIFY(hint);
         QVERIFY(hint->text().contains(QStringLiteral("PDF")));
+    }
+
+    // Las tarjetas vienen del .ui con nombre propio (un formulario no admite
+    // nombres repetidos) y la vista las renombra a cardPanel, que es lo que
+    // busca el QSS. Si alguien quita ese paso, las tarjetas pierden su estilo
+    // sin que nada truene.
+    void cardsKeepTheStyleName()
+    {
+        const auto cards = [](QWidget *page) {
+            return page->findChildren<QFrame *>(QStringLiteral("cardPanel"),
+                                                Qt::FindDirectChildrenOnly)
+                .size();
+        };
+        QCOMPARE(cards(&m_view->filesView()), 2);
     }
 };
 

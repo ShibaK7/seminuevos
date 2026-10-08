@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VehicleFilesView</class>
+ <widget class="QWidget" name="VehicleFilesView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <layout class="QHBoxLayout" name="filesLayout" stretch="1,1">
+   <item>
+    <widget class="QFrame" name="galleryCard">
+     <layout class="QVBoxLayout" name="galleryCardLayout" stretch="0,0,1,0">
+      <property name="spacing">
+       <number>16</number>
+      </property>
+      <property name="leftMargin">
+       <number>20</number>
+      </property>
+      <property name="topMargin">
+       <number>20</number>
+      </property>
+      <property name="rightMargin">
+       <number>20</number>
+      </property>
+      <property name="bottomMargin">
+       <number>20</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="galleryTitle">
+        <property name="text">
+         <string>Galería de fotos</string>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">h3</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="galleryErrorLabel">
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">error-text</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QScrollArea" name="galleryScrollArea">
+        <property name="frameShape">
+         <enum>QFrame::Shape::NoFrame</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="galleryContent">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>440</width>
+           <height>440</height>
+          </rect>
+         </property>
+         <layout class="QVBoxLayout" name="galleryLayout">
+          <property name="spacing">
+           <number>20</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="addPhotoRow" stretch="1,2,1">
+        <item>
+         <spacer name="addPhotoLeftSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="addPhotoButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>+ Agregar fotografía</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="addPhotoRightSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="documentsCard">
+     <layout class="QVBoxLayout" name="documentsCardLayout">
+      <item>
+       <widget class="QLabel" name="documentsTitle">
+        <property name="text">
+         <string>Documentos</string>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">h3</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="documentFormatsHint">
+        <property name="class" stdset="0">
+         <string notr="true">form-label</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="documentsErrorLabel">
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">error-text</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="documentsLayout"/>
+      </item>
+      <item>
+       <spacer name="documentsBottomSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

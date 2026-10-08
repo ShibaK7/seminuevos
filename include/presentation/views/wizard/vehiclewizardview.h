@@ -3,23 +3,31 @@
 
 #include "presentation/presenters/ivehiclewizardview.h"
 
+#include <QPointer>
 #include <QWidget>
+
+QT_BEGIN_NAMESPACE
+namespace Ui {
+    class VehicleWizardView;
+}
+QT_END_NAMESPACE
 
 namespace presentation {
 class VehicleWizardPresenter;
 }
 
 class WizardStepper;
-class QStackedWidget;
 class VehicleDetailsView;
 class VehicleConditionsView;
 class VehicleFilesView;
-class QPushButton;
-class QLabel;
 
 // Vista embebida (NO modal) con los 3 pasos del asistente de registro de
 // vehículo (US-03.2). MainWindow la muestra reemplazando la página de
 // Inventario dentro del mismo mainContentStack -- no se abre como QDialog.
+//
+// El marco (título, pila de páginas, aviso y botones) está en
+// src/ui/vehiclewizardview.ui, con las tres páginas como widgets promovidos.
+// El stepper todavía se crea aquí y se mete en el hueco stepperSlot del .ui.
 //
 // Es una vista pasiva: no valida, no navega por su cuenta ni habla con el
 // servicio. Todo eso lo decide VehicleWizardPresenter; esta clase solo pinta
@@ -41,7 +49,8 @@ public:
     VehicleConditionsView &conditionsView();
     VehicleFilesView &filesView();
 
-    // Conecta los botones, el stepper y las páginas con el presenter.
+    // Conecta los botones, el stepper y las páginas con el presenter, y se
+    // queda con él para borrarlo antes que a las páginas (ver el destructor).
     void bind(presentation::VehicleWizardPresenter &presenter);
 
     // --- IVehicleWizardView ---
@@ -69,16 +78,12 @@ signals:
 private:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
+    Ui::VehicleWizardView *ui;
     WizardStepper *m_stepper;
-    QStackedWidget *m_stack;
-    VehicleDetailsView *m_step1;
-    VehicleConditionsView *m_step2;
-    VehicleFilesView *m_step3;
-
-    QLabel *m_errorLabel;
-    QPushButton *m_cancelButton;
-    QPushButton *m_primaryButton;
-    QPushButton *m_printContractButton;
+    // El presenter que llegó a bind(). QPointer y no puntero crudo: si alguien
+    // lo borra antes que a la vista, queda nulo y el destructor no lo vuelve a
+    // borrar.
+    QPointer<presentation::VehicleWizardPresenter> m_presenter;
 };
 
 #endif // PRESENTATION_VIEWS_WIZARD_VEHICLEWIZARDVIEW_H

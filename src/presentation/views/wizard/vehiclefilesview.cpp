@@ -1,4 +1,6 @@
 #include "presentation/views/wizard/vehiclefilesview.h"
+#include "ui_vehiclefilesview.h"
+
 #include "presentation/views/components/aspectratioimagelabel.h"
 #include "presentation/views/support/formsupport.h"
 
@@ -18,7 +20,6 @@
 #include <QMimeData>
 #include <QPixmap>
 #include <QPushButton>
-#include <QScrollArea>
 #include <QSignalBlocker>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -80,104 +81,52 @@ const QStringList &VehicleFilesView::documentTypes()
 
 VehicleFilesView::VehicleFilesView(QWidget *parent)
     : QWidget(parent)
+    , ui(new Ui::VehicleFilesView)
 {
+    // Va en código y no en el .ui porque las tres sobrecargas de arrastre de
+    // abajo dependen de ella: desmarcarla en Designer apagaría la galería
+    // sin que nada avisara.
     setAcceptDrops(true);
 
-    auto *layout = new QHBoxLayout(this);
-    layout->addWidget(buildGalleryPanel(), 1);
-    layout->addWidget(buildDocumentsPanel(), 1);
-}
+    // El .ui arma las dos tarjetas (stretch 1 y 1):
+    //   - Galería: 20px de aire entre el borde del panel y las fotos (y entre
+    //     filas de fotos: galleryLayout lleva spacing 20, la separación
+    //     vertical entre filas). Scroll para cuando haya más fotos de las que
+    //     caben en el panel. El botón "+ Agregar fotografía" va centrado y a
+    //     la mitad del ancho del panel: stretch 1 / botón 2 / stretch 1.
+    //   - Documentos: título, aviso de formatos (su texto llega con
+    //     setUploadFormats()), aviso de error y el layout
+    //     documentsLayout, donde rebuildDocuments() pone una fila por tipo.
+    ui->setupUi(this);
 
-QWidget *VehicleFilesView::buildGalleryPanel()
-{
-    auto *card = new QFrame(this);
-    card->setObjectName(QStringLiteral("cardPanel"));
-    auto *cardLayout = new QVBoxLayout(card);
-    // 20px de aire entre el borde del panel y las fotos (y entre filas de
-    // fotos, ver m_galleryLayout->setSpacing más abajo).
-    cardLayout->setContentsMargins(20, 20, 20, 20);
-    cardLayout->setSpacing(16);
-
-    auto *title = new QLabel(QStringLiteral("Galería de fotos"), card);
-    title->setProperty("class", QStringLiteral("h3"));
-    cardLayout->addWidget(title);
+    // Las tarjetas se llaman cardPanel en tiempo de ejecución porque así las
+    // encuentra el QSS global (QFrame#cardPanel). En el .ui no pueden llevar
+    // ese nombre las dos: un formulario no admite nombres repetidos (uic deja
+    // la segunda como "cardPanel1" y Designer la renombra al abrirla), así
+    // que ahí tienen nombre propio y se renombran aquí, antes de que la hoja
+    // de estilos las pula.
+    for (QFrame *card : {ui->galleryCard, ui->documentsCard})
+        card->setObjectName(QStringLiteral("cardPanel"));
 
     // Aviso de los archivos que no se agregaron. Va bajo el título, igual que
     // el aviso del checklist del Paso 2, y arranca oculto: solo existe para
-    // explicar un intento fallido.
-    m_galleryErrorLabel = new QLabel(card);
-    m_galleryErrorLabel->setObjectName(QStringLiteral("galleryErrorLabel"));
-    m_galleryErrorLabel->setProperty("class", QStringLiteral("error-text"));
-    m_galleryErrorLabel->setWordWrap(true);
-    m_galleryErrorLabel->setVisible(false);
-    cardLayout->addWidget(m_galleryErrorLabel);
+    // explicar un intento fallido. Lo mismo el de documentos.
+    ui->galleryErrorLabel->setVisible(false);
+    ui->documentsErrorLabel->setVisible(false);
 
-    // Scroll para cuando haya más fotos de las que caben en el panel.
-    auto *scrollArea = new QScrollArea(card);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-
-    auto *scrollContent = new QWidget(scrollArea);
-    m_galleryLayout = new QVBoxLayout(scrollContent);
-    m_galleryLayout->setContentsMargins(0, 0, 0, 0);
-    m_galleryLayout->setSpacing(20); // separación vertical entre filas de fotos
-
-    scrollArea->setWidget(scrollContent);
-    cardLayout->addWidget(scrollArea, 1);
-
-    auto *addButton = new QPushButton(QStringLiteral("+ Agregar fotografía"), card);
-    addButton->setProperty("class", QStringLiteral("secondary"));
-    // Centrado y a la mitad del ancho del panel: stretch 1 / botón 2 / stretch 1.
-    addButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(addButton, &QPushButton::clicked, this, [this]() {
+    connect(ui->addPhotoButton, &QPushButton::clicked, this, [this]() {
         const QStringList paths = QFileDialog::getOpenFileNames(
             this, QStringLiteral("Seleccionar fotografías"), QString(),
             m_imageFormats.dialogFilter);
         emit imagesChosen(paths);
     });
 
-    auto *addButtonRow = new QHBoxLayout;
-    addButtonRow->addStretch(1);
-    addButtonRow->addWidget(addButton, 2);
-    addButtonRow->addStretch(1);
-    cardLayout->addLayout(addButtonRow);
-
-    return card;
+    rebuildDocuments();
 }
 
-QWidget *VehicleFilesView::buildDocumentsPanel()
+VehicleFilesView::~VehicleFilesView()
 {
-    auto *card = new QFrame(this);
-    card->setObjectName(QStringLiteral("cardPanel"));
-    auto *cardLayout = new QVBoxLayout(card);
-
-    auto *title = new QLabel(QStringLiteral("Documentos"), card);
-    title->setProperty("class", QStringLiteral("h3"));
-    cardLayout->addWidget(title);
-
-    // Los formatos se anuncian antes de abrir el diálogo, no solo en el error
-    // después de equivocarse. form-label es la letra chica y gris de la hoja
-    // global; con la tipografía base se leería como un renglón más del
-    // checklist.
-    // El texto llega con setUploadFormats().
-    m_documentFormatsHint = new QLabel(card);
-    m_documentFormatsHint->setObjectName(QStringLiteral("documentFormatsHint"));
-    m_documentFormatsHint->setProperty("class", QStringLiteral("form-label"));
-    cardLayout->addWidget(m_documentFormatsHint);
-
-    m_documentsErrorLabel = new QLabel(card);
-    m_documentsErrorLabel->setObjectName(QStringLiteral("documentsErrorLabel"));
-    m_documentsErrorLabel->setProperty("class", QStringLiteral("error-text"));
-    m_documentsErrorLabel->setWordWrap(true);
-    m_documentsErrorLabel->setVisible(false);
-    cardLayout->addWidget(m_documentsErrorLabel);
-
-    m_documentsLayout = new QVBoxLayout;
-    cardLayout->addLayout(m_documentsLayout);
-    cardLayout->addStretch();
-
-    rebuildDocuments();
-    return card;
+    delete ui;
 }
 
 void VehicleFilesView::setUploadFormats(const application::UploadFormatsDto &images,
@@ -186,10 +135,10 @@ void VehicleFilesView::setUploadFormats(const application::UploadFormatsDto &ima
     m_imageFormats = images;
     m_documentFormats = documents;
     // Los formatos se anuncian antes de abrir el diálogo, no solo en el error
-    // después de equivocarse. form-label es la letra chica y gris de la hoja
-    // global; con la tipografía base se leería como un renglón más del
-    // checklist.
-    m_documentFormatsHint->setText(QStringLiteral("Formatos permitidos: ") + documents.description);
+    // después de equivocarse. form-label (la clase que documentFormatsHint
+    // lleva en el .ui) es la letra chica y gris de la hoja global; con la
+    // tipografía base se leería como un renglón más del checklist.
+    ui->documentFormatsHint->setText(QStringLiteral("Formatos permitidos: ") + documents.description);
 }
 
 void VehicleFilesView::addImages(const QList<presentation::ImagePreview> &images)
@@ -208,14 +157,14 @@ void VehicleFilesView::addImages(const QList<presentation::ImagePreview> &images
 
 void VehicleFilesView::showGalleryMessage(const QString &message)
 {
-    m_galleryErrorLabel->setText(message);
-    m_galleryErrorLabel->setVisible(!message.isEmpty());
+    ui->galleryErrorLabel->setText(message);
+    ui->galleryErrorLabel->setVisible(!message.isEmpty());
 }
 
 void VehicleFilesView::showDocumentsMessage(const QString &message)
 {
-    m_documentsErrorLabel->setText(message);
-    m_documentsErrorLabel->setVisible(!message.isEmpty());
+    ui->documentsErrorLabel->setText(message);
+    ui->documentsErrorLabel->setVisible(!message.isEmpty());
 }
 
 void VehicleFilesView::showFieldErrors(const QList<domain::ValidationError> &errors)
@@ -231,7 +180,7 @@ bool VehicleFilesView::focusField(const QString &field)
 void VehicleFilesView::rebuildGallery()
 {
     QLayoutItem *item;
-    while ((item = m_galleryLayout->takeAt(0)) != nullptr) {
+    while ((item = ui->galleryLayout->takeAt(0)) != nullptr) {
         if (QLayout *rowLayout = item->layout()) {
             // QLayout ES-A QLayoutItem: al agregarse con addLayout() no se
             // crea un wrapper aparte, así que item y rowLayout son el MISMO
@@ -267,7 +216,7 @@ void VehicleFilesView::rebuildGallery()
         if (i % columns == 0) {
             rowLayout = new QHBoxLayout;
             rowLayout->addStretch(1);
-            m_galleryLayout->addLayout(rowLayout);
+            ui->galleryLayout->addLayout(rowLayout);
         }
 
         // Una sola tarjeta (mismo estilo cardPanel) envolviendo la foto y
@@ -275,7 +224,7 @@ void VehicleFilesView::rebuildGallery()
         // tarjeta queda visible, y basura/favorito quedan justo debajo,
         // alineados a los mismos bordes izquierdo/derecho de la tarjeta.
         // 20px de margen en los 4 lados; 10px separan la foto de los botones.
-        auto *cell = new QFrame(m_galleryLayout->parentWidget());
+        auto *cell = new QFrame(ui->galleryLayout->parentWidget());
         cell->setObjectName(QStringLiteral("cardPanel"));
         auto *cellLayout = new QVBoxLayout(cell);
         cellLayout->setContentsMargins(20, 20, 20, 20);
@@ -316,13 +265,13 @@ void VehicleFilesView::rebuildGallery()
     }
 
     // Absorbe el espacio vertical sobrante para que las filas no se estiren.
-    m_galleryLayout->addStretch(1);
+    ui->galleryLayout->addStretch(1);
 }
 
 void VehicleFilesView::rebuildDocuments()
 {
     QLayoutItem *item;
-    while ((item = m_documentsLayout->takeAt(0)) != nullptr) {
+    while ((item = ui->documentsLayout->takeAt(0)) != nullptr) {
         // Los botones de subir y reemplazar, y la casilla al quitar un
         // documento, llaman a esta función desde una señal de un widget que
         // vive en una de estas filas, así que se retiran diferidas (ver
@@ -333,7 +282,7 @@ void VehicleFilesView::rebuildDocuments()
         delete item;
     }
 
-    QWidget *rowParent = m_documentsLayout->parentWidget();
+    QWidget *rowParent = ui->documentsLayout->parentWidget();
     for (const QString &type : documentTypes()) {
         const bool hasFile = hasDocumentFile(type);
         const bool checked = hasFile || m_checkedDocumentTypes.contains(type);
@@ -428,7 +377,7 @@ void VehicleFilesView::rebuildDocuments()
                 m_checkedDocumentTypes.insert(type);
                 // Marcar un documento es empezar un intento nuevo: el aviso del
                 // anterior ya no describe lo que está en pantalla.
-                m_documentsErrorLabel->setVisible(false);
+                ui->documentsErrorLabel->setVisible(false);
             } else {
                 m_checkedDocumentTypes.remove(type);
             }
@@ -438,7 +387,7 @@ void VehicleFilesView::rebuildDocuments()
                 policyEdit->setEnabled(on);
         });
 
-        m_documentsLayout->addWidget(row);
+        ui->documentsLayout->addWidget(row);
     }
 }
 
