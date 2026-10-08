@@ -18,7 +18,11 @@ function(seminuevos_add_test name)
     endif()
 
     add_executable(${name} ${ARG_SOURCES})
-    target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/include")
+    # tests/support: dobles de prueba de los puertos y las vistas.
+    target_include_directories(${name} PRIVATE
+        "${PROJECT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/support"
+    )
     target_link_libraries(${name} PRIVATE ${ARG_LIBS} Qt6::Core Qt6::Test)
 
     add_test(NAME ${name} COMMAND ${name})
@@ -60,9 +64,25 @@ seminuevos_add_test(tst_vehiclepolymorphism
     LIBS seminuevos_domain
 )
 
+# --- Aplicación -----------------------------------------------------------------
+seminuevos_add_test(tst_authenticationservice
+    SOURCES application/tst_authenticationservice.cpp support/fakes.h
+    LIBS seminuevos_application
+)
+
 # --- Presentación ---------------------------------------------------------------
 seminuevos_add_test(tst_wizardnavigator
     SOURCES presentation/tst_wizardnavigator.cpp
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_loginpresenter
+    SOURCES presentation/tst_loginpresenter.cpp support/fakes.h
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_pooledtaskrunner
+    SOURCES presentation/tst_pooledtaskrunner.cpp
     LIBS seminuevos_presentation
 )
 

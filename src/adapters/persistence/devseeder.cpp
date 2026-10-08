@@ -1,5 +1,5 @@
 #include "adapters/persistence/devseeder.h"
-#include "adapters/security/passwordhasher.h"
+#include "application/ports/passwordhasher.h"
 
 #include <QList>
 #include <QSqlDatabase>
@@ -16,10 +16,11 @@ struct SeedUser
     QString role;
 };
 
-// El hash se calcula aquí, en el momento (con PasswordHasher::hash), en vez
+// El hash se calcula aquí, en el momento (con el PasswordHasher que se recibe), en vez
 // de venir pegado como texto en un script SQL -- así agregar/cambiar un
 // usuario de prueba es solo una línea de C++, sin herramientas aparte.
-bool insertUser(QSqlDatabase &db, const SeedUser &user, QString &errorMessage)
+bool insertUser(QSqlDatabase &db, const SeedUser &user, const application::PasswordHasher &hasher,
+                QString &errorMessage)
 {
     QSqlQuery query(db);
     query.prepare(QStringLiteral(
@@ -27,7 +28,7 @@ bool insertUser(QSqlDatabase &db, const SeedUser &user, QString &errorMessage)
         "VALUES (:username, :password_hash, :display_name, :role) "
         "ON CONFLICT (username) DO NOTHING"));
     query.bindValue(QStringLiteral(":username"), user.username);
-    query.bindValue(QStringLiteral(":password_hash"), PasswordHasher::hash(user.plainPassword));
+    query.bindValue(QStringLiteral(":password_hash"), hasher.hash(user.plainPassword));
     query.bindValue(QStringLiteral(":display_name"), user.displayName);
     query.bindValue(QStringLiteral(":role"), user.role);
 
@@ -40,7 +41,7 @@ bool insertUser(QSqlDatabase &db, const SeedUser &user, QString &errorMessage)
 
 } // namespace
 
-DevSeeder::Result DevSeeder::run(QSqlDatabase &db)
+DevSeeder::Result DevSeeder::run(QSqlDatabase &db, const application::PasswordHasher &hasher)
 {
     Result result;
 
@@ -60,7 +61,7 @@ DevSeeder::Result DevSeeder::run(QSqlDatabase &db)
 
     for (const SeedUser &user : seedUsers) {
         QString errorMessage;
-        if (!insertUser(db, user, errorMessage)) {
+        if (!insertUser(db, user, hasher, errorMessage)) {
             result.errorMessage = QStringLiteral("Error insertando usuario semilla '%1': %2")
                                        .arg(user.username, errorMessage);
             db.rollback();

@@ -1,4 +1,4 @@
-#include "adapters/security/passwordhasher.h"
+#include "adapters/security/pbkdf2passwordhasher.h"
 
 #include <QByteArray>
 #include <QCryptographicHash>
@@ -35,7 +35,7 @@ bool constantTimeEquals(const QByteArray &a, const QByteArray &b)
 
 } // namespace
 
-QString PasswordHasher::hash(const QString &plainPassword)
+QString Pbkdf2PasswordHasher::hash(const QString &plainPassword) const
 {
     const QByteArray salt = randomSalt();
     const QByteArray derived = QPasswordDigestor::deriveKeyPbkdf2(
@@ -48,7 +48,7 @@ QString PasswordHasher::hash(const QString &plainPassword)
         .arg(QString::fromLatin1(derived.toBase64()));
 }
 
-bool PasswordHasher::verify(const QString &plainPassword, const QString &storedHash)
+bool Pbkdf2PasswordHasher::verify(const QString &plainPassword, const QString &storedHash) const
 {
     const QStringList parts = storedHash.split(QLatin1Char('$'));
     if (parts.size() != 4 || parts[0] != kAlgoTag)

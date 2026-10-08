@@ -65,6 +65,14 @@ ConnectionPool::Handle ConnectionPool::acquire()
     return Handle(*this);
 }
 
+void ConnectionPool::discardThreadConnection()
+{
+    // setLocalData(nullptr) borra la ThreadConnection anterior, cuyo
+    // destructor cierra la conexión y la quita del registro de Qt.
+    if (m_connections.hasLocalData())
+        m_connections.setLocalData(nullptr);
+}
+
 ConnectionPool::Handle::Handle(ConnectionPool &pool)
     : m_pool(pool)
 {

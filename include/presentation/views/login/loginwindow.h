@@ -1,6 +1,8 @@
 #ifndef PRESENTATION_VIEWS_LOGIN_LOGINWINDOW_H
 #define PRESENTATION_VIEWS_LOGIN_LOGINWINDOW_H
 
+#include "presentation/presenters/iloginview.h"
+
 #include <QMainWindow>
 #include <QPushButton>
 #include <QLineEdit>
@@ -11,7 +13,9 @@ class LoginWindow;
 }
 QT_END_NAMESPACE
 
-class LoginWindow : public QMainWindow
+// Implementa ILoginView: LoginPresenter le dice qué mostrar sin conocer el
+// widget.
+class LoginWindow : public QMainWindow, public presentation::ILoginView
 {
     Q_OBJECT
 
@@ -20,20 +24,19 @@ public:
     ~LoginWindow() override;
 
 signals:
-    void loginSuccessful();  // Señal que se emite cuando el login es exitoso
     // Se emite cuando el usuario intenta autenticarse (Enter o clic).
-    // El controlador/backend real debe validar credenciales y llamar a
-    // showLoginError() o cerrar/ocultar esta ventana según el resultado.
+    // LoginPresenter recibe el intento y llama a
+    // showLoginError() o avisa a la raíz de composición si se autenticó.
     void loginRequested(const QString &username, const QString &password);
 
 public slots:
     // Muestra el layout de error oculto con el mensaje indicado.
-    void showLoginError(const QString &message);
+    void showLoginError(const QString &message) override;
     // Oculta el mensaje de error (p.ej. cuando el usuario vuelve a escribir).
     void hideLoginError();
     // Habilita/deshabilita la interacción mientras se procesa el login
     // (evita doble envío y da feedback de "cargando").
-    void setBusy(bool busy);
+    void setBusy(bool busy) override;
 
 private slots:
     void onLoginClicked();

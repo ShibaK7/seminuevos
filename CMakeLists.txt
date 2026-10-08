@@ -27,16 +27,29 @@ seminuevos_layer(seminuevos_domain
     NO_MOC
 )
 
-# Presentación sin widgets: solo QtCore, para poder probarla sin GUI. Hoy solo
-# tiene la navegación del wizard; los presenters y las tareas se suman cuando
-# existan. Las vistas (presentation/views) son Widgets y siguen en el
-# ejecutable hasta que tengan su propia biblioteca.
+# Aplicación: DTOs, puertos y casos de uso. Solo QtCore y sin moc: los
+# servicios no son QObject.
+seminuevos_layer(seminuevos_application
+    DIRS application
+    DEPENDS seminuevos_domain
+    NO_MOC
+)
+
+# Presentación sin widgets: presenters, navegación y tareas. Solo QtCore, para
+# poder probarla sin GUI. Las vistas (presentation/views) son Widgets y siguen
+# en el ejecutable hasta que tengan su propia biblioteca.
 seminuevos_layer(seminuevos_presentation
-    DIRS presentation/navigation
+    DIRS presentation/navigation presentation/presenters presentation/tasks
+    DEPENDS seminuevos_application
 )
 
 # Adaptadores de salida: cada uno en su biblioteca, con solo el módulo de Qt
 # de su tecnología, para que ninguno vea a otro.
+seminuevos_layer(seminuevos_persistence
+    DIRS adapters/persistence
+    DEPENDS seminuevos_application
+    QT Sql
+)
 seminuevos_layer(seminuevos_storage
     DIRS adapters/storage
     QT Gui            # QImage, para recomprimir las fotos
@@ -48,22 +61,20 @@ seminuevos_layer(seminuevos_contract
 )
 seminuevos_layer(seminuevos_security
     DIRS adapters/security
+    DEPENDS seminuevos_application
     QT Network        # QPasswordDigestor (PBKDF2)
 )
 
 # --- Ejecutable ---------------------------------------------------------------
-# Además de main.cpp, compila lo que todavía no es biblioteca: la persistencia
-# (hasta que deje de depender de otro adaptador), las vistas y las carpetas
-# viejas que el plan va borrando (app, auth, db, utils, vehiclewizard). Se
-# listan por carpeta para que una vista o un .ui nuevo no obligue a tocar este
-# archivo.
+# Además de main.cpp y la raíz de composición (app/), compila lo que todavía no
+# es biblioteca: las vistas y las carpetas viejas que el plan va borrando (db,
+# utils, vehiclewizard). Se listan por carpeta para que una vista o un .ui nuevo
+# no obligue a tocar este archivo.
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
 set(SEMINUEVOS_EXE_DIRS
-    adapters/persistence
     presentation/views
     app
-    auth
     db
     utils
     vehiclewizard
@@ -99,7 +110,9 @@ qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 
 target_link_libraries(desktop-win-car-dealership PRIVATE
     seminuevos_domain
+    seminuevos_application
     seminuevos_presentation
+    seminuevos_persistence
     seminuevos_storage
     seminuevos_contract
     seminuevos_security

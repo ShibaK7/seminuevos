@@ -6,8 +6,6 @@
 # pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
 # falta, se borra.
 
-# --- Commit 8: DevSeeder usa el puerto PasswordHasher -------------------------
-src/adapters/persistence/devseeder.cpp: incluye "adapters/security/passwordhasher.h"  # commit 8
 
 # --- Commit 9: UploadFormatPolicy pasa a domain/rules ---------------------------
 src/presentation/views/wizard/vehiclefilesview.cpp: incluye "vehiclewizard/uploadformatpolicy.h"  # commit 9

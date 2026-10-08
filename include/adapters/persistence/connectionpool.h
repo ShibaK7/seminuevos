@@ -48,6 +48,14 @@ public:
 
     Handle acquire();
 
+    // Cierra y olvida la conexión del hilo actual, para que el siguiente
+    // acquire() abra una nueva. Lo llaman los adaptadores cuando una operación
+    // falla: si PostgreSQL se reinició, QPSQL sigue reportando la conexión
+    // como abierta y, en un hilo que vive mucho (el pool de tareas), fallaría
+    // en cada intento. Hay que llamarlo cuando ya no quede ninguna QSqlQuery
+    // viva sobre esa conexión.
+    void discardThreadConnection();
+
 private:
     explicit ConnectionPool(const DatabaseConfig &config);
 
