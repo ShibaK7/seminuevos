@@ -3,6 +3,7 @@
 
 #include <QHash>
 #include <QMainWindow>
+#include <QPointer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -14,6 +15,7 @@ struct VehicleInventoryFilter;
 class SidebarMenuItem;
 class NavTabItem;
 class OutlineButton;
+class VehicleWizardView;
 class QDateEdit;
 class QFrame;
 class QLabel;
@@ -61,6 +63,10 @@ private:
     void scrollToFolio(int folio);
 
     // --- Asistente ---
+    // Hay a lo más un asistente. "Agregar Vehículo" retoma el que ya exista,
+    // con lo capturado intacto, en vez de crear otro. Cambiar de página no lo
+    // cierra: solo se destruye cuando él mismo pide volver al inventario, al
+    // cancelar o después de registrar.
     void openVehicleWizard();
     void closeVehicleWizard();
     void onVehicleRegistered(int folio);
@@ -80,6 +86,14 @@ private:
     NavTabItem *m_consignmentTab = nullptr;
     QFrame *m_navDivider = nullptr;
     OutlineButton *m_addVehicleButton = nullptr;
+
+    // El asistente en curso, o nulo si no hay ninguno. Mientras no sea nulo,
+    // openVehicleWizard() lo vuelve a mostrar en vez de crear otro: esto es
+    // lo que garantiza que haya uno solo. Su dueño es mainContentStack, no
+    // esta clase. QPointer y no un puntero crudo: si el asistente se
+    // destruyera por otro camino que closeVehicleWizard() (al destruirse el
+    // stack, por ejemplo), el puntero queda en nulo en vez de colgando.
+    QPointer<VehicleWizardView> m_wizard;
 
     // Icono por campo de fecha, indexado por el campo al que se superpone: el
     // filtro de eventos recibe el QDateEdit y necesita llegar a su icono.

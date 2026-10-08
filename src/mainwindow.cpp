@@ -134,6 +134,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->fechaInicio, &QDateEdit::dateChanged, this, &MainWindow::reloadInventory);
     connect(ui->fechaFin, &QDateEdit::dateChanged, this, &MainWindow::reloadInventory);
 
+    // Las pestañas e Inventario en el menú solo cambian de página. Un
+    // asistente abierto no se cierra por eso: queda vivo y oculto, con lo
+    // capturado, y "Agregar Vehículo" lo retoma (ver openVehicleWizard).
+    //
     // Las sub-pestañas Adquisición / Consignación todavía no filtran: por ahora
     // la lista muestra las dos ramas. Solo aseguran que se vuelva a ver el
     // inventario si el asistente estaba encima.
@@ -439,6 +443,15 @@ void MainWindow::scrollToFolio(int folio)
 
 void MainWindow::openVehicleWizard()
 {
+    // Si ya hay un asistente (el usuario se fue al inventario a media
+    // captura), se vuelve a mostrar tal como quedó. Crear otro perdería lo
+    // capturado y dejaría al anterior huérfano en el stack, todavía conectado
+    // a esta ventana.
+    if (m_wizard) {
+        ui->mainContentStack->setCurrentWidget(m_wizard);
+        return;
+    }
+
     // Vista embebida, no modal: se apila sobre la página de inventario dentro
     // del mismo contenedor, en vez de abrir un diálogo aparte.
     auto *wizard = new VehicleWizardView(ui->mainContentStack);
@@ -448,6 +461,7 @@ void MainWindow::openVehicleWizard()
 
     ui->mainContentStack->addWidget(wizard);
     ui->mainContentStack->setCurrentWidget(wizard);
+    m_wizard = wizard;
 }
 
 void MainWindow::onVehicleRegistered(int folio)
@@ -461,16 +475,30 @@ void MainWindow::onVehicleRegistered(int folio)
 
 void MainWindow::closeVehicleWizard()
 {
-    QWidget *current = ui->mainContentStack->currentWidget();
-    if (current == ui->inventoryPage)
+    // El inventario se muestra antes de quitar el asistente: si se quitara
+    // siendo la página visible, el stack pasaría por su cuenta a otra página
+    // antes de llegar a esta.
+    ui->mainContentStack->setCurrentWidget(ui->inventoryPage);
+    if (!m_wizard)
         return;
 
-    ui->mainContentStack->setCurrentWidget(ui->inventoryPage);
-    // Se destruye sin llamar a removeWidget(): esa función reparenta el widget
-    // a nullptr, con lo que por un instante deja de tener padre y cuenta como
-    // ventana de nivel superior. Al destruirse justo después, Qt puede
-    // interpretar que se cerró la última ventana y terminar la aplicación
-    // entera. Al destruirlo directo, el contenedor lo suelta solo y el widget
-    // nunca deja de tener padre.
-    current->deleteLater();
+    // Se quita y se destruye SIEMPRE, aunque la página visible ya fuera el
+    // inventario. Pasa cuando el usuario se va al inventario mientras el
+    // registro termina en segundo plano: el asistente pide cerrar estando
+    // oculto. Antes, en ese caso, esta función no hacía nada y el asistente se
+    // quedaba huérfano en el stack.
+    //
+    // removeWidget() no le quita el padre: el asistente sigue siendo hijo del
+    // stack, solo deja de ser una de sus páginas y queda oculto. Así nunca
+    // cuenta como ventana de nivel superior, ni por un instante (lo dice la
+    // documentación de QStackedWidget y se comprobó con Qt 6.11).
+    ui->mainContentStack->removeWidget(m_wizard);
+    // deleteLater() y no delete: esto corre dentro de una señal del propio
+    // asistente, que sigue a media ejecución. Se destruye cuando el control
+    // vuelve al ciclo de eventos.
+    m_wizard->deleteLater();
+    // El QPointer solo se vuelve nulo cuando el objeto se destruye de verdad,
+    // y eso pasa después. Se anula aquí para que "Agregar Vehículo" cree uno
+    // nuevo en vez de retomar el que va de salida.
+    m_wizard = nullptr;
 }
