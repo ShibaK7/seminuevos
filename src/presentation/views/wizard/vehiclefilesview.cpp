@@ -312,6 +312,9 @@ void VehicleFilesView::rebuildDocuments()
             policyEdit->setPlaceholderText(QStringLiteral("No. Póliza"));
             policyEdit->setText(m_documents.value(type).documentNumber);
             policyEdit->setMaximumWidth(120);
+            // El tope de la columna vehicle_documents.document_number: uno más largo
+            // fallaría hasta el INSERT, ya con los archivos copiados.
+            policyEdit->setMaxLength(50);
             // La póliza es del documento Seguro: sin él marcado no hay de qué
             // capturarla.
             policyEdit->setEnabled(checked);

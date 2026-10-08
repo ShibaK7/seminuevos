@@ -145,6 +145,9 @@
       </item>
       <item row="2" column="3">
        <widget class="QLineEdit" name="modelEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
         <property name="placeholderText">
          <string>p.ej. Kicks Advance TM</string>
         </property>
@@ -182,6 +185,9 @@
       </item>
       <item row="3" column="3">
        <widget class="QLineEdit" name="colorEdit">
+        <property name="maxLength">
+         <number>30</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">color</string>
         </property>
@@ -222,6 +228,9 @@
       </item>
       <item row="4" column="3">
        <widget class="QLineEdit" name="motorNumberEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">motorNumber</string>
         </property>
@@ -239,6 +248,9 @@
       </item>
       <item row="5" column="1">
        <widget class="QLineEdit" name="serialNumberEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
         <property name="placeholderText">
          <string>VIN</string>
         </property>
@@ -259,6 +271,9 @@
       </item>
       <item row="5" column="3">
        <widget class="QLineEdit" name="repuveEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">repuve</string>
         </property>
@@ -276,6 +291,9 @@
       </item>
       <item row="6" column="1">
        <widget class="QLineEdit" name="platesEdit">
+        <property name="maxLength">
+         <number>20</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">plates</string>
         </property>
@@ -293,6 +311,9 @@
       </item>
       <item row="6" column="3">
        <widget class="QLineEdit" name="platesHolderEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">platesHolder</string>
         </property>
@@ -374,6 +395,9 @@
       </item>
       <item row="1" column="1">
        <widget class="QLineEdit" name="ownerNameEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">counterparty.fullName</string>
         </property>
@@ -391,6 +415,9 @@
       </item>
       <item row="1" column="3">
        <widget class="QLineEdit" name="ownerIdEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">counterparty.nationalId</string>
         </property>
@@ -425,6 +452,9 @@
       </item>
       <item row="2" column="3">
        <widget class="QLineEdit" name="ownerSuburbEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">counterparty.suburb</string>
         </property>
@@ -442,6 +472,9 @@
       </item>
       <item row="3" column="1">
        <widget class="QLineEdit" name="ownerLocalityEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">counterparty.locality</string>
         </property>
@@ -459,6 +492,9 @@
       </item>
       <item row="3" column="3">
        <widget class="QLineEdit" name="ownerStateEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">counterparty.state</string>
         </property>
@@ -476,6 +512,9 @@
       </item>
       <item row="4" column="1">
        <widget class="QLineEdit" name="ownerPostalCodeEdit">
+        <property name="maxLength">
+         <number>5</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">counterparty.postalCode</string>
         </property>
@@ -565,6 +604,9 @@
       </item>
       <item row="6" column="1">
        <widget class="QLineEdit" name="invoiceNumberEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">invoiceNumber</string>
         </property>
@@ -582,6 +624,9 @@
       </item>
       <item row="6" column="3">
        <widget class="QLineEdit" name="invoiceIssuerEdit">
+        <property name="maxLength">
+         <number>150</number>
+        </property>
         <property name="field" stdset="0">
          <string notr="true">invoiceIssuer</string>
         </property>

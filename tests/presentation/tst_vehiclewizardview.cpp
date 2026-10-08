@@ -217,6 +217,23 @@ private slots:
     // nombres repetidos) y la vista las renombra a cardPanel, que es lo que
     // busca el QSS. Si alguien quita ese paso, las tarjetas pierden su estilo
     // sin que nada truene.
+    // Los campos de texto se detienen en el tope del dominio: un texto más
+    // largo lo rechazaría el setter y el usuario no sabría por qué.
+    void textFieldsStopAtTheDomainLimits()
+    {
+        QWidget *page = &m_view->detailsView();
+        const struct { const char *field; int limit; } limits[] = {
+            {"serialNumber", 50}, {"plates", 20}, {"color", 30},
+            {"counterparty.nationalId", 50}, {"counterparty.postalCode", 5},
+            {"invoiceIssuer", 150},
+        };
+        for (const auto &entry : limits) {
+            QLineEdit *edit = fieldWidget<QLineEdit>(page, QString::fromLatin1(entry.field));
+            QVERIFY2(edit, entry.field);
+            QCOMPARE(edit->maxLength(), entry.limit);
+        }
+    }
+
     void cardsKeepTheStyleName()
     {
         const auto cards = [](QWidget *page) {
