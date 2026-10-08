@@ -8,11 +8,13 @@
 
 #include "application/ports/contractgenerator.h"
 #include "application/ports/filestorage.h"
+#include "application/ports/inventoryreader.h"
 #include "application/ports/passwordhasher.h"
 #include "application/ports/referencedatareader.h"
 #include "application/ports/userdirectory.h"
 #include "application/ports/vehiclerepository.h"
 #include "domain/model/vehicle.h"
+#include "presentation/presenters/iinventoryview.h"
 #include "presentation/presenters/iloginview.h"
 #include "presentation/tasks/taskrunner.h"
 
@@ -34,6 +36,63 @@ protected:
         work();
         done();
     }
+};
+
+// Guarda las tareas y las corre cuando la prueba lo pide, en el orden que
+// quiera: sirve para probar respuestas que llegan tarde o desordenadas.
+class DeferredTaskRunner final : public presentation::TaskRunner
+{
+public:
+    QList<std::function<void()>> works;
+    QList<std::function<void()>> dones;
+
+    // Corre la tarea `index` completa (trabajo y entrega).
+    void finish(int index)
+    {
+        works.at(index)();
+        dones.at(index)();
+    }
+
+protected:
+    void submit(std::function<void()> work, std::function<void()> done) override
+    {
+        works << std::move(work);
+        dones << std::move(done);
+    }
+};
+
+class FakeInventoryReader final : public application::InventoryReader
+{
+public:
+    QList<application::InventoryItemDto> items;
+    QString failWith;
+    QList<application::InventoryFilterDto> filters;
+
+    QList<application::InventoryItemDto> search(const application::InventoryFilterDto &filter,
+                                                QString *error) override
+    {
+        filters << filter;
+        if (!failWith.isEmpty()) {
+            if (error)
+                *error = failWith;
+            return {};
+        }
+        return items;
+    }
+};
+
+class FakeInventoryView final : public presentation::IInventoryView
+{
+public:
+    application::InventoryFilterDto currentFilter;
+    QList<application::InventoryItemDto> shown;
+    QStringList messages;
+    QList<int> scrolledTo;
+
+    application::InventoryFilterDto filter() const override { return currentFilter; }
+    void showVehicles(const QList<application::InventoryItemDto> &vehicles) override { shown = vehicles; }
+    void showInventoryMessage(const QString &message) override { messages << message; }
+    void scrollToFolio(int folio) override { scrolledTo << folio; }
 };
 
 // Hash instantáneo y legible: "plain:<contraseña>".

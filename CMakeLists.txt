@@ -16,9 +16,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Sql Network 
 
 # --- Capas (arquitectura hexagonal) -----------------------------------------
 # Cada capa es una biblioteca estática que solo enlaza los módulos de Qt que
-# tiene permitidos; ver cmake/SeminuevosLayers.cmake. Lo que todavía no cumple
-# la regla de su capa se compila dentro del ejecutable, más abajo, hasta que el
-# commit del plan que lo corrige lo convierta en biblioteca.
+# tiene permitidos; ver cmake/SeminuevosLayers.cmake.
 include(cmake/SeminuevosLayers.cmake)
 
 # Dominio: entidades, value objects y reglas. Solo QtCore y sin moc.
@@ -36,11 +34,27 @@ seminuevos_layer(seminuevos_application
 )
 
 # Presentación sin widgets: presenters, navegación y tareas. Solo QtCore, para
-# poder probarla sin GUI. Las vistas (presentation/views) son Widgets y siguen
-# en el ejecutable hasta que tengan su propia biblioteca.
+# poder probarla sin GUI.
 seminuevos_layer(seminuevos_presentation
     DIRS presentation/navigation presentation/presenters presentation/tasks
     DEPENDS seminuevos_application
+)
+
+# Vistas: los widgets (presentation/views) y sus formularios de Designer
+# (src/ui). Ven los presenters, los DTO y los value objects, pero no enlazan
+# ningún adaptador ni Qt Sql: no pueden tocar la base, y la prueba
+# `architecture` revisa que tampoco toquen el disco.
+seminuevos_layer(seminuevos_views
+    DIRS presentation/views
+    DEPENDS seminuevos_presentation
+    QT Widgets
+)
+file(GLOB SEMINUEVOS_FORMS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.ui")
+target_sources(seminuevos_views PRIVATE ${SEMINUEVOS_FORMS})
+# Los .ui viven en src/ui; con esta ruta, "#include "ui_x.h"" encuentra el
+# formulario sin rutas relativas.
+set_target_properties(seminuevos_views PROPERTIES
+    AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui"
 )
 
 # Adaptadores de salida: cada uno en su biblioteca, con solo el módulo de Qt
@@ -67,36 +81,22 @@ seminuevos_layer(seminuevos_security
 )
 
 # --- Ejecutable ---------------------------------------------------------------
-# Además de main.cpp y la raíz de composición (app/), compila lo que todavía no
-# es biblioteca: las vistas (Qt Widgets). Se listan por carpeta para que una
-# vista o un .ui nuevo no obligue a tocar este archivo.
+# Solo main.cpp, la raíz de composición (app/) y los recursos: todo lo demás
+# son las bibliotecas de arriba. app/ es la única carpeta que ve todas las capas.
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
-set(SEMINUEVOS_EXE_DIRS
-    presentation/views
-    app
+file(GLOB_RECURSE SEMINUEVOS_APP_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/app/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.cpp"
 )
-set(PROJECT_SOURCES main.cpp resources/Resources.qrc ${TS_FILES})
-foreach(dir IN LISTS SEMINUEVOS_EXE_DIRS)
-    file(GLOB_RECURSE dir_files CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/${dir}/*.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/${dir}/*.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/${dir}/*.cpp"
-    )
-    list(APPEND PROJECT_SOURCES ${dir_files})
-endforeach()
-file(GLOB SEMINUEVOS_FORMS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.ui")
-list(APPEND PROJECT_SOURCES ${SEMINUEVOS_FORMS})
 
 qt_add_executable(desktop-win-car-dealership
     MANUAL_FINALIZATION
-    ${PROJECT_SOURCES}
-)
-
-# Los .ui viven en src/ui; con esta ruta, "#include "ui_x.h"" encuentra el
-# formulario sin rutas relativas.
-set_target_properties(desktop-win-car-dealership PROPERTIES
-    AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui"
+    main.cpp
+    resources/Resources.qrc
+    ${TS_FILES}
+    ${SEMINUEVOS_APP_SOURCES}
 )
 
 target_include_directories(desktop-win-car-dealership PRIVATE
@@ -106,6 +106,7 @@ target_include_directories(desktop-win-car-dealership PRIVATE
 qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 
 target_link_libraries(desktop-win-car-dealership PRIVATE
+    seminuevos_views
     seminuevos_domain
     seminuevos_application
     seminuevos_presentation

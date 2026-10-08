@@ -1,10 +1,9 @@
 #include "presentation/views/inventory/vehicleitemlist.h"
 #include "ui_vehicleitemlist.h"
 
-#include "adapters/persistence/vehicleinventoryquery.h"
-
 #include <QLocale>
 #include <QPushButton>
+#include <QStringList>
 #include <QStyle>
 
 namespace {
@@ -15,6 +14,19 @@ const QString kMissing = QStringLiteral("—");
 
 // Clave que consume el QSS embebido en ui/vehicleitemlist.ui para pintar la
 // insignia: verde, ámbar o rojo.
+// "Nissan Kicks 2021", omitiendo las partes que falten.
+QString displayTitle(const application::InventoryItemDto &item)
+{
+    QStringList parts;
+    if (!item.brandName.isEmpty())
+        parts << item.brandName;
+    if (!item.model.isEmpty())
+        parts << item.model;
+    if (item.yearModel > 0)
+        parts << QString::number(item.yearModel);
+    return parts.join(QLatin1Char(' '));
+}
+
 QString statusStyleKey(const std::optional<domain::VehicleStatus> &status)
 {
     if (!status)
@@ -47,13 +59,13 @@ VehicleItemList::~VehicleItemList()
     delete ui;
 }
 
-void VehicleItemList::setSummary(const VehicleSummary &summary)
+void VehicleItemList::setItem(const application::InventoryItemDto &summary)
 {
     m_folio = summary.folio;
 
     const QLocale locale(QLocale::Spanish, QLocale::Mexico);
 
-    ui->vehicleTitle->setText(summary.displayTitle());
+    ui->vehicleTitle->setText(displayTitle(summary));
 
     // Un estado que no mapea se muestra con su texto crudo y sin color de
     // insignia, en vez de disfrazarse de alguno de los válidos.

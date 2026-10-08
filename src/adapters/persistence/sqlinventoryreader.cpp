@@ -1,6 +1,7 @@
-#include "adapters/persistence/vehicleinventoryquery.h"
+#include "adapters/persistence/sqlinventoryreader.h"
 
-#include <QLoggingCategory>
+#include "adapters/persistence/connectionpool.h"
+
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -70,23 +71,15 @@ SELECT v.folio,
 
 } // namespace
 
-QString VehicleSummary::displayTitle() const
+SqlInventoryReader::SqlInventoryReader(ConnectionPool &pool)
+    : m_pool(pool)
 {
-    QStringList parts;
-    if (!brandName.isEmpty())
-        parts << brandName;
-    if (!model.isEmpty())
-        parts << model;
-    if (yearModel > 0)
-        parts << QString::number(yearModel);
-    return parts.join(QLatin1Char(' '));
 }
 
-QList<VehicleSummary> VehicleInventoryQuery::load(QSqlDatabase &db,
-                                                  const VehicleInventoryFilter &filter,
-                                                  QString *errorMessage)
+QList<application::InventoryItemDto> SqlInventoryReader::search(
+    const application::InventoryFilterDto &filter, QString *error)
 {
-    QList<VehicleSummary> rows;
+    QList<application::InventoryItemDto> rows;
 
     // Dos listas en paralelo: el fragmento de SQL, que siempre es un literal
     // escrito aquí, y el valor, que viene del usuario y viaja por bindValue.
@@ -118,57 +111,72 @@ QList<VehicleSummary> VehicleInventoryQuery::load(QSqlDatabase &db,
     sql += QStringLiteral("\n ORDER BY v.added_date DESC NULLS LAST, v.folio DESC"
                           "\n LIMIT :limit");
 
-    QSqlQuery query(db);
-    if (!query.prepare(sql)) {
-        if (errorMessage)
-            *errorMessage = query.lastError().text();
-        return rows;
-    }
-    for (auto it = binds.cbegin(); it != binds.cend(); ++it)
-        query.bindValue(it.key(), it.value());
-    query.bindValue(QStringLiteral(":limit"), qMax(1, filter.limit));
+    bool failed = false;
+    {
+        ConnectionPool::Handle handle = m_pool.acquire();
+        QSqlDatabase &db = handle.database();
+        QSqlQuery query(db);
+        if (!db.isOpen()) {
+            if (error)
+                *error = QStringLiteral("No hay conexión con la base de datos.");
+            failed = true;
+        } else if (!query.prepare(sql)) {
+            if (error)
+                *error = query.lastError().text();
+            failed = true;
+        } else {
+            for (auto it = binds.cbegin(); it != binds.cend(); ++it)
+                query.bindValue(it.key(), it.value());
+            query.bindValue(QStringLiteral(":limit"), qMax(1, filter.limit));
 
-    if (!query.exec()) {
-        if (errorMessage)
-            *errorMessage = query.lastError().text();
-        return rows;
-    }
-
-    while (query.next()) {
-        VehicleSummary summary;
-        summary.folio = query.value(ColFolio).toInt();
-
-        // Un estado que no mapea NO descarta el renglón ni se sustituye por uno
-        // inventado: la unidad aparece con su texto crudo. Ocultarla la haría
-        // desaparecer del inventario sin explicación, y darla por "Disponible"
-        // podría llevar a que alguien intente vender dos veces la misma unidad.
-        summary.statusRaw = query.value(ColStatus).toString();
-        summary.status = domain::vehicleStatusFromDb(summary.statusRaw);
-        if (!summary.status && !summary.statusRaw.isEmpty()) {
-            qWarning("Vehiculo %d: el estado '%s' no pertenece al dominio.", summary.folio,
-                     qUtf8Printable(summary.statusRaw));
+            if (!query.exec()) {
+                if (error)
+                    *error = query.lastError().text();
+                failed = true;
+            }
         }
 
-        summary.brandName = query.value(ColBrandName).toString();
-        summary.model = query.value(ColModel).toString();
-        summary.yearModel = query.value(ColYearModel).toInt();
-        summary.color = query.value(ColColor).toString();
-        summary.mileage = query.value(ColMileage).toInt();
-        summary.addedDate = query.value(ColAddedDate).toDate();
+        while (!failed && query.next()) {
+            application::InventoryItemDto item;
+            item.folio = query.value(ColFolio).toInt();
 
-        const QVariant price = query.value(ColSalePrice);
-        if (!price.isNull())
-            summary.salePrice = price.toDouble();
+            // Un estado que no mapea NO descarta el renglón ni se sustituye por
+            // uno inventado: la unidad aparece con su texto crudo. Ocultarla la
+            // haría desaparecer del inventario sin explicación, y darla por
+            // "Disponible" podría llevar a vender dos veces la misma unidad.
+            item.statusRaw = query.value(ColStatus).toString();
+            item.status = domain::vehicleStatusFromDb(item.statusRaw);
+            if (!item.status && !item.statusRaw.isEmpty()) {
+                qWarning("Vehiculo %d: el estado '%s' no pertenece al dominio.", item.folio,
+                         qUtf8Printable(item.statusRaw));
+            }
 
-        const QString transmission = query.value(ColTransmission).toString();
-        if (!transmission.isEmpty())
-            summary.transmission = domain::transmissionFromDb(transmission);
+            item.brandName = query.value(ColBrandName).toString();
+            item.model = query.value(ColModel).toString();
+            item.yearModel = query.value(ColYearModel).toInt();
+            item.color = query.value(ColColor).toString();
+            item.mileage = query.value(ColMileage).toInt();
+            item.addedDate = query.value(ColAddedDate).toDate();
 
-        summary.fuelTypeName = query.value(ColFuelTypeName).toString();
-        summary.coverImagePath = query.value(ColCoverImagePath).toString();
+            const QVariant price = query.value(ColSalePrice);
+            if (!price.isNull())
+                item.salePrice = price.toDouble();
 
-        rows << summary;
+            const QString transmission = query.value(ColTransmission).toString();
+            if (!transmission.isEmpty())
+                item.transmission = domain::transmissionFromDb(transmission);
+
+            item.fuelTypeName = query.value(ColFuelTypeName).toString();
+            item.coverImagePath = query.value(ColCoverImagePath).toString();
+
+            rows << item;
+        }
     }
 
+    // Con la consulta y el Handle ya destruidos: si PostgreSQL se reinició, la
+    // conexión de este hilo quedó inservible y la siguiente lectura debe abrir
+    // otra.
+    if (failed)
+        m_pool.discardThreadConnection();
     return rows;
 }

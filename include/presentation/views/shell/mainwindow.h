@@ -1,6 +1,9 @@
 #ifndef PRESENTATION_VIEWS_SHELL_MAINWINDOW_H
 #define PRESENTATION_VIEWS_SHELL_MAINWINDOW_H
 
+#include "application/dto/authdtos.h"
+#include "presentation/presenters/iinventoryview.h"
+
 #include <QMainWindow>
 #include <QPointer>
 
@@ -12,7 +15,10 @@ namespace Ui {
 }
 QT_END_NAMESPACE
 
-struct VehicleInventoryFilter;
+namespace presentation {
+class InventoryPresenter;
+}
+
 class SidebarMenuItem;
 class NavTabItem;
 class OutlineButton;
@@ -22,7 +28,11 @@ class QFrame;
 // Ventana principal: barra lateral de módulos y, dentro del área de contenido,
 // una pila que alterna entre la rejilla de inventario y el asistente de
 // registro.
-class MainWindow : public QMainWindow
+//
+// La rejilla es una vista pasiva (IInventoryView): no lee la base ni el disco.
+// InventoryPresenter le pide los filtros, lee fuera del hilo de la interfaz y
+// le dice qué tarjetas pintar.
+class MainWindow : public QMainWindow, public presentation::IInventoryView
 {
     Q_OBJECT
 
@@ -35,6 +45,19 @@ public:
     // esta ventana no sabe armarlos.
     using WizardFactory = std::function<VehicleWizardView *(QWidget *parent)>;
     void setWizardFactory(WizardFactory factory);
+
+    // Quién entró: la barra superior muestra su rol.
+    void setSession(const application::SessionDto &session);
+
+    // Conecta los filtros con el presenter de la rejilla y le avisa cuando se
+    // registra una unidad.
+    void bindInventory(presentation::InventoryPresenter &presenter);
+
+    // --- IInventoryView ---
+    application::InventoryFilterDto filter() const override;
+    void showVehicles(const QList<application::InventoryItemDto> &vehicles) override;
+    void showInventoryMessage(const QString &message) override;
+    void scrollToFolio(int folio) override;
 
 private:
     WizardFactory m_wizardFactory;
@@ -57,10 +80,6 @@ private:
     // --- Inventario ---
     void populateStatusFilter();
     void applyDefaultDateRange();
-    VehicleInventoryFilter currentFilter() const;
-    void reloadInventory();
-    void showInventoryMessage(const QString &message);
-    void scrollToFolio(int folio);
 
     // --- Asistente ---
     // Hay a lo más un asistente. "Agregar Vehículo" retoma el que ya exista,
@@ -94,5 +113,8 @@ private:
     // destruyera por otro camino que closeVehicleWizard() (al destruirse el
     // stack, por ejemplo), el puntero queda en nulo en vez de colgando.
     QPointer<VehicleWizardView> m_wizard;
+
+    // El presenter de la rejilla. Su dueño es esta ventana (es su hijo).
+    QPointer<presentation::InventoryPresenter> m_inventory;
 };
 #endif // PRESENTATION_VIEWS_SHELL_MAINWINDOW_H

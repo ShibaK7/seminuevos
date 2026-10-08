@@ -6,14 +6,6 @@
 # pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
 # falta, se borra.
 
-# --- Commit 13: el inventario se carga por un presenter -----------------------
-src/presentation/views/inventory/vehicleitemlist.cpp: incluye "adapters/persistence/vehicleinventoryquery.h"  # commit 13: InventoryItemDto
-src/presentation/views/shell/mainwindow.cpp: incluye "app/appconfig.h"  # commit 13
-src/presentation/views/shell/mainwindow.cpp: incluye "adapters/persistence/connectionpool.h"  # commit 13
-src/presentation/views/shell/mainwindow.cpp: incluye "adapters/persistence/vehicleinventoryquery.h"  # commit 13
-src/presentation/views/shell/mainwindow.cpp: incluye "adapters/storage/localfilestorage.h"  # commit 13
-src/presentation/views/shell/mainwindow.cpp: incluye <QSqlDatabase> (QtSql)  # commit 13
-
 # --- Commit 17: el QSS embebido de los .ui pasa a la hoja global ----------------
 src/ui/loginwindow.ui: styleSheet en LoginWindow  # commit 17
 src/ui/loginwindow.ui: styleSheet en frame  # commit 17

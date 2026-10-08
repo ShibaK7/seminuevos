@@ -96,6 +96,11 @@ seminuevos_add_test(tst_pooledtaskrunner
     LIBS seminuevos_presentation
 )
 
+seminuevos_add_test(tst_inventorypresenter
+    SOURCES presentation/tst_inventorypresenter.cpp support/fakes.h
+    LIBS seminuevos_presentation
+)
+
 seminuevos_add_test(tst_invoiceattachment
     SOURCES presentation/tst_invoiceattachment.cpp
     LIBS seminuevos_presentation
@@ -107,29 +112,21 @@ seminuevos_add_test(tst_vehiclewizardpresenter
     LIBS seminuevos_presentation
 )
 
-# formsupport es apoyo de las vistas (Qt Widgets) y las vistas todavía no son
-# biblioteca: la prueba compila sus fuentes directamente.
+# Las de vistas enlazan seminuevos_views: widgets reales, sin base ni disco.
 seminuevos_add_test(tst_formsupport
-    SOURCES
-        presentation/tst_formsupport.cpp
-        "${PROJECT_SOURCE_DIR}/include/presentation/views/support/formsupport.h"
-        "${PROJECT_SOURCE_DIR}/src/presentation/views/support/formsupport.cpp"
-    LIBS seminuevos_domain Qt6::Widgets
+    SOURCES presentation/tst_formsupport.cpp
+    LIBS seminuevos_views
 )
 
-# Humo del asistente con sus widgets reales. Igual que formsupport, compila las
-# fuentes de las vistas que usa mientras las vistas no sean biblioteca.
-file(GLOB SEMINUEVOS_WIZARD_VIEW_SOURCES CONFIGURE_DEPENDS
-    "${PROJECT_SOURCE_DIR}/src/presentation/views/wizard/*.cpp"
-    "${PROJECT_SOURCE_DIR}/include/presentation/views/wizard/*.h"
-    "${PROJECT_SOURCE_DIR}/src/presentation/views/components/*.cpp"
-    "${PROJECT_SOURCE_DIR}/include/presentation/views/components/*.h"
-    "${PROJECT_SOURCE_DIR}/src/presentation/views/support/*.cpp"
-    "${PROJECT_SOURCE_DIR}/include/presentation/views/support/*.h"
+seminuevos_add_test(tst_inventoryview
+    SOURCES presentation/tst_inventoryview.cpp support/fakes.h
+    LIBS seminuevos_views
 )
+
+# Humo del asistente con sus widgets reales.
 seminuevos_add_test(tst_vehiclewizardview
-    SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h ${SEMINUEVOS_WIZARD_VIEW_SOURCES}
-    LIBS seminuevos_presentation Qt6::Widgets
+    SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h
+    LIBS seminuevos_views
 )
 
 # --- Integración con PostgreSQL (opcional) ---------------------------------------

@@ -2,13 +2,15 @@
 
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/devseeder.h"
+#include "adapters/persistence/sqlinventoryreader.h"
 #include "adapters/persistence/sqlreferencedatareader.h"
 #include "adapters/persistence/sqluserdirectory.h"
 #include "adapters/persistence/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
-#include "app/appconfig.h"
 #include "application/services/authenticationservice.h"
+#include "application/services/inventoryservice.h"
 #include "application/services/vehicleregistrationservice.h"
+#include "presentation/presenters/inventorypresenter.h"
 #include "presentation/presenters/loginpresenter.h"
 #include "presentation/presenters/vehiclewizardpresenter.h"
 #include "presentation/views/login/loginwindow.h"
@@ -86,6 +88,7 @@ QPropertyAnimation *fade(QWidget *widget, qreal from, qreal to)
 
 CompositionRoot::CompositionRoot()
     : m_settings(loadAppSettings())
+    , m_pool(m_settings.database)
 {
 }
 
@@ -93,13 +96,7 @@ CompositionRoot::~CompositionRoot() = default;
 
 bool CompositionRoot::start()
 {
-    ConnectionPool::configure(m_settings.database);
-    ConnectionPool &pool = ConnectionPool::instance();
-
-    // Mientras las vistas del inventario y del asistente no reciban sus
-    // servicios por inyección, siguen leyendo esto de AppConfig.
-    AppConfig::setStorageRoot(m_settings.storageRoot);
-    AppConfig::setWizardFreeNavigation(m_settings.wizardFreeNavigation);
+    ConnectionPool &pool = m_pool;
 
     // Antes de mostrar el login se comprueba que la base responda, para avisar
     // con claridad en vez de abrir una app rota. El esquema y los catálogos los
@@ -135,6 +132,8 @@ bool CompositionRoot::start()
     m_referenceData = std::make_unique<SqlReferenceDataReader>(pool);
     m_registration = std::make_unique<application::VehicleRegistrationService>(
         *m_vehicles, *m_files, *m_referenceData, m_contracts);
+    m_inventoryReader = std::make_unique<SqlInventoryReader>(pool);
+    m_inventory = std::make_unique<application::InventoryService>(*m_inventoryReader, *m_files);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -151,10 +150,8 @@ bool CompositionRoot::start()
 
 void CompositionRoot::showMain(const application::SessionDto &session)
 {
-    Q_UNUSED(session); // el rol se mostrará cuando MainWindow reciba la sesión
-
     QPropertyAnimation *fadeOut = fade(m_login.get(), 1.0, 0.0);
-    connect(fadeOut, &QPropertyAnimation::finished, this, [this] {
+    connect(fadeOut, &QPropertyAnimation::finished, this, [this, session] {
         m_login->hide();
         applyGlobalStyle();
 
@@ -164,6 +161,14 @@ void CompositionRoot::showMain(const application::SessionDto &session)
         // vivo, bloqueando el .exe para la siguiente compilación.
         mainWindow->setAttribute(Qt::WA_DeleteOnClose);
         connect(mainWindow, &QObject::destroyed, qApp, &QCoreApplication::quit);
+        mainWindow->setSession(session);
+
+        // La rejilla del inventario: su presenter vive lo que vive la ventana.
+        auto *inventory =
+            new presentation::InventoryPresenter(*mainWindow, *m_inventory, m_runner, mainWindow);
+        mainWindow->bindInventory(*inventory);
+        inventory->reload();
+
         // El asistente se arma aquí porque solo la raíz tiene su servicio y el
         // TaskRunner; MainWindow solo decide cuándo abrirlo.
         mainWindow->setWizardFactory([this](QWidget *parent) {

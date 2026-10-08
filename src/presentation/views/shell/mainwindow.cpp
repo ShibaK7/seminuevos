@@ -1,13 +1,10 @@
 #include "presentation/views/shell/mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include "app/appconfig.h"
 #include "presentation/views/components/navtabitem.h"
 #include "presentation/views/components/outlinebutton.h"
 #include "presentation/views/components/sidebarmenuitem.h"
-#include "adapters/persistence/connectionpool.h"
-#include "adapters/persistence/vehicleinventoryquery.h"
-#include "adapters/storage/localfilestorage.h"
+#include "presentation/presenters/inventorypresenter.h"
 #include "presentation/views/inventory/vehicleitemlist.h"
 #include "presentation/views/components/aspectratioimagelabel.h"
 #include "presentation/views/wizard/vehiclewizardview.h"
@@ -24,7 +21,6 @@
 #include <QPixmapCache>
 #include <QPushButton>
 #include <QSignalBlocker>
-#include <QSqlDatabase>
 #include <QStatusBar>
 
 namespace {
@@ -45,23 +41,25 @@ constexpr int kFilterControlHeight = 34;
 // La lista se reconstruye entera en cada cambio de filtro. Sin caché, cada
 // recarga vuelve a decodificar los JPG de 1280x960 en el hilo de la interfaz.
 // La ruta relativa sirve de llave porque el nombre lleva marca de tiempo, así
-// que no se repite entre archivos distintos.
-QPixmap thumbnailFor(const LocalFileStorage &storage, const QString &relativePath)
+// que no se repite entre archivos distintos. Los bytes ya llegan leídos: la
+// vista no abre archivos.
+QPixmap thumbnailFor(const application::InventoryItemDto &item)
 {
-    if (relativePath.isEmpty())
+    if (item.coverImagePath.isEmpty() || item.coverImage.isEmpty())
         return QPixmap(QString::fromLatin1(kPlaceholderImage));
 
     QPixmap cached;
-    if (QPixmapCache::find(relativePath, &cached))
+    if (QPixmapCache::find(item.coverImagePath, &cached))
         return cached;
 
-    const QPixmap loaded(storage.absolutePath(relativePath));
+    QPixmap loaded;
+    loaded.loadFromData(item.coverImage);
     // Foto borrada del disco, o una raíz de almacenamiento distinta de la que
     // la escribió: el marcador de posición es lo correcto.
     if (loaded.isNull())
         return QPixmap(QString::fromLatin1(kPlaceholderImage));
 
-    QPixmapCache::insert(relativePath, loaded);
+    QPixmapCache::insert(item.coverImagePath, loaded);
     return loaded;
 }
 
@@ -121,10 +119,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_addVehicleButton, &QPushButton::clicked, this, &MainWindow::openVehicleWizard);
 
-    connect(ui->estado, &QComboBox::currentIndexChanged, this, &MainWindow::reloadInventory);
-    connect(ui->fechaInicio, &QDateEdit::dateChanged, this, &MainWindow::reloadInventory);
-    connect(ui->fechaFin, &QDateEdit::dateChanged, this, &MainWindow::reloadInventory);
-
     // Las pestañas e Inventario en el menú solo cambian de página. Un
     // asistente abierto no se cierra por eso: queda vivo y oculto, con lo
     // capturado, y "Agregar Vehículo" lo retoma (ver openVehicleWizard).
@@ -148,8 +142,6 @@ MainWindow::MainWindow(QWidget *parent)
             [this] { showModulePending(QStringLiteral("Finanzas")); });
     connect(m_reportItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Reportes")); });
-
-    reloadInventory();
 }
 
 MainWindow::~MainWindow()
@@ -297,9 +289,9 @@ void MainWindow::applyDefaultDateRange()
     ui->fechaFin->setDate(QDate::currentDate());
 }
 
-VehicleInventoryFilter MainWindow::currentFilter() const
+application::InventoryFilterDto MainWindow::filter() const
 {
-    VehicleInventoryFilter filter;
+    application::InventoryFilterDto filter;
 
     const int rawStatus = ui->estado->currentData().toInt();
     if (rawStatus >= 0)
@@ -310,55 +302,56 @@ VehicleInventoryFilter MainWindow::currentFilter() const
     return filter;
 }
 
+void MainWindow::bindInventory(presentation::InventoryPresenter &presenter)
+{
+    m_inventory = &presenter;
+    connect(ui->estado, &QComboBox::currentIndexChanged, &presenter,
+            &presentation::InventoryPresenter::reload);
+    connect(ui->fechaInicio, &QDateEdit::dateChanged, &presenter,
+            &presentation::InventoryPresenter::reload);
+    connect(ui->fechaFin, &QDateEdit::dateChanged, &presenter,
+            &presentation::InventoryPresenter::reload);
+}
+
+void MainWindow::setSession(const application::SessionDto &session)
+{
+    // El rol tal como lo guarda la base ("administrador"), con mayúscula
+    // inicial para la barra.
+    QString role = session.role;
+    if (!role.isEmpty())
+        role[0] = role.at(0).toUpper();
+    ui->userRoleLabel->setText(role);
+    ui->userRoleLabel->setToolTip(session.displayName);
+}
+
 // ---------------------------------------------------------------------------
 // Rejilla de inventario
 // ---------------------------------------------------------------------------
 
-void MainWindow::reloadInventory()
+void MainWindow::showVehicles(const QList<application::InventoryItemDto> &vehicles)
 {
     // clear() destruye los renglones y, con ellos, los widgets asignados con
     // setItemWidget: la vista es dueña de ellos.
     ui->vehicleList->clear();
 
-    ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
-    QSqlDatabase &db = handle.database();
-    if (!db.isOpen()) {
-        showInventoryMessage(QStringLiteral("No hay conexión con la base de datos."));
-        return;
-    }
-
-    QString errorMessage;
-    const QList<VehicleSummary> summaries =
-        VehicleInventoryQuery::load(db, currentFilter(), &errorMessage);
-
-    if (!errorMessage.isEmpty()) {
-        showInventoryMessage(
-            QStringLiteral("No se pudo leer el inventario: %1").arg(errorMessage));
-        return;
-    }
-    if (summaries.isEmpty()) {
-        showInventoryMessage(
-            QStringLiteral("No hay vehículos que coincidan con los filtros seleccionados."));
-        return;
-    }
-
-    const LocalFileStorage storage(AppConfig::storageRoot());
-    for (const VehicleSummary &summary : summaries) {
+    for (const application::InventoryItemDto &vehicle : vehicles) {
         auto *card = new VehicleItemList(ui->vehicleList);
-        card->setSummary(summary);
-        card->setImage(thumbnailFor(storage, summary.coverImagePath));
+        card->setItem(vehicle);
+        card->setImage(thumbnailFor(vehicle));
 
         auto *item = new QListWidgetItem(ui->vehicleList);
         // Ancho cero: el renglón ocupa el ancho del viewport. Darle el de la
         // tarjeta produciría una barra horizontal de más.
         item->setSizeHint(QSize(0, card->sizeHint().height()));
-        item->setData(Qt::UserRole, summary.folio);
+        item->setData(Qt::UserRole, vehicle.folio);
         ui->vehicleList->setItemWidget(item, card);
     }
 }
 
 void MainWindow::showInventoryMessage(const QString &message)
 {
+    ui->vehicleList->clear();
+
     auto *label = new QLabel(message, ui->vehicleList);
     // Sin objectName se queda con el fondo blanco de la regla base de QWidget,
     // que sobre el gris de la página se ve como una banda blanca cruzando la
@@ -418,8 +411,8 @@ void MainWindow::onVehicleRegistered(int folio)
     // Se refresca la lista de atrás en cuanto la unidad queda guardada, no al
     // cerrar: así, cuando el asistente se quite de en medio, el vehículo nuevo
     // ya está en su sitio y con el desplazamiento puesto encima.
-    reloadInventory();
-    scrollToFolio(folio);
+    if (m_inventory)
+        m_inventory->vehicleRegistered(folio);
 }
 
 void MainWindow::closeVehicleWizard()

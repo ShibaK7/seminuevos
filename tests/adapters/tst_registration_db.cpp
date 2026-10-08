@@ -7,6 +7,7 @@
 
 #include "adapters/contract/pdfcontractgenerator.h"
 #include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/sqlinventoryreader.h"
 #include "adapters/persistence/sqlreferencedatareader.h"
 #include "adapters/persistence/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
@@ -19,6 +20,8 @@
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QtTest>
+
+#include <memory>
 
 namespace {
 
@@ -46,6 +49,7 @@ class TstRegistrationDb : public QObject
 
 private:
     QTemporaryDir m_storage;
+    std::unique_ptr<ConnectionPool> m_pool;
     QStringList m_createdSerials;
 
     application::RegistrationLookupsDto m_lookups;
@@ -107,13 +111,15 @@ private slots:
         config.databaseName = env.value(QStringLiteral("POSTGRES_DB"), QStringLiteral("seminuevos"));
         config.userName = env.value(QStringLiteral("POSTGRES_USER"), QStringLiteral("seminuevos_app"));
         config.password = env.value(QStringLiteral("POSTGRES_PASSWORD"));
-        ConnectionPool::configure(config);
+        m_pool = std::make_unique<ConnectionPool>(config);
 
-        ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
-        if (!handle.database().isOpen())
-            QSKIP("PostgreSQL no está disponible (docker compose up -d).");
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            if (!handle.database().isOpen())
+                QSKIP("PostgreSQL no está disponible (docker compose up -d).");
+        }
 
-        SqlReferenceDataReader reference(ConnectionPool::instance());
+        SqlReferenceDataReader reference(*m_pool);
         QString error;
         m_lookups.vehicleSubtypes.clear();
         for (const auto &option : reference.vehicleCategories(&error)) {
@@ -129,7 +135,7 @@ private slots:
 
     void cleanupTestCase()
     {
-        ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
+        ConnectionPool::Handle handle = m_pool->acquire();
         for (const QString &vin : std::as_const(m_createdSerials)) {
             QSqlQuery query(handle.database());
             query.prepare(QStringLiteral("DELETE FROM vehicles WHERE serial_number = :vin"));
@@ -140,8 +146,8 @@ private slots:
 
     void registersAgainstTheRealDatabase()
     {
-        SqlVehicleRepository vehicles(ConnectionPool::instance());
-        SqlReferenceDataReader reference(ConnectionPool::instance());
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
         LocalFileStorage files(m_storage.path());
         PdfContractGenerator contracts;
         const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
@@ -156,6 +162,16 @@ private slots:
         QVERIFY(first.folio > 0);
         QVERIFY(first.contract.has_value());
 
+        // La rejilla del inventario la encuentra, con su precio de venta.
+        SqlInventoryReader inventory(*m_pool);
+        QString inventoryError;
+        const auto items = inventory.search(application::InventoryFilterDto(), &inventoryError);
+        QVERIFY2(inventoryError.isEmpty(), qPrintable(inventoryError));
+        const auto found = std::find_if(items.cbegin(), items.cend(),
+                                        [&](const auto &item) { return item.folio == first.folio; });
+        QVERIFY(found != items.cend());
+        QCOMPARE(found->salePrice, std::optional<double>(120000.0));
+
         // El mismo VIN otra vez: lo detecta antes de copiar.
         const auto second = service.registerVehicle(registration(vin));
         QCOMPARE(second.status, application::RegistrationResult::Status::Rejected);
@@ -164,8 +180,8 @@ private slots:
 
     void lookupsComeFromTheCatalogs()
     {
-        SqlVehicleRepository vehicles(ConnectionPool::instance());
-        SqlReferenceDataReader reference(ConnectionPool::instance());
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
         LocalFileStorage files(m_storage.path());
         PdfContractGenerator contracts;
         const application::VehicleRegistrationService service(vehicles, files, reference, contracts);

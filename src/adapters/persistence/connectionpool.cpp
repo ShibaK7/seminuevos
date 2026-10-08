@@ -4,29 +4,17 @@
 #include <QSqlError>
 #include <QThread>
 
-namespace {
-DatabaseConfig &configStorage()
-{
-    static DatabaseConfig config;
-    return config;
-}
-} // namespace
-
-void ConnectionPool::configure(const DatabaseConfig &config)
-{
-    configStorage() = config;
-}
-
-ConnectionPool &ConnectionPool::instance()
-{
-    static ConnectionPool pool(configStorage());
-    return pool;
-}
-
 ConnectionPool::ConnectionPool(const DatabaseConfig &config)
     : m_config(config)
     , m_semaphore(config.maxConnections)
 {
+}
+
+ConnectionPool::~ConnectionPool()
+{
+    // QThreadStorage no borra lo que guarda al destruirse: sin esto, la
+    // conexión del hilo de la interfaz quedaría abierta y registrada en Qt.
+    discardThreadConnection();
 }
 
 ConnectionPool::ThreadConnection::~ThreadConnection()
