@@ -13,8 +13,6 @@ namespace {
 // cuando faltan varios campos.
 const QString kMissing = QStringLiteral("—");
 
-// Clave que consume el QSS embebido en ui/vehicleitemlist.ui para pintar la
-// insignia: verde, ámbar o rojo.
 // "Nissan Kicks 2021", omitiendo las partes que falten.
 QString displayTitle(const application::InventoryItemDto &item)
 {
@@ -28,6 +26,8 @@ QString displayTitle(const application::InventoryItemDto &item)
     return parts.join(QLatin1Char(' '));
 }
 
+// Clave que consume resources/styles/vehicle-card.qss para pintar la
+// insignia: verde, ámbar o rojo.
 QString statusStyleKey(const std::optional<domain::VehicleStatus> &status)
 {
     if (!status)

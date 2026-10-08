@@ -4,7 +4,16 @@
 #include "presentation/presenters/iinventoryview.h"
 #include "presentation/tasks/taskrunner.h"
 
+#include <utility>
+
 namespace presentation {
+
+namespace {
+
+// Cuánto se espera después del último cambio de filtro para leer.
+constexpr int kReloadDelayMs = 250;
+
+} // namespace
 
 InventoryPresenter::InventoryPresenter(IInventoryView &view,
                                        const application::InventoryService &inventory,
@@ -14,17 +23,36 @@ InventoryPresenter::InventoryPresenter(IInventoryView &view,
     , m_inventory(inventory)
     , m_runner(runner)
 {
+    m_reloadTimer.setSingleShot(true);
+    m_reloadTimer.setInterval(kReloadDelayMs);
+    connect(&m_reloadTimer, &QTimer::timeout, this, &InventoryPresenter::reload);
 }
 
 void InventoryPresenter::reload()
 {
-    const int generation = ++m_generation;
+    m_reloadTimer.stop();
+    const int generation = ++*m_generation;
     const application::InventoryFilterDto filter = m_view.filter();
     const application::InventoryService *inventory = &m_inventory;
-    m_runner.run(this, [inventory, filter] { return inventory->search(filter); },
+    const std::shared_ptr<std::atomic<int>> latest = m_generation;
+    m_runner.run(this,
+                 [inventory, filter, generation, latest] {
+                     // Si ya se pidió otra lectura mientras esta esperaba su
+                     // turno, no vale la pena consultar: su respuesta se
+                     // descartaría de todos modos.
+                     if (latest->load() != generation)
+                         return application::InventoryResultDto();
+                     return inventory->search(filter);
+                 },
                  [this, generation](const application::InventoryResultDto &result) {
                      onLoaded(generation, result);
                  });
+}
+
+void InventoryPresenter::scheduleReload()
+{
+    // start() reinicia la cuenta si ya corría.
+    m_reloadTimer.start();
 }
 
 void InventoryPresenter::vehicleRegistered(int folio)
@@ -37,8 +65,12 @@ void InventoryPresenter::onLoaded(int generation, const application::InventoryRe
 {
     // Una respuesta vieja llegó después de que se pidió otra: pintarla
     // mostraría resultados de un filtro que ya no está puesto.
-    if (generation != m_generation)
+    if (generation != m_generation->load())
         return;
+
+    // La unidad a la que había que llevar la lista se busca solo en esta
+    // respuesta: si no llegó, una recarga posterior no debe saltar a ella.
+    const int scrollTo = std::exchange(m_scrollToFolio, -1);
 
     if (!result.errorMessage.isEmpty()) {
         m_view.showInventoryMessage(
@@ -52,10 +84,8 @@ void InventoryPresenter::onLoaded(int generation, const application::InventoryRe
     }
 
     m_view.showVehicles(result.vehicles);
-    if (m_scrollToFolio >= 0) {
-        m_view.scrollToFolio(m_scrollToFolio);
-        m_scrollToFolio = -1;
-    }
+    if (scrollTo >= 0)
+        m_view.scrollToFolio(scrollTo);
 }
 
 } // namespace presentation

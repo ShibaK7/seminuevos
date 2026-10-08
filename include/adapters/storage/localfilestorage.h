@@ -26,6 +26,7 @@ public:
 
     domain::FileFacts inspect(const QString &sourcePath) const override;
     QByteArray read(const QString &sourcePath) const override;
+    QByteArray readThumbnail(const QString &imagePath, int maxWidth, int maxHeight) const override;
     application::TemporaryFileDto copyToTemporary(const QString &sourcePath,
                                                   const QString &fileName) override;
 

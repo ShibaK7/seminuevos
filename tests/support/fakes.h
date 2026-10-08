@@ -212,6 +212,10 @@ public:
         return file;
     }
     QByteArray read(const QString &sourcePath) const override { return sourcePath.toUtf8(); }
+    QByteArray readThumbnail(const QString &imagePath, int, int) const override
+    {
+        return QByteArray("miniatura:") + imagePath.toUtf8();
+    }
     application::TemporaryFileDto copyToTemporary(const QString &sourcePath,
                                                   const QString &fileName) override
     {

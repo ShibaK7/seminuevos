@@ -84,27 +84,13 @@ Used for the single main action on a page (e.g., `+ Agregar Vehículo`, `Guardar
 ## 📁 4. Project Setup & Stylesheet Loading
 
 The global stylesheet is located in the resource bundle at:
-`:/resources/styles/globalstyle.qss`
+`:/styles/global-style-clean.qss` (file `resources/styles/global-style-clean.qss`).
 
 ### Global Scope Setup (excluding Login Window)
-To apply the design system globally to the main workspace **without overriding the existing Login window design**, load the stylesheet directly onto the `MainWindow` instance upon successful login:
-
-```cpp
-// In main.cpp or Login Manager:
-MainWindow *mainWin = new MainWindow();
-
-QFile styleFile(":/styles/globalstyle.qss");
-if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
-    QTextStream stream(&styleFile);
-    mainWin->setStyleSheet(stream.readAll());
-    styleFile.close();
-}
-
-mainWin->show();
-```
+`CompositionRoot::showMain()` (`src/app/compositionroot.cpp`) applies it to the whole application right after the login closes, so it never overrides the login design; the login uses its own `:/styles/login.qss`. See "Style Sheet Files" at the top of this document.
 ## 🛠️ 5. Rules for Developers Adding New Views
-1. **Do NOT Hardcode Styles in C++:** Avoid calling `widget->setStyleSheet("color: red; ...")` directly in your view classes. Use `setProperty("class", "primary")` or `setObjectName("...")` and define rules in globalstyle.qss or create a dedicated style sheet if needed.
-2. **Container Wrappers:** Always place modular view contents inside a `QFrame` or `QWidget` with `setObjectName("cardPanel")` to inherit the rounded white card container style.
+1. **Do NOT Hardcode Styles in C++:** Avoid calling `widget->setStyleSheet("color: red; ...")` directly in your view classes. Use `setProperty("class", "primary")` or `setObjectName("...")` and define rules in global-style-clean.qss or create a dedicated style sheet if needed.
+2. **Container Wrappers:** Always place modular view contents inside a `QFrame` or `QWidget` with `setObjectName("cardPanel")` (or, in Designer, the `class` property set to `card`) to inherit the rounded white card container style.
 3. **Dynamic Property Updates:** If you change a widget's property dynamically at runtime (e.g., `setProperty("hasError", true)`), force Qt to refresh rendering via:
     ```cpp
     widget->style()->unpolish(widget);

@@ -256,10 +256,12 @@ void MainWindow::bindInventory(presentation::InventoryPresenter &presenter)
     m_inventory = &presenter;
     connect(ui->estado, &QComboBox::currentIndexChanged, &presenter,
             &presentation::InventoryPresenter::reload);
+    // Las fechas se teclean dígito por dígito, y cada uno cambia el control:
+    // el presenter espera a que el usuario termine para leer una sola vez.
     connect(ui->fechaInicio, &QDateEdit::dateChanged, &presenter,
-            &presentation::InventoryPresenter::reload);
+            &presentation::InventoryPresenter::scheduleReload);
     connect(ui->fechaFin, &QDateEdit::dateChanged, &presenter,
-            &presentation::InventoryPresenter::reload);
+            &presentation::InventoryPresenter::scheduleReload);
 }
 
 void MainWindow::setSession(const application::SessionDto &session)

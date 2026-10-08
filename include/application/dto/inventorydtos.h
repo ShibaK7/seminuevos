@@ -54,9 +54,10 @@ struct InventoryItemDto
     // Lo que la tarjeta rotula como "Motor" es el combustible.
     QString fuelTypeName;
 
-    // Ruta relativa al almacén (vacía = sin fotos) y los bytes de la foto, ya
-    // leídos fuera del hilo de la interfaz. Vacíos si no hay foto o si ya no
-    // está en disco: la vista pone el marcador de posición.
+    // Ruta relativa al almacén (vacía = sin fotos) y los bytes de una
+    // miniatura de la foto, ya generada fuera del hilo de la interfaz. Vacíos
+    // si no hay foto o si ya no está en disco: la vista pone el marcador de
+    // posición.
     QString coverImagePath;
     QByteArray coverImage;
 };

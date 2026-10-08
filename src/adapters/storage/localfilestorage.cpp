@@ -1,5 +1,6 @@
 #include "adapters/storage/localfilestorage.h"
 
+#include <QBuffer>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -154,6 +155,26 @@ QByteArray LocalFileStorage::read(const QString &sourcePath) const
     if (!file.open(QIODevice::ReadOnly))
         return QByteArray();
     return file.readAll();
+}
+
+QByteArray LocalFileStorage::readThumbnail(const QString &imagePath, int maxWidth,
+                                           int maxHeight) const
+{
+    // QImage y no QPixmap: esto corre en un hilo de trabajo, y QImage se puede
+    // usar fuera del hilo de la interfaz.
+    const QImage image(imagePath);
+    if (image.isNull())
+        return QByteArray();
+
+    const QImage thumbnail =
+        image.width() > maxWidth || image.height() > maxHeight
+            ? image.scaled(maxWidth, maxHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation)
+            : image;
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    thumbnail.save(&buffer, "JPG", 85);
+    return bytes;
 }
 
 application::TemporaryFileDto LocalFileStorage::copyToTemporary(const QString &sourcePath,

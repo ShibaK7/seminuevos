@@ -50,6 +50,11 @@ public:
     // Los bytes de un archivo, para su vista previa. Vacío si no se pudo leer.
     virtual QByteArray read(const QString &sourcePath) const = 0;
 
+    // Una miniatura de la imagen (que quepa en maxWidth x maxHeight), ya
+    // codificada. Sirve para pintar muchas fotos sin decodificar cada una a
+    // tamaño completo en el hilo de la interfaz. Vacía si no se pudo leer.
+    virtual QByteArray readThumbnail(const QString &imagePath, int maxWidth, int maxHeight) const = 0;
+
     // Copia `sourcePath` (también puede ser un recurso ":/...") a la carpeta
     // temporal del sistema con el nombre `fileName`.
     virtual TemporaryFileDto copyToTemporary(const QString &sourcePath, const QString &fileName) = 0;

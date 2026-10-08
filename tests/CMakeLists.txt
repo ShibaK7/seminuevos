@@ -80,6 +80,12 @@ seminuevos_add_test(tst_registrationservice
     LIBS seminuevos_application
 )
 
+# --- Adaptadores ---------------------------------------------------------------
+seminuevos_add_test(tst_localfilestorage
+    SOURCES adapters/tst_localfilestorage.cpp
+    LIBS seminuevos_storage
+)
+
 # --- Presentación ---------------------------------------------------------------
 seminuevos_add_test(tst_wizardnavigator
     SOURCES presentation/tst_wizardnavigator.cpp

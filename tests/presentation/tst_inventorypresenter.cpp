@@ -47,8 +47,8 @@ private slots:
 
         presenter.reload();
         QCOMPARE(m_view.shown.size(), 2);
-        // FakeFileStorage::read devuelve la ruta como bytes.
-        QCOMPARE(m_view.shown.at(0).coverImage, QByteArray("vehicles/VIN/images/a.jpg"));
+        // La portada llega como miniatura (FakeFileStorage la marca así).
+        QCOMPARE(m_view.shown.at(0).coverImage, QByteArray("miniatura:vehicles/VIN/images/a.jpg"));
         QVERIFY(m_view.shown.at(1).coverImage.isEmpty());
         QVERIFY(m_view.messages.isEmpty());
     }
@@ -91,6 +91,50 @@ private slots:
         // Solo una vez: una recarga posterior no vuelve a desplazar.
         presenter.reload();
         QCOMPARE(m_view.scrolledTo.size(), 1);
+    }
+
+    // Si la lectura del registro no trae la unidad (falló), una recarga
+    // posterior no debe saltar a ella.
+    void pendingScrollIsDroppedWhenTheReadFails()
+    {
+        m_reader.failWith = QStringLiteral("sin conexión");
+        const application::InventoryService service(m_reader, m_files);
+        fakes::InlineTaskRunner runner;
+        presentation::InventoryPresenter presenter(m_view, service, runner);
+        presenter.vehicleRegistered(7);
+        m_reader.failWith.clear();
+        m_reader.items << item(7);
+        presenter.reload();
+        QVERIFY(m_view.scrolledTo.isEmpty());
+    }
+
+    // Varios cambios seguidos de filtro (teclear una fecha) leen una sola vez.
+    void scheduledReloadsAreCoalesced()
+    {
+        const application::InventoryService service(m_reader, m_files);
+        fakes::InlineTaskRunner runner;
+        presentation::InventoryPresenter presenter(m_view, service, runner);
+        presenter.scheduleReload();
+        presenter.scheduleReload();
+        presenter.scheduleReload();
+        QCOMPARE(m_reader.filters.size(), 0);
+        QTRY_COMPARE(m_reader.filters.size(), 1);
+        QTest::qWait(400);
+        QCOMPARE(m_reader.filters.size(), 1);
+    }
+
+    // Una lectura que ya quedó vieja antes de empezar ni siquiera consulta.
+    void staleWorkSkipsTheQuery()
+    {
+        const application::InventoryService service(m_reader, m_files);
+        fakes::DeferredTaskRunner runner;
+        presentation::InventoryPresenter presenter(m_view, service, runner);
+        presenter.reload();
+        presenter.reload();
+        runner.finish(0);
+        QCOMPARE(m_reader.filters.size(), 0);
+        runner.finish(1);
+        QCOMPARE(m_reader.filters.size(), 1);
     }
 
     // El usuario cambia el filtro dos veces seguidas y la primera lectura
