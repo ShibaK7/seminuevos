@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VehicleConditionsView</class>
+ <widget class="QWidget" name="VehicleConditionsView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <layout class="QHBoxLayout" name="conditionsLayout" stretch="0,1">
+   <item>
+    <widget class="QFrame" name="specsCard">
+     <layout class="QVBoxLayout" name="specsCardLayout">
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="specsTitle">
+        <property name="text">
+         <string>Especificaciones básicas</string>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">h3</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="specsTitleSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Policy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>0</width>
+          <height>15</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="specsForm">
+        <item row="0" column="0">
+         <widget class="QLabel" name="fuelTypeLabel">
+          <property name="text">
+           <string>Combustible &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+          </property>
+          <property name="buddy">
+           <cstring>fuelTypeCombo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="fuelTypeCombo">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Seleccione una opción...</string>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">conditions.fuelType</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="cylindersLabel">
+          <property name="text">
+           <string>Cilindros &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+          </property>
+          <property name="buddy">
+           <cstring>cylindersCombo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="cylindersCombo">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Seleccione una opción...</string>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">conditions.cylinders</string>
+          </property>
+          <item>
+           <property name="text">
+            <string notr="true">3</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string notr="true">4</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string notr="true">5</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string notr="true">6</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string notr="true">8</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="transmissionLabel">
+          <property name="text">
+           <string>Transmisión &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+          </property>
+          <property name="buddy">
+           <cstring>transmissionCombo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QComboBox" name="transmissionCombo">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Seleccione una opción...</string>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">conditions.transmission</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="interiorMaterialLabel">
+          <property name="text">
+           <string>Interiores &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+          </property>
+          <property name="buddy">
+           <cstring>interiorMaterialCombo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QComboBox" name="interiorMaterialCombo">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Seleccione una opción...</string>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">conditions.interiorMaterial</string>
+          </property>
+          <item>
+           <property name="text">
+            <string notr="true">Tela</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string notr="true">Piel</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string notr="true">Piel sintética</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="windowRegulatorsLabel">
+          <property name="text">
+           <string>Cristales &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+          </property>
+          <property name="buddy">
+           <cstring>windowRegulatorsCombo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QComboBox" name="windowRegulatorsCombo">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Seleccione una opción...</string>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">conditions.windowRegulators</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="airConditioningLabel">
+          <property name="text">
+           <string>Aire Acondicionado &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+          </property>
+          <property name="buddy">
+           <cstring>airConditioningCombo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QComboBox" name="airConditioningCombo">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Seleccione una opción...</string>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">conditions.airConditioning</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="specsBottomSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="checklistCard">
+     <layout class="QVBoxLayout" name="checklistCardLayout" stretch="0,0,1">
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="checklistTitle">
+        <property name="text">
+         <string>Detalles de la condición del vehículo</string>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">h3</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="checklistMessageLabel">
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">error-text</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QScrollArea" name="checklistScrollArea">
+        <property name="frameShape">
+         <enum>QFrame::Shape::NoFrame</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">inspection</string>
+        </property>
+        <widget class="QWidget" name="checklistContent">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>600</width>
+           <height>500</height>
+          </rect>
+         </property>
+         <layout class="QVBoxLayout" name="checklistLayout"/>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>fuelTypeCombo</tabstop>
+  <tabstop>cylindersCombo</tabstop>
+  <tabstop>transmissionCombo</tabstop>
+  <tabstop>interiorMaterialCombo</tabstop>
+  <tabstop>windowRegulatorsCombo</tabstop>
+  <tabstop>airConditioningCombo</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

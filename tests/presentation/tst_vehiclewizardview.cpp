@@ -155,6 +155,24 @@ private slots:
         QVERIFY(hint->text().contains(QStringLiteral("PDF")));
     }
 
+    // Los combos del Paso 2 arrancan sin elegir, también los que se llenan
+    // desde el dominio después del .ui: así el dominio reporta como faltante
+    // lo que nadie eligió.
+    void conditionCombosStartUnselected()
+    {
+        QWidget *page = &m_view->conditionsView();
+        for (const QString &field :
+             {QStringLiteral("conditions.fuelType"), QStringLiteral("conditions.cylinders"),
+              QStringLiteral("conditions.transmission"), QStringLiteral("conditions.interiorMaterial"),
+              QStringLiteral("conditions.windowRegulators"),
+              QStringLiteral("conditions.airConditioning")}) {
+            QComboBox *combo = fieldWidget<QComboBox>(page, field);
+            QVERIFY2(combo, qPrintable(field));
+            QVERIFY2(combo->count() > 0, qPrintable(field));
+            QCOMPARE(combo->currentIndex(), -1);
+        }
+    }
+
     // Las tarjetas vienen del .ui con nombre propio (un formulario no admite
     // nombres repetidos) y la vista las renombra a cardPanel, que es lo que
     // busca el QSS. Si alguien quita ese paso, las tarjetas pierden su estilo
@@ -166,6 +184,7 @@ private slots:
                                                 Qt::FindDirectChildrenOnly)
                 .size();
         };
+        QCOMPARE(cards(&m_view->conditionsView()), 2);
         QCOMPARE(cards(&m_view->filesView()), 2);
     }
 };

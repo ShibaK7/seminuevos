@@ -8,15 +8,23 @@
 #include <QList>
 #include <QWidget>
 
-class QComboBox;
-class QLabel;
-class QVBoxLayout;
+QT_BEGIN_NAMESPACE
+namespace Ui {
+    class VehicleConditionsView;
+}
+QT_END_NAMESPACE
+
 class ConditionChecklistRow;
 
 // Paso 2 del wizard: especificaciones básicas (izquierda) + checklist de
 // condición agrupado (derecha). Los renglones del checklist se leen de
 // vehicle_conditions_cat, así que agregar o renombrar un elemento no
 // requiere recompilar.
+//
+// Las dos tarjetas, los seis combos de especificaciones y el contenedor del
+// checklist están en src/ui/vehicleconditionsview.ui. Las filas del checklist
+// (ConditionChecklistRow) dependen del catálogo y se arman en código, en
+// setChecklist().
 //
 // Las especificaciones básicas son obligatorias (combustible, cilindros,
 // transmisión, interiores, cristales y aire acondicionado), pero cuáles y con
@@ -32,6 +40,7 @@ class VehicleConditionsView : public QWidget, public presentation::IVehicleCondi
 
 public:
     explicit VehicleConditionsView(QWidget *parent = nullptr);
+    ~VehicleConditionsView() override;
 
     // Lo capturado. Un combo sin elegir queda vacío (std::optional) para que
     // el dominio lo reporte como faltante en vez de recibir un valor que nadie
@@ -52,20 +61,9 @@ signals:
     void edited();
 
 private:
-    QWidget *buildBasicSpecsPanel();
-    QWidget *buildChecklistPanel();
     void markAllInGroup(const QString &category, bool checked);
 
-    QComboBox *m_fuelTypeCombo;
-    QComboBox *m_cylindersCombo;
-    QComboBox *m_transmissionCombo;
-    QComboBox *m_interiorMaterialCombo;
-    QComboBox *m_windowRegulatorsCombo;
-    QComboBox *m_airConditioningCombo;
-
-    QWidget *m_checklistContent = nullptr;
-    QVBoxLayout *m_checklistLayout = nullptr;
-    QLabel *m_checklistMessageLabel = nullptr;
+    Ui::VehicleConditionsView *ui;
     QList<ConditionChecklistRow *> m_checklistRows;
 };
 
