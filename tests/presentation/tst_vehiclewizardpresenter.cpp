@@ -226,6 +226,27 @@ private slots:
         QVERIFY(m_files.stored.isEmpty());
     }
 
+    // Un rechazo con errores de varios pasos lleva al primero de ellos, sin
+    // importar en qué orden los reportó el dominio.
+    void rejectionGoesToTheEarliestFailingStep()
+    {
+        captureValidSteps();
+        m_details.captured.paymentMethod = domain::PaymentMethod::Efectivo;
+        // Dos portadas: el dominio rechaza la segunda al guardar.
+        m_filesView.captured.images << domain::VehicleImage{QStringLiteral("foto2.jpg"), true};
+        startPresenter();
+        m_presenter->onStepClicked(2);
+        QCOMPARE(m_wizard.shownStep, 2);
+
+        // La UMA bajó entre que se abrió el asistente y se guardó: el pago en
+        // efectivo ya rebasa el tope.
+        m_reference.uma = 10.0;
+        m_presenter->onPrimaryAction();
+        QCOMPARE(m_wizard.shownStep, 0);
+        QVERIFY(!m_details.markedErrors.isEmpty());
+        QCOMPARE(m_vehicles.adds, 0);
+    }
+
     void failedSaveStaysAndAllowsRetry()
     {
         captureValidSteps();

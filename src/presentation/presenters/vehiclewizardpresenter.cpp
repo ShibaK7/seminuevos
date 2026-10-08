@@ -263,8 +263,11 @@ void VehicleWizardPresenter::onCancel()
 
 int VehicleWizardPresenter::stepOwning(const domain::ValidationResult &result) const
 {
-    for (const domain::ValidationError &error : result.errors()) {
-        for (int step = 0; step < kStepCount; ++step) {
+    // El primer paso que tenga errores, igual que al avanzar: el usuario
+    // corrige en el orden del asistente, sin depender del orden en que el
+    // dominio haya reportado los errores.
+    for (int step = 0; step < kStepCount; ++step) {
+        for (const domain::ValidationError &error : result.errors()) {
             if (m_steps[step]->ownsField(error.field))
                 return step;
         }

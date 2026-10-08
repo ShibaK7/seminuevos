@@ -163,7 +163,7 @@ application::TemporaryFileDto LocalFileStorage::copyToTemporary(const QString &s
 
     QFile source(sourcePath);
     if (!source.open(QIODevice::ReadOnly)) {
-        result.errorMessage = QStringLiteral("No se encontró el archivo:\n%1").arg(sourcePath);
+        result.errorMessage = QStringLiteral("No se encontró el recurso:\n%1").arg(sourcePath);
         return result;
     }
     const QByteArray content = source.readAll();
