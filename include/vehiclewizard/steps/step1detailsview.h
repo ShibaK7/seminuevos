@@ -177,7 +177,12 @@ private:
     QList<QWidget *> m_acquisitionOnlyWidgets;
     QList<QWidget *> m_consignmentOnlyWidgets;
 
-    double m_umaValue = 108.57;
+    // UMA diaria leída de global_configurations (la siembra init-db). Sin
+    // valor de respaldo a propósito: el 108.57 que había aquí era la UMA de
+    // 2024 y aplicaba un tope desactualizado sin que nadie lo notara. Si la
+    // consulta no trae nada queda en 0 y el dominio rechaza el pago en
+    // efectivo con un mensaje claro.
+    double m_umaValue = 0.0;
 };
 
 #endif // STEP1DETAILSVIEW_H

@@ -224,6 +224,10 @@ ValidationResult Counterparty::validate() const
         result.addError(QStringLiteral("fullName"),
                         QStringLiteral("Captura el nombre completo."));
     }
+    if (m_nationalId.isEmpty()) {
+        result.addError(QStringLiteral("nationalId"),
+                        QStringLiteral("Captura la identificación."));
+    }
     return result;
 }
 

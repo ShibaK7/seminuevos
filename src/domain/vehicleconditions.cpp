@@ -112,6 +112,12 @@ ValidationResult VehicleConditions::validate() const
         result.addError(QStringLiteral("airConditioning"),
                         QStringLiteral("Selecciona el aire acondicionado."));
     }
+    // La columna admite NULL, pero la pantalla lo marca como obligatorio: es
+    // decisión del negocio, no del esquema.
+    if (m_interiorMaterial.isEmpty()) {
+        result.addError(QStringLiteral("interiorMaterial"),
+                        QStringLiteral("Selecciona el material de interiores."));
+    }
 
     return result;
 }

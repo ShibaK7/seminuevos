@@ -1,15 +1,9 @@
 #include "domain/acquiredvehicle.h"
 
+#include "domain/rules/cashpaymentlimit.h"
 #include "domain/vehiclevisitor.h"
 
 namespace domain {
-namespace {
-
-// Umbral legal para liquidar una operación en efectivo, expresado en veces
-// la UMA diaria.
-constexpr double kCashPaymentUmaMultiple = 3210.0;
-
-} // namespace
 
 AcquisitionType AcquiredVehicle::acquisitionType() const
 {
@@ -119,21 +113,6 @@ bool AcquiredVehicle::setUmaDailyValue(double value)
     return true;
 }
 
-double AcquiredVehicle::cashPaymentLimit() const
-{
-    return kCashPaymentUmaMultiple * m_umaDailyValue;
-}
-
-bool AcquiredVehicle::isCashPaymentAllowed() const
-{
-    // Sin UMA configurada no hay contra qué comparar. Se deja pasar en vez de
-    // bloquear: un dato de configuración ausente no debería impedir capturar
-    // una compra.
-    if (m_umaDailyValue <= 0.0)
-        return true;
-    return m_purchasePrice < cashPaymentLimit();
-}
-
 bool AcquiredVehicle::isSoldAtLoss() const
 {
     return m_salePrice < totalCost();
@@ -176,13 +155,18 @@ void AcquiredVehicle::collectSpecificErrors(ValidationResult &result) const
                         QStringLiteral("Captura el precio de compra."));
     }
 
-    if (m_paymentType == PaymentType::Contado && !isCashPaymentAllowed()) {
-        result.addError(
-            QStringLiteral("paymentType"),
-            QStringLiteral("El pago de contado no puede alcanzar las 3210 UMA ($%1). "
-                           "Cambia la forma de pago a Crédito o ajusta el precio.")
-                .arg(cashPaymentLimit(), 0, 'f', 2));
+    // Precio de venta obligatorio: la pantalla lo marca como requerido, y una
+    // unidad en inventario sin precio no se puede ofrecer. Cero no es un
+    // precio, es un dato que falta.
+    if (m_salePrice <= 0.0) {
+        result.addError(QStringLiteral("salePrice"),
+                        QStringLiteral("Captura el precio de venta."));
     }
+
+    // El tope legal es sobre el MÉTODO de pago (efectivo), no sobre el tipo
+    // (contado/crédito): un contado por transferencia es legal a cualquier
+    // monto. Lo que la agencia liquida es el precio de compra.
+    CashPaymentLimit(m_umaDailyValue).check(m_paymentMethod, m_purchasePrice, result);
 }
 
 } // namespace domain

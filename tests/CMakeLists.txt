@@ -56,3 +56,31 @@ seminuevos_add_test(tst_formsupport
 # formsupport es apoyo de las vistas: además de Core necesita Qt Widgets, que
 # seminuevos_add_test() no enlaza.
 target_link_libraries(tst_formsupport PRIVATE Qt6::Widgets)
+
+# --- Dominio ---------------------------------------------------------------
+# Las pruebas del dominio compilan todas sus fuentes (solo QtCore) hasta que
+# exista la biblioteca seminuevos_domain; entonces se enlazarán a ella.
+file(GLOB_RECURSE SEMINUEVOS_DOMAIN_SOURCES CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/src/domain/*.cpp"
+    "${PROJECT_SOURCE_DIR}/include/domain/*.h"
+)
+
+seminuevos_add_test(tst_cashpaymentlimit
+    SOURCES
+        domain/tst_cashpaymentlimit.cpp
+        ${SEMINUEVOS_DOMAIN_SOURCES}
+)
+
+seminuevos_add_test(tst_acquiredvehicle
+    SOURCES
+        domain/tst_acquiredvehicle.cpp
+        domain/vehiclefixtures.h
+        ${SEMINUEVOS_DOMAIN_SOURCES}
+)
+
+seminuevos_add_test(tst_vehicle
+    SOURCES
+        domain/tst_vehicle.cpp
+        domain/vehiclefixtures.h
+        ${SEMINUEVOS_DOMAIN_SOURCES}
+)

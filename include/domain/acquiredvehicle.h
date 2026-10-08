@@ -53,13 +53,11 @@ public:
     // que el dominio salga a consultar: la inyecta la capa de aplicación
     // desde global_configurations. Así esta clase nunca toca la base de datos
     // y la regla se puede comprobar sin levantar PostgreSQL.
+    //
+    // La regla en sí vive en domain/rules/cashpaymentlimit.h. Sin UMA
+    // (valor 0) el pago en efectivo se rechaza al validar, no se deja pasar.
     double umaDailyValue() const;
     [[nodiscard]] bool setUmaDailyValue(double value);
-
-    // Tope legal para liquidar en efectivo. Devuelve 0.0 si no se inyectó la
-    // UMA, caso en el que la regla no se puede evaluar y no se aplica.
-    double cashPaymentLimit() const;
-    bool isCashPaymentAllowed() const;
 
     // La agencia PUEDE rematar a pérdida a propósito, así que esto es una
     // consulta para avisar, no un error que impida guardar. Convertirlo en

@@ -20,7 +20,8 @@ class ConditionChecklistRow;
 // requiere recompilar.
 //
 // Las especificaciones básicas son obligatorias (combustible, cilindros,
-// transmisión, cristales y aire acondicionado), pero cuáles y con qué reglas
+// transmisión, interiores, cristales y aire acondicionado), pero cuáles y con
+// qué reglas
 // lo decide el dominio, no esta vista: validate() arma un VehicleBuilder y le
 // pregunta, igual que el Paso 1. El checklist, en cambio, no tiene mínimos --
 // consistente con el post-it del wireframe original ("no hay mínimos

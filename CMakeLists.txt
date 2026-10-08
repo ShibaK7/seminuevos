@@ -65,6 +65,8 @@ set(PROJECT_SOURCES
         src/domain/consignedvehicle.cpp
         include/domain/vehiclebuilder.h
         src/domain/vehiclebuilder.cpp
+        include/domain/rules/cashpaymentlimit.h
+        src/domain/rules/cashpaymentlimit.cpp
         include/db/counterpartyrepository.h
         src/db/counterpartyrepository.cpp
         include/db/vehiclerepository.h

@@ -65,6 +65,34 @@ ValidationResult Vehicle::validate() const
                         QStringLiteral("Selecciona el tipo de vehículo."));
     }
 
+    // Obligatorios por decisión del negocio: son los campos que la pantalla
+    // marca con asterisco. La regla vive aquí y no en la vista para que la
+    // marca y la validación no vuelvan a contradecirse. El subtipo se puede
+    // exigir siempre porque todos los tipos del catálogo tienen subtipos.
+    if (!m_subtype.isValid()) {
+        result.addError(QStringLiteral("subtype"), QStringLiteral("Selecciona el subtipo."));
+    }
+    if (m_motorNumber.isEmpty()) {
+        result.addError(QStringLiteral("motorNumber"),
+                        QStringLiteral("Captura el número de motor."));
+    }
+    if (m_repuve.isEmpty()) {
+        result.addError(QStringLiteral("repuve"), QStringLiteral("Captura el número de REPUVE."));
+    }
+    if (m_plates.isEmpty()) {
+        result.addError(QStringLiteral("plates"), QStringLiteral("Captura las placas."));
+    }
+    if (m_platesHolder.isEmpty()) {
+        result.addError(QStringLiteral("platesHolder"),
+                        QStringLiteral("Captura el titular de las placas."));
+    }
+    // Una unidad "No Facturada" no tiene factura, así que no puede tener
+    // número: exigirlo obligaría a inventar uno.
+    if (m_invoiceType != InvoiceType::NoFacturado && m_invoiceNumber.isEmpty()) {
+        result.addError(QStringLiteral("invoiceNumber"),
+                        QStringLiteral("Captura el número de factura."));
+    }
+
     // El valor por omisión de m_invoiceType no puede ser válido para las dos
     // ramas a la vez, porque sus CHECK son conjuntos disjuntos: una
     // consignación recién construida arranca con un tipo que le corresponde a

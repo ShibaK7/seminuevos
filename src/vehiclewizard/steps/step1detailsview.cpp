@@ -264,7 +264,9 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
     m_yearModelSpin->setValue(QDate::currentDate().year());
 
 
-    grid->addWidget(UIUtils::createRequiredLabel("Folio: ", card), row, 0);
+    // Sin asterisco: el folio lo asigna la base al guardar, el usuario no lo
+    // captura.
+    grid->addWidget(new QLabel(QStringLiteral("Folio:"), card), row, 0);
     grid->addWidget(m_folioEdit, row, 1);
     grid->addWidget(UIUtils::createRequiredLabel("Fecha: ", card), row, 2);
     grid->addWidget(m_dateEdit, row, 3);
@@ -523,7 +525,9 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     m_basePriceSpin->setRange(0, 99999999);
     m_basePriceSpin->setPrefix(QStringLiteral("$ "));
     m_basePriceSpin->setDecimals(2);
-    auto *basePriceLabel = new QLabel(QStringLiteral("Precio Base (dueño):"), card);
+    // Obligatorio en consignación: es lo que se le entrega al propietario y lo
+    // que imprime el contrato.
+    auto *basePriceLabel = UIUtils::createRequiredLabel("Precio Base (dueño): ", card);
     grid->addWidget(basePriceLabel, row, 0);
     grid->addWidget(m_basePriceSpin, row, 1);
 
@@ -700,8 +704,9 @@ void Step1DetailsView::loadLookups()
 domain::ValidationResult Step1DetailsView::validate() const
 {
     // Se arma un builder desechable con lo capturado y se le pregunta al
-    // dominio. Las reglas (VIN obligatorio, precio mayor a cero, el tope de
-    // las 3210 UMA para pagos en efectivo) viven en AcquiredVehicle, no aquí.
+    // dominio. Las reglas (los campos obligatorios en Vehicle y Counterparty,
+    // los precios en cada rama, el tope de 3,210 UMA para pagos en efectivo en
+    // domain/rules/cashpaymentlimit) viven en el dominio, no aquí.
     domain::VehicleBuilder builder;
     applyTo(builder);
     return builder.validateVehicleData();
@@ -765,7 +770,8 @@ void Step1DetailsView::applyTo(domain::VehicleBuilder &builder) const
         .setUmaDailyValue(m_umaValue)
         .setCommissionRate(m_commissionRateSpin->value());
 
-    // Los precios en cero no se mandan: el rango del control impide valores
+    // Los precios de compra y base en cero no se mandan (el de venta sí: su
+    // setter acepta cero y la validación lo reporta). El rango del control impide valores
     // negativos, así que un cero solo significa "sin capturar". Mandarlo haría
     // que el setter lo rechazara y se reportara dos veces el mismo problema,
     // una con el mensaje del rechazo y otra con el de la validación, que es

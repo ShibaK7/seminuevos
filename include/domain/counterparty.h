@@ -35,7 +35,8 @@ public:
     const QString &fullName() const;
     [[nodiscard]] bool setFullName(const QString &value);
 
-    // CURP, INE o RFC. Opcional: hay tratos donde no se captura.
+    // CURP, INE o RFC. Obligatoria (ver validate()); con ella
+    // CounterpartyRepository reconoce a la misma persona en otra operación.
     const QString &nationalId() const;
     [[nodiscard]] bool setNationalId(const QString &value);
 
@@ -75,7 +76,9 @@ public:
     // El contrato de compraventa exige domicilio del vendedor.
     bool hasCompleteAddress() const;
 
-    // Solo el nombre es obligatorio. El resto son datos que la agencia
+    // Obligatorios: el nombre y la identificación (la pantalla los marca con
+    // asterisco). La identificación además es lo que permite reconocer a la
+    // misma persona en otra operación. El resto son datos que la agencia
     // completa cuando los tiene.
     ValidationResult validate() const;
 
