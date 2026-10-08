@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_VIEWS_SUPPORT_FORMSUPPORT_H
 #define PRESENTATION_VIEWS_SUPPORT_FORMSUPPORT_H
 
-#include "domain/validationresult.h"
+#include "domain/value_objects/validationresult.h"
 
 #include <QList>
 #include <QString>

@@ -1,5 +1,5 @@
-#ifndef APPCONFIG_H
-#define APPCONFIG_H
+#ifndef APP_APPCONFIG_H
+#define APP_APPCONFIG_H
 
 #include <QString>
 
@@ -26,4 +26,4 @@ void setWizardFreeNavigation(bool enabled);
 bool wizardFreeNavigation();
 } // namespace AppConfig
 
-#endif // APPCONFIG_H
+#endif // APP_APPCONFIG_H

@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VehicleItemList</class>
+ <widget class="QWidget" name="VehicleItemList">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>903</width>
+    <height>200</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>200</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>200</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">/* ---------- Tarjeta del vehículo (el QWidget dentro de la lista) ---------- */
+
+/* La raíz va transparente: el hueco entre tarjetas lo pinta la lista, y si
+   aquí hubiera color se leería como una banda pegada al borde de la tarjeta
+   en vez de como separación. */
+QWidget#VehicleItemList {
+    background: transparent;
+    min-height: 150px;
+    max-height: 150px;
+}
+
+/* La tarjeta propiamente dicha. */
+QFrame#frame {
+    background-color: #FFFFFF;
+    border: 1px solid #E6E8EC;
+    border-radius: 12px;
+}
+
+/* Los contenedores internos vienen del Designer con frameShape=StyledPanel,
+   que dibuja un recuadro nativo. Antes quedaban tapados por una regla
+   universal (QWidget#VehicleItemList *) que le ponía fondo y radio a TODOS
+   los descendientes -- y que de paso era lo que pintaba la tarjeta entera de
+   azul grisáceo. Al quitarla hay que apagar esos recuadros a mano, o
+   aparecen cinco cajas anidadas dentro de la tarjeta. */
+QFrame#leftFrame, QFrame#rightFrame, QFrame#frame_2,
+QFrame#detailLine, QFrame#frame_5 {
+    background: transparent;
+    border: none;
+}
+
+/* Caja de la foto. El gris claro y el borde punteado son lo que se ve cuando
+   la unidad no tiene foto: el hueco parece intencional y no un error de
+   carga. Con foto, el pixmap lo cubre. */
+QLabel#vehicleImage {
+    background-color: #F7F8FA;
+    border: 1px dashed #D7DBE2;
+    border-radius: 8px;
+}
+
+/* Separadores &quot;|&quot; de la línea de specs. */
+QFrame[class=&quot;lineSpecial&quot;] {
+    border-left: 1px solid #E1E4EA;
+    min-height: 13px;
+    max-height: 13px;
+}
+
+/* Modelo del auto */
+QLabel#vehicleTitle {
+    color: #111827;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+/* Línea de specs: 2016 | Negro | 190,000 | Automático | Motor */
+QLabel[class=&quot;detailLine&quot;] {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+/* &quot;Agregado el: ...&quot; */
+QLabel[class=&quot;dateIncomingLabel&quot;] {
+    color: #9AA1AC;
+    font-size: 12px;
+}
+
+/* Precio */
+QLabel#priceLabel {
+    color: #111827;
+    font-size: 21px;
+    font-weight: 800;
+}
+
+/* Insignia de estado. El color lo decide la propiedad dinamica &quot;status&quot;,
+   que fija VehicleItemList::setStatus() en tiempo de ejecucion. El gris de
+   aqui es el de respaldo: se ve cuando el estado guardado no corresponde a
+   ninguno de los tres del dominio, y sirve para notar el dato raro en vez de
+   disfrazarlo de disponible. */
+/* Pastilla de color suave y texto oscuro, en vez de relleno saturado con
+   texto blanco: con tres tarjetas en pantalla, tres insignias sólidas eran lo
+   primero que saltaba a la vista, por encima del modelo y del precio. */
+QLabel#statusBadge {
+    border-radius: 9px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4B5563;
+    background-color: #EDEFF2;
+}
+
+QLabel#statusBadge[status=&quot;available&quot;] {
+    background-color: #DCF5E4;
+    color: #17703C;
+}
+
+QLabel#statusBadge[status=&quot;reserved&quot;] {
+    background-color: #FDF0D5;
+    color: #8A5A00;
+}
+
+QLabel#statusBadge[status=&quot;sold&quot;] {
+    background-color: #FBE1E1;
+    color: #A32020;
+}
+
+/* &quot;Detalles&quot;: botón de contorno, no primario. En una lista de veinte
+   unidades había veinte botones azules gritando lo mismo; la acción
+   destacada de la pantalla es &quot;Agregar Vehículo&quot;, y esto es
+   navegación repetida. */
+QPushButton#detailsButton {
+    background-color: #FFFFFF;
+    color: #374151;
+    border: 1px solid #D7DBE2;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 18px;
+}
+
+QPushButton#detailsButton:hover {
+    background-color: #F4F6F9;
+    border-color: #ADB5BD;
+}
+
+QPushButton#detailsButton:pressed {
+    background-color: #E9ECF1;
+}</string>
+  </property>
+  <property name="class" stdset="0">
+   <string>vehicleCard</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout" stretch="0">
+   <property name="spacing">
+    <number>2</number>
+   </property>
+   <!-- 24 px a cada lado para alinear el borde de la tarjeta con las pestañas
+        y con la barra de filtros: la columna del inventario ya no aporta esa
+        sangría (la cedió para que el divisor llegue de orilla a orilla), así
+        que cada zona la pone por su cuenta. Arriba y abajo se quedan en el
+        valor por omisión, que es lo que separa una tarjeta de la siguiente. -->
+   <property name="leftMargin">
+    <number>24</number>
+   </property>
+   <property name="rightMargin">
+    <number>32</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="frame">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <item row="0" column="0">
+       <widget class="QFrame" name="leftFrame">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::Shape::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Shadow::Raised</enum>
+        </property>
+        <!-- La foto va en un layout y no con geometry fija: antes eran 241x161
+             clavados, que ya no caben en una tarjeta de 150 px de alto y se
+             desbordaban por abajo. Con el layout, la caja se ajusta a lo que
+             mida la tarjeta. -->
+        <layout class="QVBoxLayout" name="leftFrameLayout">
+         <property name="leftMargin">
+          <number>4</number>
+         </property>
+         <property name="topMargin">
+          <number>4</number>
+         </property>
+         <property name="rightMargin">
+          <number>12</number>
+         </property>
+         <property name="bottomMargin">
+          <number>4</number>
+         </property>
+         <item>
+          <widget class="AspectRatioImageLabel" name="vehicleImage">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QFrame" name="rightFrame">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::Shape::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Shadow::Raised</enum>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QFrame" name="frame_2">
+           <property name="frameShape">
+            <enum>QFrame::Shape::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Shadow::Raised</enum>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="topMargin">
+             <number>9</number>
+            </property>
+            <property name="bottomMargin">
+             <number>9</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="vehicleTitle">
+              <property name="text">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;Modelo de Vehiculo&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line_5">
+              <property name="frameShadow">
+               <enum>QFrame::Shadow::Raised</enum>
+              </property>
+              <property name="lineWidth">
+               <number>1</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="class" stdset="0">
+               <string>lineSpecial</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="statusBadge">
+              <!-- Sin styleSheet inline: tenia el verde fijo, y al aplicarse
+                   directamente sobre el widget le ganaba a las reglas
+                   [status="..."] de arriba. Con el inline puesto, una unidad
+                   vendida se seguia viendo verde. -->
+              <property name="text">
+               <string>Estatus</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>statusBadge</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>85</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QLabel" name="priceLabel">
+              <property name="text">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt; font-weight:700;&quot;&gt;Precio&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="detailLine">
+           <property name="frameShape">
+            <enum>QFrame::Shape::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Shadow::Raised</enum>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="topMargin">
+             <number>9</number>
+            </property>
+            <property name="bottomMargin">
+             <number>9</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="yearLabel">
+              <property name="text">
+               <string>Año</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>detailLine</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line">
+              <property name="frameShadow">
+               <enum>QFrame::Shadow::Raised</enum>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="class" stdset="0">
+               <string>lineSpecial</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="colorLabel">
+              <property name="text">
+               <string>Color</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>detailLine</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line_2">
+              <property name="frameShadow">
+               <enum>QFrame::Shadow::Raised</enum>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="class" stdset="0">
+               <string>lineSpecial</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="kmLabel">
+              <property name="text">
+               <string>0000 km</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>detailLine</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line_3">
+              <property name="frameShadow">
+               <enum>QFrame::Shadow::Raised</enum>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="class" stdset="0">
+               <string>lineSpecial</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="transmisionLabel">
+              <property name="text">
+               <string>Automatico</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>detailLine</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line_4">
+              <property name="frameShadow">
+               <enum>QFrame::Shadow::Raised</enum>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="class" stdset="0">
+               <string>lineSpecial</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="motorLabel">
+              <property name="text">
+               <string>Motor</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>detailLine</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="frame_5">
+           <property name="frameShape">
+            <enum>QFrame::Shape::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Shadow::Raised</enum>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="QLabel" name="label_8">
+              <property name="font">
+               <font>
+                <family>Segoe UI</family>
+                <pointsize>-1</pointsize>
+                <bold>false</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Agregado el:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>dateIncomingLabel</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="fechaIngresoLabel">
+              <property name="text">
+               <string>Fecha</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>dateIncomingLabel</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_4">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="detailsButton">
+              <property name="text">
+               <string>Detalles</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>primary</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AspectRatioImageLabel</class>
+   <extends>QLabel</extends>
+   <header>presentation/views/components/aspectratioimagelabel.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

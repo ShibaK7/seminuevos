@@ -1,4 +1,4 @@
-#include "../../include/vehiclewizard/uploadformatpolicy.h"
+#include "vehiclewizard/uploadformatpolicy.h"
 
 #include <QFile>
 #include <QFileInfo>

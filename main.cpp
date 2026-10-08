@@ -1,9 +1,9 @@
-#include "include/app/appconfig.h"
-#include "include/loginwindow.h"
-#include "include/mainwindow.h"
-#include "include/db/connectionpool.h"
-#include "include/db/devseeder.h"
-#include "include/auth/loginworker.h"
+#include "app/appconfig.h"
+#include "presentation/views/login/loginwindow.h"
+#include "presentation/views/shell/mainwindow.h"
+#include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/devseeder.h"
+#include "auth/loginworker.h"
 
 #include <QApplication>
 #include <QFile>

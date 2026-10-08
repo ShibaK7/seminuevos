@@ -1,5 +1,5 @@
-#ifndef UPLOADFORMATPOLICY_H
-#define UPLOADFORMATPOLICY_H
+#ifndef VEHICLEWIZARD_UPLOADFORMATPOLICY_H
+#define VEHICLEWIZARD_UPLOADFORMATPOLICY_H
 
 #include <QList>
 #include <QString>
@@ -24,7 +24,7 @@ public:
     // del papel cuando solo se tiene la copia física.
     static const UploadFormatPolicy &documents();
     // Galería: solo imágenes, porque cada archivo se dibuja como miniatura y,
-    // al confirmar el wizard, se recomprime a JPG (LocalFileStorageManager).
+    // al confirmar el wizard, se recomprime a JPG (LocalFileStorage).
     static const UploadFormatPolicy &images();
 
     // Filtro para QFileDialog, p.ej. "Imágenes (*.png *.jpg *.jpeg)".
@@ -86,4 +86,4 @@ private:
     QList<FormatFamily> m_families;
 };
 
-#endif // UPLOADFORMATPOLICY_H
+#endif // VEHICLEWIZARD_UPLOADFORMATPOLICY_H

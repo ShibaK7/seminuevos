@@ -1,5 +1,5 @@
-#ifndef VEHICLEREGISTRATIONWORKER_H
-#define VEHICLEREGISTRATIONWORKER_H
+#ifndef DB_VEHICLEREGISTRATIONWORKER_H
+#define DB_VEHICLEREGISTRATIONWORKER_H
 
 #include <QString>
 #include <QThread>
@@ -14,7 +14,7 @@ class Vehicle;
 // QSqlDatabase solo puede usarse desde el hilo que la creó). Primero copia
 // los archivos pendientes a storage/vehicles/{vin}/... (fuera de cualquier
 // transacción SQL abierta) y luego inserta todo el vehículo de forma atómica
-// vía VehicleRepository.
+// vía SqlVehicleRepository.
 //
 // IMPORTANTE: recibe la unidad EN PROPIEDAD, y quien lo construye debe
 // pasarle una copia hecha con Vehicle::clone(), no el mismo objeto que
@@ -45,4 +45,4 @@ private:
     QString m_storageRoot;
 };
 
-#endif // VEHICLEREGISTRATIONWORKER_H
+#endif // DB_VEHICLEREGISTRATIONWORKER_H

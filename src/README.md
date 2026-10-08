@@ -1,5 +1,7 @@
 # Backend Execution & Database Access Guidelines
 
+> **Note (in progress):** the project is moving to a hexagonal (ports and adapters) architecture, described in [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md). Where the two disagree (SQL inside UI code, `static` repositories, transactions inside services), that document wins. This guide will be rewritten together with Laura, keeping what still applies: orchestrating services, DTOs, and repositories without business logic.
+
 To achieve maximum development velocity while maintaining a clean code base, our team follows a Pragmatic 3-Tier Execution Rule Set.
 
 We do not over-engineer with heavy enterprise patterns (like clean/onion architecture or custom C++ entities for every single table). Instead, we choose the right database access tool based on the complexity of the operation.

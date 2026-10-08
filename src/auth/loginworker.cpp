@@ -1,6 +1,6 @@
-#include "../../include/auth/loginworker.h"
-#include "../../include/auth/passwordhasher.h"
-#include "../../include/db/connectionpool.h"
+#include "auth/loginworker.h"
+#include "adapters/security/passwordhasher.h"
+#include "adapters/persistence/connectionpool.h"
 
 #include <QSqlDatabase>
 #include <QSqlError>

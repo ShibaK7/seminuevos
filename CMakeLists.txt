@@ -16,9 +16,9 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Sql Network 
 
 # --- Capas (arquitectura hexagonal) -----------------------------------------
 # Cada capa es una biblioteca estática que solo enlaza los módulos de Qt que
-# tiene permitidos; ver cmake/SeminuevosLayers.cmake. Las carpetas que todavía
-# no tienen capa propia se compilan dentro del ejecutable, más abajo, hasta que
-# la mudanza del plan las ubique.
+# tiene permitidos; ver cmake/SeminuevosLayers.cmake. Lo que todavía no cumple
+# la regla de su capa se compila dentro del ejecutable, más abajo, hasta que el
+# commit del plan que lo corrige lo convierta en biblioteca.
 include(cmake/SeminuevosLayers.cmake)
 
 # Dominio: entidades, value objects y reglas. Solo QtCore y sin moc.
@@ -35,87 +35,64 @@ seminuevos_layer(seminuevos_presentation
     DIRS presentation/navigation
 )
 
+# Adaptadores de salida: cada uno en su biblioteca, con solo el módulo de Qt
+# de su tecnología, para que ninguno vea a otro.
+seminuevos_layer(seminuevos_storage
+    DIRS adapters/storage
+    QT Gui            # QImage, para recomprimir las fotos
+)
+seminuevos_layer(seminuevos_contract
+    DIRS adapters/contract
+    DEPENDS seminuevos_domain
+    QT Gui PrintSupport   # QTextDocument + QPrinter para el PDF
+)
+seminuevos_layer(seminuevos_security
+    DIRS adapters/security
+    QT Network        # QPasswordDigestor (PBKDF2)
+)
+
 # --- Ejecutable ---------------------------------------------------------------
+# Además de main.cpp, compila lo que todavía no es biblioteca: la persistencia
+# (hasta que deje de depender de otro adaptador), las vistas y las carpetas
+# viejas que el plan va borrando (app, auth, db, utils, vehiclewizard). Se
+# listan por carpeta para que una vista o un .ui nuevo no obligue a tocar este
+# archivo.
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
-set(PROJECT_SOURCES
-        main.cpp
-        src/loginwindow.cpp
-        include/loginwindow.h
-        ui/loginwindow.ui
-        include/mainwindow.h
-        src/mainwindow.cpp
-        ui/mainwindow.ui
-        include/vehicleitemlist.h
-        src/vehicleitemlist.cpp
-        ui/vehicleitemlist.ui
-        include/utils/UIUtils.h
-        include/db/connectionpool.h
-        src/db/connectionpool.cpp
-        include/db/devseeder.h
-        src/db/devseeder.cpp
-        include/db/conditioncatalog.h
-        src/db/conditioncatalog.cpp
-        include/db/vehicleinventoryquery.h
-        src/db/vehicleinventoryquery.cpp
-        include/db/counterpartyrepository.h
-        src/db/counterpartyrepository.cpp
-        include/db/vehiclerepository.h
-        src/db/vehiclerepository.cpp
-        include/db/vehicleregistrationworker.h
-        src/db/vehicleregistrationworker.cpp
-        include/app/appconfig.h
-        src/app/appconfig.cpp
-        include/components/statefultextbutton.h
-        src/components/statefultextbutton.cpp
-        include/components/sidebarmenuitem.h
-        src/components/sidebarmenuitem.cpp
-        include/components/navtabitem.h
-        src/components/navtabitem.cpp
-        include/components/outlinebutton.h
-        src/components/outlinebutton.cpp
-        include/auth/passwordhasher.h
-        src/auth/passwordhasher.cpp
-        include/auth/loginworker.h
-        src/auth/loginworker.cpp
-        include/vehiclewizard/vehiclewizardview.h
-        src/vehiclewizard/vehiclewizardview.cpp
-        include/vehiclewizard/components/conditionchecklistrow.h
-        src/vehiclewizard/components/conditionchecklistrow.cpp
-        include/vehiclewizard/components/wizardstepper.h
-        src/vehiclewizard/components/wizardstepper.cpp
-        include/vehiclewizard/components/aspectratioimagelabel.h
-        src/vehiclewizard/components/aspectratioimagelabel.cpp
-        include/vehiclewizard/steps/step1detailsview.h
-        src/vehiclewizard/steps/step1detailsview.cpp
-        include/vehiclewizard/steps/step2conditionview.h
-        src/vehiclewizard/steps/step2conditionview.cpp
-        include/vehiclewizard/steps/step3filesview.h
-        src/vehiclewizard/steps/step3filesview.cpp
-        include/vehiclewizard/uploadformatpolicy.h
-        src/vehiclewizard/uploadformatpolicy.cpp
-        include/presentation/views/support/formsupport.h
-        src/presentation/views/support/formsupport.cpp
-        include/storage/localfilestoragemanager.h
-        src/storage/localfilestoragemanager.cpp
-        include/contract/numbertowordses.h
-        src/contract/numbertowordses.cpp
-        include/contract/companyprofile.h
-        include/contract/contractpdfgenerator.h
-        src/contract/contractpdfgenerator.cpp
-        resources/Resources.qrc
-        ${TS_FILES}
+set(SEMINUEVOS_EXE_DIRS
+    adapters/persistence
+    presentation/views
+    app
+    auth
+    db
+    utils
+    vehiclewizard
 )
+set(PROJECT_SOURCES main.cpp resources/Resources.qrc ${TS_FILES})
+foreach(dir IN LISTS SEMINUEVOS_EXE_DIRS)
+    file(GLOB_RECURSE dir_files CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/${dir}/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/${dir}/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/${dir}/*.cpp"
+    )
+    list(APPEND PROJECT_SOURCES ${dir_files})
+endforeach()
+file(GLOB SEMINUEVOS_FORMS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.ui")
+list(APPEND PROJECT_SOURCES ${SEMINUEVOS_FORMS})
 
 qt_add_executable(desktop-win-car-dealership
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
 )
 
+# Los .ui viven en src/ui; con esta ruta, "#include "ui_x.h"" encuentra el
+# formulario sin rutas relativas.
+set_target_properties(desktop-win-car-dealership PROPERTIES
+    AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui"
+)
+
 target_include_directories(desktop-win-car-dealership PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/ui
 )
 
 qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
@@ -123,6 +100,9 @@ qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 target_link_libraries(desktop-win-car-dealership PRIVATE
     seminuevos_domain
     seminuevos_presentation
+    seminuevos_storage
+    seminuevos_contract
+    seminuevos_security
     Qt6::Widgets
     Qt6::Sql
     Qt6::Network

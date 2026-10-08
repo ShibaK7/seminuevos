@@ -1,9 +1,9 @@
-#include "../../include/db/vehicleregistrationworker.h"
+#include "db/vehicleregistrationworker.h"
 
-#include "../../include/db/connectionpool.h"
-#include "../../include/db/vehiclerepository.h"
-#include "../../include/storage/localfilestoragemanager.h"
-#include "domain/vehicle.h"
+#include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/sqlvehiclerepository.h"
+#include "adapters/storage/localfilestorage.h"
+#include "domain/model/vehicle.h"
 
 #include <QSqlDatabase>
 #include <QSqlError>
@@ -29,7 +29,7 @@ void VehicleRegistrationWorker::run()
         return;
     }
 
-    const LocalFileStorageManager storage(m_storageRoot);
+    const LocalFileStorage storage(m_storageRoot);
     const QString vin = m_vehicle->serialNumber();
     QString errorMessage;
 
@@ -79,8 +79,8 @@ void VehicleRegistrationWorker::run()
         return;
     }
 
-    VehicleRepository repository(db);
-    const VehicleRepository::Result result = repository.save(*m_vehicle);
+    SqlVehicleRepository repository(db);
+    const SqlVehicleRepository::Result result = repository.save(*m_vehicle);
     if (!result.ok) {
         emit registrationFailed(result.errorMessage);
         return;

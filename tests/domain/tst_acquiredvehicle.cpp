@@ -3,7 +3,7 @@
 // del tope: antes se evaluaba sobre el TIPO de pago (contado) y ahora sobre el
 // MÉTODO (efectivo).
 
-#include "domain/acquiredvehicle.h"
+#include "domain/model/acquiredvehicle.h"
 #include "vehiclefixtures.h"
 
 #include <QtTest>

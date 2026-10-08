@@ -6,7 +6,50 @@
 # pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
 # falta, se borra.
 
-include/presentation/views/support/formsupport.h: incluye "domain/validationresult.h"  # commit 7: pasa a domain/value_objects/
-ui/loginwindow.ui: styleSheet en LoginWindow  # commit 17: el QSS embebido pasa a la hoja global
-ui/loginwindow.ui: styleSheet en frame  # commit 17
-ui/vehicleitemlist.ui: styleSheet en VehicleItemList  # commit 17
+# --- Commit 8: DevSeeder usa el puerto PasswordHasher -------------------------
+src/adapters/persistence/devseeder.cpp: incluye "adapters/security/passwordhasher.h"  # commit 8
+
+# --- Commit 9: UploadFormatPolicy pasa a domain/rules ---------------------------
+src/presentation/views/wizard/vehiclefilesview.cpp: incluye "vehiclewizard/uploadformatpolicy.h"  # commit 9
+
+# --- Commit 10: el wizard registra por el servicio y los pasos devuelven DTOs ---
+include/presentation/views/wizard/conditionchecklistrow.h: incluye "adapters/persistence/conditioncatalog.h"  # commit 10
+include/presentation/views/wizard/conditionchecklistrow.h: incluye "domain/model/inspectionitem.h"  # commit 10
+include/presentation/views/wizard/vehicleconditionsview.h: incluye "adapters/persistence/conditioncatalog.h"  # commit 10
+include/presentation/views/wizard/vehicleconditionsview.h: incluye "domain/model/vehiclebuilder.h"  # commit 10
+include/presentation/views/wizard/vehicledetailsview.h: incluye "domain/model/vehiclebuilder.h"  # commit 10
+include/presentation/views/wizard/vehiclefilesview.h: incluye "domain/model/vehiclebuilder.h"  # commit 10
+src/presentation/views/wizard/vehicleconditionsview.cpp: incluye "adapters/persistence/connectionpool.h"  # commit 10
+src/presentation/views/wizard/vehicleconditionsview.cpp: incluye "utils/UIUtils.h"  # commit 10
+src/presentation/views/wizard/vehicleconditionsview.cpp: incluye <QSqlDatabase> (QtSql)  # commit 10
+src/presentation/views/wizard/vehicleconditionsview.cpp: incluye <QSqlQuery> (QtSql)  # commit 10
+src/presentation/views/wizard/vehicledetailsview.cpp: incluye "adapters/persistence/connectionpool.h"  # commit 10
+src/presentation/views/wizard/vehicledetailsview.cpp: incluye "utils/UIUtils.h"  # commit 10
+src/presentation/views/wizard/vehicledetailsview.cpp: incluye <QSqlDatabase> (QtSql)  # commit 10
+src/presentation/views/wizard/vehicledetailsview.cpp: incluye <QSqlQuery> (QtSql)  # commit 10
+src/presentation/views/wizard/vehiclewizardview.cpp: incluye "adapters/contract/contractpdfgenerator.h"  # commit 10
+src/presentation/views/wizard/vehiclewizardview.cpp: incluye "db/vehicleregistrationworker.h"  # commit 10
+src/presentation/views/wizard/vehiclewizardview.cpp: incluye "domain/model/vehicle.h"  # commit 10
+src/presentation/views/wizard/vehiclewizardview.cpp: incluye "domain/model/vehiclebuilder.h"  # commit 10
+src/presentation/views/wizard/vehiclewizardview.cpp: incluye "app/appconfig.h"  # commit 10-13: AppSettings y luego se borra AppConfig
+
+# --- Commit 12: las vistas dejan de tocar disco ---------------------------------
+src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QDir>  # commit 12: CFDI por el puerto FileStorage
+src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QFile>  # commit 12
+src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QFileInfo>  # commit 12
+src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QStandardPaths>  # commit 12
+src/presentation/views/wizard/vehiclefilesview.cpp: acceso a disco <QFileInfo>  # commit 12: vista previa y formato por el servicio
+src/presentation/views/wizard/vehiclewizardview.cpp: acceso a disco <QFile>  # commit 12
+
+# --- Commit 13: el inventario se carga por un presenter -----------------------
+src/presentation/views/inventory/vehicleitemlist.cpp: incluye "adapters/persistence/vehicleinventoryquery.h"  # commit 13: InventoryItemDto
+src/presentation/views/shell/mainwindow.cpp: incluye "app/appconfig.h"  # commit 13
+src/presentation/views/shell/mainwindow.cpp: incluye "adapters/persistence/connectionpool.h"  # commit 13
+src/presentation/views/shell/mainwindow.cpp: incluye "adapters/persistence/vehicleinventoryquery.h"  # commit 13
+src/presentation/views/shell/mainwindow.cpp: incluye "adapters/storage/localfilestorage.h"  # commit 13
+src/presentation/views/shell/mainwindow.cpp: incluye <QSqlDatabase> (QtSql)  # commit 13
+
+# --- Commit 17: el QSS embebido de los .ui pasa a la hoja global ----------------
+src/ui/loginwindow.ui: styleSheet en LoginWindow  # commit 17
+src/ui/loginwindow.ui: styleSheet en frame  # commit 17
+src/ui/vehicleitemlist.ui: styleSheet en VehicleItemList  # commit 17

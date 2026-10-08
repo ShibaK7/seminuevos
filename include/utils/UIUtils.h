@@ -1,7 +1,7 @@
-#ifndef UIUTILS_H
-#define UIUTILS_H
+#ifndef UTILS_UIUTILS_H
+#define UTILS_UIUTILS_H
 
-#include "db/connectionpool.h"
+#include "adapters/persistence/connectionpool.h"
 
 #include <QVariant>
 #include <QDebug>
@@ -131,4 +131,4 @@ public:
     }
 };
 
-#endif // UIUTILS_H
+#endif // UTILS_UIUTILS_H

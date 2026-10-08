@@ -3,9 +3,9 @@
 // VehicleBuilder como único lugar que elige la subclase. Fijan el
 // comportamiento que la rúbrica evalúa, no solo que compile.
 
-#include "domain/acquiredvehicle.h"
-#include "domain/consignedvehicle.h"
-#include "domain/vehiclevisitor.h"
+#include "domain/model/acquiredvehicle.h"
+#include "domain/model/consignedvehicle.h"
+#include "domain/model/vehiclevisitor.h"
 #include "vehiclefixtures.h"
 
 #include <QtTest>

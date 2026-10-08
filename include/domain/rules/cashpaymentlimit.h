@@ -1,8 +1,8 @@
 #ifndef DOMAIN_RULES_CASHPAYMENTLIMIT_H
 #define DOMAIN_RULES_CASHPAYMENTLIMIT_H
 
-#include "domain/enums.h"
-#include "domain/validationresult.h"
+#include "domain/value_objects/enums.h"
+#include "domain/value_objects/validationresult.h"
 
 #include <QString>
 

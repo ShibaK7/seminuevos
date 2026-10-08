@@ -1,5 +1,5 @@
-#ifndef LOGINWORKER_H
-#define LOGINWORKER_H
+#ifndef AUTH_LOGINWORKER_H
+#define AUTH_LOGINWORKER_H
 
 #include <QString>
 #include <QThread>
@@ -27,4 +27,4 @@ private:
     QString m_password;
 };
 
-#endif // LOGINWORKER_H
+#endif // AUTH_LOGINWORKER_H
