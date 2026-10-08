@@ -537,18 +537,14 @@ void VehicleFilesView::dropEvent(QDropEvent *event)
     addImages(paths);
 }
 
-void VehicleFilesView::applyTo(domain::VehicleBuilder &builder) const
+application::VehicleFilesDto VehicleFilesView::files() const
 {
-    // Se limpia primero porque el builder puede venir de un intento anterior:
-    // sin esto, un segundo guardado duplicaría las imágenes y chocaría contra
-    // la restricción de un solo documento por tipo.
-    builder.clearFiles();
-
-    for (const domain::VehicleImage &image : m_images)
-        builder.addImage(image);
-
+    application::VehicleFilesDto dto;
+    dto.images = m_images;
+    // Un tipo de documento marcado pero sin archivo no viaja.
     for (const domain::VehicleDocument &document : m_documents) {
         if (!document.path.isEmpty())
-            builder.addDocument(document);
+            dto.documents << document;
     }
+    return dto;
 }

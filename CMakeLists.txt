@@ -52,11 +52,12 @@ seminuevos_layer(seminuevos_persistence
 )
 seminuevos_layer(seminuevos_storage
     DIRS adapters/storage
+    DEPENDS seminuevos_application
     QT Gui            # QImage, para recomprimir las fotos
 )
 seminuevos_layer(seminuevos_contract
     DIRS adapters/contract
-    DEPENDS seminuevos_domain
+    DEPENDS seminuevos_application
     QT Gui PrintSupport   # QTextDocument + QPrinter para el PDF
 )
 seminuevos_layer(seminuevos_security
@@ -67,16 +68,14 @@ seminuevos_layer(seminuevos_security
 
 # --- Ejecutable ---------------------------------------------------------------
 # Además de main.cpp y la raíz de composición (app/), compila lo que todavía no
-# es biblioteca: las vistas y las carpetas viejas que el plan va borrando (db,
-# utils, vehiclewizard). Se listan por carpeta para que una vista o un .ui nuevo
+# es biblioteca: las vistas y la carpeta vieja que el plan todavía va a mover
+# (vehiclewizard, con UploadFormatPolicy). Se listan por carpeta para que una vista o un .ui nuevo
 # no obligue a tocar este archivo.
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
 set(SEMINUEVOS_EXE_DIRS
     presentation/views
     app
-    db
-    utils
     vehiclewizard
 )
 set(PROJECT_SOURCES main.cpp resources/Resources.qrc ${TS_FILES})

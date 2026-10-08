@@ -1,6 +1,5 @@
 #include "presentation/views/wizard/vehicledetailsview.h"
-#include "adapters/persistence/connectionpool.h"
-#include "utils/UIUtils.h"
+#include "presentation/views/support/formsupport.h"
 
 #include <QComboBox>
 #include <QDateEdit>
@@ -18,8 +17,6 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
-#include <QSqlDatabase>
-#include <QSqlQuery>
 #include <QTextEdit>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -218,7 +215,7 @@ QWidget *VehicleDetailsView::buildGeneralInfoCard()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
-    UIUtils::applyFloatingShadow(card);
+    formsupport::applyFloatingShadow(card);
 
     auto *cardLayout = new QVBoxLayout(card);
     // Folio es la primera fila del formulario -- que quede pegada arriba
@@ -268,23 +265,23 @@ QWidget *VehicleDetailsView::buildGeneralInfoCard()
     // captura.
     grid->addWidget(new QLabel(QStringLiteral("Folio:"), card), row, 0);
     grid->addWidget(m_folioEdit, row, 1);
-    grid->addWidget(UIUtils::createRequiredLabel("Fecha: ", card), row, 2);
+    grid->addWidget(formsupport::requiredLabel("Fecha: ", card), row, 2);
     grid->addWidget(m_dateEdit, row, 3);
     ++row;
 
-    grid->addWidget(UIUtils::createRequiredLabel("Tipo Vehículo: ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("Tipo Vehículo: ", card), row, 0);
     grid->addWidget(m_vehicleTypeCombo, row, 1);
-    grid->addWidget(UIUtils::createRequiredLabel("Subtipo: ", card), row, 2);
+    grid->addWidget(formsupport::requiredLabel("Subtipo: ", card), row, 2);
     grid->addWidget(m_subtypeCombo, row, 3);
     ++row;
 
-    grid->addWidget(UIUtils::createRequiredLabel("Marca: ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("Marca: ", card), row, 0);
     grid->addWidget(m_brandCombo, row, 1);
-    grid->addWidget(UIUtils::createRequiredLabel("Modelo: ", card), row, 2);
+    grid->addWidget(formsupport::requiredLabel("Modelo: ", card), row, 2);
     grid->addWidget(m_modelEdit, row, 3);
     ++row;
 
-    grid->addWidget(UIUtils::createRequiredLabel("Año Modelo: ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("Año Modelo: ", card), row, 0);
     grid->addWidget(m_yearModelSpin, row, 1);
 
     m_colorEdit = new QLineEdit(card);
@@ -302,30 +299,30 @@ QWidget *VehicleDetailsView::buildGeneralInfoCard()
 
     m_motorNumberEdit = new QLineEdit(card);
     m_motorNumberEdit->setProperty("field", QStringLiteral("motorNumber"));
-    grid->addWidget(UIUtils::createRequiredLabel("No. Motor: ", card), row, 2);
+    grid->addWidget(formsupport::requiredLabel("No. Motor: ", card), row, 2);
     grid->addWidget(m_motorNumberEdit, row, 3);
     ++row;
 
     m_serialNumberEdit = new QLineEdit(card);
     m_serialNumberEdit->setProperty("field", QStringLiteral("serialNumber"));
     m_serialNumberEdit->setPlaceholderText(QStringLiteral("VIN"));
-    grid->addWidget(UIUtils::createRequiredLabel("No. Serie (VIN): ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("No. Serie (VIN): ", card), row, 0);
     grid->addWidget(m_serialNumberEdit, row, 1);
 
     m_repuveEdit = new QLineEdit(card);
     m_repuveEdit->setProperty("field", QStringLiteral("repuve"));
-    grid->addWidget(UIUtils::createRequiredLabel("REPUVE: ", card), row, 2);
+    grid->addWidget(formsupport::requiredLabel("REPUVE: ", card), row, 2);
     grid->addWidget(m_repuveEdit, row, 3);
     ++row;
 
     m_platesEdit = new QLineEdit(card);
     m_platesEdit->setProperty("field", QStringLiteral("plates"));
-    grid->addWidget(UIUtils::createRequiredLabel("Placas: ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("Placas: ", card), row, 0);
     grid->addWidget(m_platesEdit, row, 1);
 
     m_platesHolderEdit = new QLineEdit(card);
     m_platesHolderEdit->setProperty("field", QStringLiteral("platesHolder"));
-    grid->addWidget(UIUtils::createRequiredLabel("Titular Placas: ", card), row, 2);
+    grid->addWidget(formsupport::requiredLabel("Titular Placas: ", card), row, 2);
     grid->addWidget(m_platesHolderEdit, row, 3);
     ++row;
 
@@ -343,7 +340,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
-    UIUtils::applyFloatingShadow(card);
+    formsupport::applyFloatingShadow(card);
 
     auto *cardLayout = new QVBoxLayout(card);
 
@@ -362,7 +359,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     m_acquisitionTypeCombo->setProperty("field", QStringLiteral("acquisitionType"));
     for (domain::AcquisitionType value : domain::allAcquisitionTypes())
         m_acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    grid->addWidget(UIUtils::createRequiredLabel("Tipo Operación: ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("Tipo Operación: ", card), row, 0);
     grid->addWidget(m_acquisitionTypeCombo, row, 1);
     ++row;
 
@@ -376,7 +373,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
 
     m_ownerIdEdit = new QLineEdit(card);
     m_ownerIdEdit->setProperty("field", QStringLiteral("counterparty.nationalId"));
-    grid->addWidget(UIUtils::createRequiredLabel("Identificación: ", card), row, 2);
+    grid->addWidget(formsupport::requiredLabel("Identificación: ", card), row, 2);
     grid->addWidget(m_ownerIdEdit, row, 3);
     ++row;
 
@@ -413,7 +410,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     m_invoiceTypeCombo = new QComboBox(card);
     m_invoiceTypeCombo->setObjectName(QStringLiteral("invoiceTypeCombo"));
     m_invoiceTypeCombo->setProperty("field", QStringLiteral("invoiceType"));
-    grid->addWidget(UIUtils::createRequiredLabel("Tipo Factura: ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("Tipo Factura: ", card), row, 0);
     grid->addWidget(m_invoiceTypeCombo, row, 1);
 
     // El archivo de factura solo existe en la compra: el esquema pone
@@ -458,7 +455,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
 
     m_invoiceNumberEdit = new QLineEdit(card);
     m_invoiceNumberEdit->setProperty("field", QStringLiteral("invoiceNumber"));
-    grid->addWidget(UIUtils::createRequiredLabel("No. Factura: ", card), row, 0);
+    grid->addWidget(formsupport::requiredLabel("No. Factura: ", card), row, 0);
     grid->addWidget(m_invoiceNumberEdit, row, 1);
 
     m_invoiceIssuerEdit = new QLineEdit(card);
@@ -483,7 +480,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     m_purchasePriceSpin->setRange(0, 99999999);
     m_purchasePriceSpin->setPrefix(QStringLiteral("$ "));
     m_purchasePriceSpin->setDecimals(2);
-    auto *purchasePriceLabel = UIUtils::createRequiredLabel("Precio Compra: ", card);
+    auto *purchasePriceLabel = formsupport::requiredLabel("Precio Compra: ", card);
     grid->addWidget(purchasePriceLabel, row, 0);
     grid->addWidget(m_purchasePriceSpin, row, 1);
 
@@ -491,7 +488,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     m_paymentTypeCombo->setProperty("field", QStringLiteral("paymentType"));
     for (domain::PaymentType value : domain::allPaymentTypes())
         m_paymentTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    auto *paymentTypeLabel = UIUtils::createRequiredLabel("Tipo Pago: ", card);
+    auto *paymentTypeLabel = formsupport::requiredLabel("Tipo Pago: ", card);
     grid->addWidget(paymentTypeLabel, row, 2);
     grid->addWidget(m_paymentTypeCombo, row, 3);
     m_acquisitionOnlyWidgets << purchasePriceLabel << m_purchasePriceSpin
@@ -502,7 +499,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     m_paymentMethodCombo->setProperty("field", QStringLiteral("paymentMethod"));
     for (domain::PaymentMethod value : domain::allPaymentMethods())
         m_paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    auto *paymentMethodLabel = UIUtils::createRequiredLabel("Método Pago: ", card);
+    auto *paymentMethodLabel = formsupport::requiredLabel("Método Pago: ", card);
     grid->addWidget(paymentMethodLabel, row, 0);
     grid->addWidget(m_paymentMethodCombo, row, 1);
 
@@ -510,7 +507,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     m_salePriceSpin->setProperty("field", QStringLiteral("salePrice"));
     m_salePriceSpin->setRange(0, 99999999);
     m_salePriceSpin->setPrefix(QStringLiteral("$ "));
-    auto *salePriceLabel = UIUtils::createRequiredLabel("Precio Venta: ", card);
+    auto *salePriceLabel = formsupport::requiredLabel("Precio Venta: ", card);
     grid->addWidget(salePriceLabel, row, 2);
     grid->addWidget(m_salePriceSpin, row, 3);
     m_acquisitionOnlyWidgets << paymentMethodLabel << m_paymentMethodCombo
@@ -527,7 +524,7 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     m_basePriceSpin->setDecimals(2);
     // Obligatorio en consignación: es lo que se le entrega al propietario y lo
     // que imprime el contrato.
-    auto *basePriceLabel = UIUtils::createRequiredLabel("Precio Base (dueño): ", card);
+    auto *basePriceLabel = formsupport::requiredLabel("Precio Base (dueño): ", card);
     grid->addWidget(basePriceLabel, row, 0);
     grid->addWidget(m_basePriceSpin, row, 1);
 
@@ -659,19 +656,19 @@ void VehicleDetailsView::reloadSubtypes()
     if (!parentId.isValid())
         return;
 
-    UIUtils::populateCategoriesComboBox(m_subtypeCombo, parentId.toInt());
+    QList<application::CatalogOptionDto> subtypes;
+    for (const application::CatalogOptionDto &option : std::as_const(m_subtypes)) {
+        if (option.parentId == parentId.toInt())
+            subtypes << option;
+    }
+    formsupport::fillCombo(m_subtypeCombo, subtypes);
 }
 
-void VehicleDetailsView::loadLookups()
+void VehicleDetailsView::setLookups(const application::RegistrationLookupsDto &lookups)
 {
-    ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
-    QSqlDatabase &db = handle.database();
-    if (!db.isOpen())
-        return;
-
-    UIUtils::populateCategoriesComboBox(m_vehicleTypeCombo);
-
-    UIUtils::populateComboBox(m_brandCombo, "brands_cat");
+    m_subtypes = lookups.vehicleSubtypes;
+    formsupport::fillCombo(m_vehicleTypeCombo, lookups.vehicleTypes);
+    formsupport::fillCombo(m_brandCombo, lookups.brands);
 
     m_brandCombo->setEditable(true);
 
@@ -694,90 +691,54 @@ void VehicleDetailsView::loadLookups()
         }
     });
 
-    QSqlQuery umaQuery(db);
-    umaQuery.prepare(QStringLiteral("SELECT value_param FROM global_configurations WHERE key_param = :key"));
-    umaQuery.bindValue(QStringLiteral(":key"), QStringLiteral("UMA_DIARIA"));
-    if (umaQuery.exec() && umaQuery.next())
-        m_umaValue = umaQuery.value(0).toDouble();
 }
 
-domain::ValidationResult VehicleDetailsView::validate() const
+application::VehicleDetailsDto VehicleDetailsView::details() const
 {
-    // Se arma un builder desechable con lo capturado y se le pregunta al
-    // dominio. Las reglas (los campos obligatorios en Vehicle y Counterparty,
-    // los precios en cada rama, el tope de 3,210 UMA para pagos en efectivo en
-    // domain/rules/cashpaymentlimit) viven en el dominio, no aquí.
-    domain::VehicleBuilder builder;
-    applyTo(builder);
-    return builder.validateVehicleData();
-}
+    application::VehicleDetailsDto dto;
+    dto.acquisitionType = selectedAcquisitionType();
+    dto.dealDate = m_dateEdit->date();
+    dto.vehicleType = catalogRefFrom(m_vehicleTypeCombo);
+    dto.subtype = catalogRefFrom(m_subtypeCombo);
+    dto.brand = catalogRefFrom(m_brandCombo);
+    dto.model = m_modelEdit->text();
+    dto.yearModel = m_yearModelSpin->value();
+    dto.color = m_colorEdit->text();
+    dto.mileage = m_mileageSpin->value();
+    dto.description = m_descriptionEdit->toPlainText();
+    dto.motorNumber = m_motorNumberEdit->text();
+    dto.serialNumber = m_serialNumberEdit->text();
+    dto.repuve = m_repuveEdit->text();
+    dto.plates = m_platesEdit->text();
+    dto.platesHolder = m_platesHolderEdit->text();
 
-void VehicleDetailsView::applyTo(domain::VehicleBuilder &builder) const
-{
-    // El tipo de operación va primero: decide qué subclase construye el
-    // builder, y todo lo demás se aplica sobre ella.
-    builder.setAcquisitionType(selectedAcquisitionType());
+    dto.counterparty.fullName = m_ownerNameEdit->text();
+    dto.counterparty.nationalId = m_ownerIdEdit->text();
+    dto.counterparty.streetAddress = m_ownerAddressEdit->text();
+    dto.counterparty.suburb = m_ownerSuburbEdit->text();
+    dto.counterparty.locality = m_ownerLocalityEdit->text();
+    dto.counterparty.state = m_ownerStateEdit->text();
+    dto.counterparty.postalCode = m_ownerPostalCodeEdit->text();
 
-    builder.setDealDate(m_dateEdit->date())
-        .setVehicleType(catalogRefFrom(m_vehicleTypeCombo))
-        .setSubtype(catalogRefFrom(m_subtypeCombo))
-        .setBrand(catalogRefFrom(m_brandCombo))
-        .setModel(m_modelEdit->text())
-        .setYearModel(m_yearModelSpin->value())
-        .setColor(m_colorEdit->text())
-        .setMileage(m_mileageSpin->value())
-        .setDescription(m_descriptionEdit->toPlainText())
-        .setMotorNumber(m_motorNumberEdit->text())
-        .setSerialNumber(m_serialNumberEdit->text())
-        .setRepuve(m_repuveEdit->text())
-        .setPlates(m_platesEdit->text())
-        .setPlatesHolder(m_platesHolderEdit->text());
+    // El userData del combo guarda el enum: no hay que traducir el texto de
+    // vuelta ni depender de cómo esté escrita la etiqueta. Sin elegir queda
+    // vacío, y el dominio lo reporta.
+    if (m_invoiceTypeCombo->currentIndex() >= 0)
+        dto.invoiceType = static_cast<domain::InvoiceType>(m_invoiceTypeCombo->currentData().toInt());
+    dto.invoiceNumber = m_invoiceNumberEdit->text();
+    dto.invoiceIssuer = m_invoiceIssuerEdit->text();
+    dto.invoiceFilePath = m_invoiceFilePath;
+    dto.maintenanceCost = m_maintenanceCostSpin->value();
+    dto.observations = m_observationsEdit->toPlainText();
 
-    domain::Counterparty owner;
-    // Los setters de Counterparty devuelven bool, pero aquí los valores vienen
-    // de campos de texto acotados por la interfaz. Lo que sí puede fallar de
-    // verdad -- código postal o teléfono mal formados -- se refleja en que el
-    // campo queda vacío, y el contrato lo reporta como domicilio incompleto.
-    (void)owner.setFullName(m_ownerNameEdit->text());
-    (void)owner.setNationalId(m_ownerIdEdit->text());
-    owner.setStreetAddress(m_ownerAddressEdit->text());
-    (void)owner.setSuburb(m_ownerSuburbEdit->text());
-    (void)owner.setLocality(m_ownerLocalityEdit->text());
-    (void)owner.setState(m_ownerStateEdit->text());
-    (void)owner.setPostalCode(m_ownerPostalCodeEdit->text());
-    builder.setCounterparty(owner);
-
-    // El userData del combo guarda el enum, así que no hay que traducir el
-    // texto de vuelta ni depender de cómo esté escrita la etiqueta.
-    builder.setInvoiceType(
-        static_cast<domain::InvoiceType>(m_invoiceTypeCombo->currentData().toInt()));
-    builder.setInvoiceNumber(m_invoiceNumberEdit->text())
-        .setInvoiceIssuer(m_invoiceIssuerEdit->text())
-        .setMaintenanceCost(m_maintenanceCostSpin->value())
-        .setObservations(m_observationsEdit->toPlainText());
-
-    // Los datos propios de cada rama se mandan siempre: el builder ignora los
-    // que no corresponden a la subclase que construyó, así que no hace falta
-    // ramificar aquí también.
-    builder.setInvoiceFilePath(m_invoiceFilePath)
-        .setSalePrice(m_salePriceSpin->value())
-        .setPaymentType(static_cast<domain::PaymentType>(m_paymentTypeCombo->currentData().toInt()))
-        .setPaymentMethod(
-            static_cast<domain::PaymentMethod>(m_paymentMethodCombo->currentData().toInt()))
-        // La UMA se inyecta desde aquí porque el dominio no consulta la base:
-        // la regla del pago en efectivo necesita el valor vigente, y quien lo
-        // leyó de global_configurations fue loadLookups().
-        .setUmaDailyValue(m_umaValue)
-        .setCommissionRate(m_commissionRateSpin->value());
-
-    // Los precios de compra y base en cero no se mandan (el de venta sí: su
-    // setter acepta cero y la validación lo reporta). El rango del control impide valores
-    // negativos, así que un cero solo significa "sin capturar". Mandarlo haría
-    // que el setter lo rechazara y se reportara dos veces el mismo problema,
-    // una con el mensaje del rechazo y otra con el de la validación, que es
-    // el que de verdad describe lo que falta.
-    if (m_purchasePriceSpin->value() > 0.0)
-        builder.setPurchasePrice(m_purchasePriceSpin->value());
-    if (m_basePriceSpin->value() > 0.0)
-        builder.setBasePrice(m_basePriceSpin->value());
+    // Los datos de las dos ramas viajan siempre: el servicio usa los de la
+    // rama elegida.
+    dto.purchasePrice = m_purchasePriceSpin->value();
+    dto.salePrice = m_salePriceSpin->value();
+    dto.paymentType = static_cast<domain::PaymentType>(m_paymentTypeCombo->currentData().toInt());
+    dto.paymentMethod =
+        static_cast<domain::PaymentMethod>(m_paymentMethodCombo->currentData().toInt());
+    dto.basePrice = m_basePriceSpin->value();
+    dto.commissionRate = m_commissionRateSpin->value();
+    return dto;
 }

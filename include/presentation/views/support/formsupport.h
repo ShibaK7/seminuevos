@@ -1,6 +1,7 @@
 #ifndef PRESENTATION_VIEWS_SUPPORT_FORMSUPPORT_H
 #define PRESENTATION_VIEWS_SUPPORT_FORMSUPPORT_H
 
+#include "application/dto/catalogdtos.h"
 #include "domain/value_objects/validationresult.h"
 
 #include <QList>
@@ -14,6 +15,9 @@ class QWidget;
 // Funciones de apoyo para los formularios de Qt Widgets. Son libres y no
 // pertenecen a ninguna pantalla: viven aquí para que cada vista no las
 // reescriba a su manera.
+class QComboBox;
+class QLabel;
+
 namespace formsupport {
 
 // Llama a onEdit cada vez que cambia algún campo dentro de root: textos
@@ -77,6 +81,21 @@ void clearFieldErrors(QWidget *root);
 // siguiente error cuando uno no tiene widget en pantalla (la UMA, por
 // ejemplo, que no se captura).
 bool focusField(QWidget *root, const QString &field);
+
+// --- Ayudas de construcción (antes en UIUtils, que además corría SQL) ------
+
+// Sombra suave de tarjeta. Designer no la puede declarar en el .ui, así que
+// se aplica en el constructor de la vista.
+void applyFloatingShadow(QWidget *widget, int xOffset = 0, int yOffset = 5, int blur = 25,
+                         int opacity = 25);
+
+// Etiqueta con el asterisco rojo de "obligatorio".
+QLabel *requiredLabel(const QString &text, QWidget *parent = nullptr);
+
+// Llena un combo con opciones de catálogo (texto = nombre, userData = id) y
+// lo deja sin elegir (índice -1) con el placeholder dado.
+void fillCombo(QComboBox *combo, const QList<application::CatalogOptionDto> &options,
+               const QString &placeholder = QStringLiteral("Seleccione una opción..."));
 
 } // namespace formsupport
 

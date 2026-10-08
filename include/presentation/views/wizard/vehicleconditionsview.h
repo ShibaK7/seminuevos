@@ -1,9 +1,8 @@
 #ifndef PRESENTATION_VIEWS_WIZARD_VEHICLECONDITIONSVIEW_H
 #define PRESENTATION_VIEWS_WIZARD_VEHICLECONDITIONSVIEW_H
 
-#include "adapters/persistence/conditioncatalog.h"
-#include "domain/value_objects/validationresult.h"
-#include "domain/model/vehiclebuilder.h"
+#include "application/dto/catalogdtos.h"
+#include "application/dto/registrationdtos.h"
 
 #include <QList>
 #include <QWidget>
@@ -11,7 +10,6 @@
 class QComboBox;
 class QLabel;
 class QVBoxLayout;
-class QSqlDatabase;
 class ConditionChecklistRow;
 
 // Paso 2 del wizard: especificaciones básicas (izquierda) + checklist de
@@ -22,8 +20,8 @@ class ConditionChecklistRow;
 // Las especificaciones básicas son obligatorias (combustible, cilindros,
 // transmisión, interiores, cristales y aire acondicionado), pero cuáles y con
 // qué reglas
-// lo decide el dominio, no esta vista: validate() arma un VehicleBuilder y le
-// pregunta, igual que el Paso 1. El checklist, en cambio, no tiene mínimos --
+// lo decide el dominio, no esta vista: entrega lo capturado como
+// VehicleConditionsDto y el asistente se lo pasa al servicio, igual que el Paso 1. El checklist, en cambio, no tiene mínimos --
 // consistente con el post-it del wireframe original ("no hay mínimos
 // definidos").
 class VehicleConditionsView : public QWidget
@@ -33,25 +31,19 @@ class VehicleConditionsView : public QWidget
 public:
     explicit VehicleConditionsView(QWidget *parent = nullptr);
 
-    // Llena el combo de combustible y construye el checklist desde la base.
-    // Se llama una vez al abrir el wizard. El constructor deja el panel
-    // armado pero vacío: sin conexión garantizada no se puede poblar.
-    void loadLookups();
+    // Llena el combo de combustible y construye el checklist con los catálogos
+    // que el asistente leyó por el servicio. Se llama una vez, al llegar.
+    void setLookups(const application::RegistrationLookupsDto &lookups);
 
-    // Vuelca los widgets sobre el builder. Un combo sin elegir no se vuelca,
-    // para que el dominio lo reporte como faltante en vez de recibir un valor
-    // que nadie capturó.
-    void applyTo(domain::VehicleBuilder &builder) const;
-
-    // Arma un builder desechable con lo capturado y le pregunta al dominio
-    // solo por lo de este paso (validateConditionData()), sin reclamar datos
-    // que se capturan en los otros.
-    domain::ValidationResult validate() const;
+    // Lo capturado. Un combo sin elegir queda vacío (std::optional) para que
+    // el dominio lo reporte como faltante en vez de recibir un valor que nadie
+    // capturó. Solo viajan las filas marcadas del checklist.
+    application::VehicleConditionsDto conditions() const;
 
 private:
     QWidget *buildBasicSpecsPanel();
     QWidget *buildChecklistPanel();
-    void populateChecklist(const QList<ConditionCatalogItem> &items);
+    void populateChecklist(const QList<application::ChecklistItemDto> &items);
     // Mensaje visible en el panel del checklist. Sin esto, un fallo de la
     // consulta dejaba media pantalla en blanco sin explicación.
     void showChecklistMessage(const QString &message);

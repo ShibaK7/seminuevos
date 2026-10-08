@@ -579,3 +579,30 @@ QMap<QString, QString> Vehicle::contractPlaceholders() const
 }
 
 } // namespace domain
+
+namespace domain {
+
+std::optional<ContractData> Vehicle::contractData() const
+{
+    if (!canGenerateContract())
+        return std::nullopt;
+
+    ContractData data;
+    data.title = contractTitle();
+    data.amount = contractAmount();
+    data.placeholders = contractPlaceholders();
+
+    // Los documentos que acompañan la operación, en texto plano: el adaptador
+    // del PDF los escapa y los convierte en lista.
+    if (!invoiceNumber().trimmed().isEmpty()) {
+        data.documentLines << QStringLiteral("FACTURA %1 No. %2 EXPEDIDA POR %3")
+                                  .arg(toDbString(invoiceType()), invoiceNumber(), invoiceIssuer());
+    }
+    for (const VehicleDocument &document : documents())
+        data.documentLines << document.documentType;
+
+    data.fileNameHint = serialNumber();
+    return data;
+}
+
+} // namespace domain

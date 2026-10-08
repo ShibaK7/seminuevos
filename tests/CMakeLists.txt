@@ -70,6 +70,11 @@ seminuevos_add_test(tst_authenticationservice
     LIBS seminuevos_application
 )
 
+seminuevos_add_test(tst_registrationservice
+    SOURCES application/tst_registrationservice.cpp support/fakes.h
+    LIBS seminuevos_application
+)
+
 # --- Presentación ---------------------------------------------------------------
 seminuevos_add_test(tst_wizardnavigator
     SOURCES presentation/tst_wizardnavigator.cpp
@@ -95,3 +100,17 @@ seminuevos_add_test(tst_formsupport
         "${PROJECT_SOURCE_DIR}/src/presentation/views/support/formsupport.cpp"
     LIBS seminuevos_domain Qt6::Widgets
 )
+
+# --- Integración con PostgreSQL (opcional) ---------------------------------------
+# Necesita `docker compose up -d`. Se activa con -DSEMINUEVOS_DB_TESTS=ON y se
+# corre con `ctest -L db`.
+option(SEMINUEVOS_DB_TESTS "Pruebas de integración contra PostgreSQL" OFF)
+if(SEMINUEVOS_DB_TESTS)
+    seminuevos_add_test(tst_registration_db
+        SOURCES adapters/tst_registration_db.cpp
+        LIBS seminuevos_application seminuevos_persistence seminuevos_storage seminuevos_contract
+    )
+    set_tests_properties(tst_registration_db PROPERTIES LABELS "db")
+    target_compile_definitions(tst_registration_db PRIVATE
+        SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+endif()

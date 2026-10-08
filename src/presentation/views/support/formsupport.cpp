@@ -1,6 +1,9 @@
 #include "presentation/views/support/formsupport.h"
 
 #include <QAbstractButton>
+#include <QColor>
+#include <QGraphicsDropShadowEffect>
+#include <QLabel>
 #include <QComboBox>
 #include <QDateEdit>
 #include <QDoubleSpinBox>
@@ -153,6 +156,43 @@ bool focusField(QWidget *root, const QString &field)
         return true;
     }
     return false;
+}
+
+} // namespace formsupport
+
+namespace formsupport {
+
+void applyFloatingShadow(QWidget *widget, int xOffset, int yOffset, int blur, int opacity)
+{
+    if (!widget)
+        return;
+    auto *shadow = new QGraphicsDropShadowEffect(widget);
+    shadow->setXOffset(xOffset);
+    shadow->setYOffset(yOffset);
+    shadow->setBlurRadius(blur);
+    shadow->setColor(QColor(0, 0, 0, opacity));
+    widget->setGraphicsEffect(shadow);
+}
+
+QLabel *requiredLabel(const QString &text, QWidget *parent)
+{
+    auto *label = new QLabel(parent);
+    label->setText(QStringLiteral("%1 <span style='color: #D90429; font-weight: bold;'>*</span>")
+                       .arg(text.toHtmlEscaped()));
+    return label;
+}
+
+void fillCombo(QComboBox *combo, const QList<application::CatalogOptionDto> &options,
+               const QString &placeholder)
+{
+    if (!combo)
+        return;
+    combo->clear();
+    if (!placeholder.isEmpty())
+        combo->setPlaceholderText(placeholder);
+    for (const application::CatalogOptionDto &option : options)
+        combo->addItem(option.name, option.id);
+    combo->setCurrentIndex(-1);
 }
 
 } // namespace formsupport

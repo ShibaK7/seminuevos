@@ -254,6 +254,9 @@ foreach(path IN LISTS code_files)
                 # Código que genera moc para el propio archivo.
             elseif(inc MATCHES "^ui_.+\\.h$" AND layer STREQUAL "views")
                 # Formulario de Designer: solo las vistas los usan.
+            elseif(rel MATCHES "^src/" AND EXISTS "${ROOT}/${rel}/../${inc}")
+                # Header privado de la capa, junto a su .cpp en src/ (no se
+                # publica en include/).
             else()
                 list(APPEND violations "${rel}: include sin capa \"${inc}\"")
             endif()

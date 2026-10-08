@@ -26,7 +26,6 @@ public:
     double expectedProfit() const override;
     bool acceptsInvoiceType(InvoiceType type) const override;
     void accept(VehicleVisitor &visitor) const override;
-    std::unique_ptr<Vehicle> clone() const override;
 
     bool canGenerateContract() const override;
     QString contractTitle() const override;

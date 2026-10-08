@@ -401,7 +401,9 @@ void MainWindow::openVehicleWizard()
 
     // Vista embebida, no modal: se apila sobre la página de inventario dentro
     // del mismo contenedor, en vez de abrir un diálogo aparte.
-    auto *wizard = new VehicleWizardView(ui->mainContentStack);
+    if (!m_wizardFactory)
+        return;
+    VehicleWizardView *wizard = m_wizardFactory(ui->mainContentStack);
 
     connect(wizard, &VehicleWizardView::returnToInventory, this, &MainWindow::closeVehicleWizard);
     connect(wizard, &VehicleWizardView::vehicleRegistered, this, &MainWindow::onVehicleRegistered);
@@ -448,4 +450,9 @@ void MainWindow::closeVehicleWizard()
     // y eso pasa después. Se anula aquí para que "Agregar Vehículo" cree uno
     // nuevo en vez de retomar el que va de salida.
     m_wizard = nullptr;
+}
+
+void MainWindow::setWizardFactory(WizardFactory factory)
+{
+    m_wizardFactory = std::move(factory);
 }

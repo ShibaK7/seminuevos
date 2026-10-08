@@ -2,12 +2,17 @@
 
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/devseeder.h"
+#include "adapters/persistence/sqlreferencedatareader.h"
 #include "adapters/persistence/sqluserdirectory.h"
+#include "adapters/persistence/sqlvehiclerepository.h"
+#include "adapters/storage/localfilestorage.h"
 #include "app/appconfig.h"
 #include "application/services/authenticationservice.h"
+#include "application/services/vehicleregistrationservice.h"
 #include "presentation/presenters/loginpresenter.h"
 #include "presentation/views/login/loginwindow.h"
 #include "presentation/views/shell/mainwindow.h"
+#include "presentation/views/wizard/vehiclewizardview.h"
 
 #include <QApplication>
 #include <QFile>
@@ -121,6 +126,12 @@ bool CompositionRoot::start()
     m_users = std::make_unique<SqlUserDirectory>(pool);
     m_auth = std::make_unique<application::AuthenticationService>(*m_users, m_hasher);
 
+    m_vehicles = std::make_unique<SqlVehicleRepository>(pool);
+    m_files = std::make_unique<LocalFileStorage>(m_settings.storageRoot);
+    m_referenceData = std::make_unique<SqlReferenceDataReader>(pool);
+    m_registration = std::make_unique<application::VehicleRegistrationService>(
+        *m_vehicles, *m_files, *m_referenceData, m_contracts);
+
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
     m_loginPresenter = new presentation::LoginPresenter(*m_login, *m_auth, m_runner, this);
@@ -149,6 +160,12 @@ void CompositionRoot::showMain(const application::SessionDto &session)
         // vivo, bloqueando el .exe para la siguiente compilación.
         mainWindow->setAttribute(Qt::WA_DeleteOnClose);
         connect(mainWindow, &QObject::destroyed, qApp, &QCoreApplication::quit);
+        // El asistente se arma aquí porque solo la raíz tiene su servicio y el
+        // TaskRunner; MainWindow solo decide cuándo abrirlo.
+        mainWindow->setWizardFactory([this](QWidget *parent) {
+            return new VehicleWizardView(*m_registration, m_runner, m_settings.wizardFreeNavigation,
+                                         parent);
+        });
         m_main = mainWindow;
 
         mainWindow->showMaximized();

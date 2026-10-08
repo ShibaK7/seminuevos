@@ -1,5 +1,6 @@
 #include "adapters/persistence/sqlvehiclerepository.h"
 
+#include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/sqlcounterpartyrepository.h"
 #include "domain/model/acquiredvehicle.h"
 #include "domain/model/consignedvehicle.h"
@@ -264,63 +265,114 @@ bool insertDocuments(QSqlDatabase &db, int folio, const QList<domain::VehicleDoc
 
 } // namespace
 
-SqlVehicleRepository::SqlVehicleRepository(QSqlDatabase &db)
-    : m_db(db)
+SqlVehicleRepository::SqlVehicleRepository(ConnectionPool &pool)
+    : m_pool(pool)
 {
 }
 
-SqlVehicleRepository::Result SqlVehicleRepository::save(domain::Vehicle &vehicle)
+bool SqlVehicleRepository::serialNumberExists(const QString &serialNumber, QString *error)
 {
-    Result result;
+    QString failure;
+    bool exists = false;
+    {
+        ConnectionPool::Handle handle = m_pool.acquire();
+        QSqlDatabase &db = handle.database();
+        QSqlQuery query(db);
+        query.prepare(QStringLiteral("SELECT 1 FROM vehicles WHERE serial_number = :vin LIMIT 1"));
+        query.bindValue(QStringLiteral(":vin"), serialNumber);
+        if (!db.isOpen() || !query.exec())
+            failure = db.isOpen() ? query.lastError().text() : db.lastError().text();
+        else
+            exists = query.next();
+    }
+    if (!failure.isEmpty()) {
+        m_pool.discardThreadConnection();
+        if (error)
+            *error = failure;
+    }
+    return exists;
+}
 
-    if (!m_db.transaction()) {
+application::VehicleRepository::SaveOutcome SqlVehicleRepository::add(domain::Vehicle &vehicle)
+{
+    SaveOutcome result;
+    bool connectionBroken = false;
+    {
+        ConnectionPool::Handle handle = m_pool.acquire();
+        QSqlDatabase &db = handle.database();
+        result = save(db, vehicle);
+        connectionBroken = !result.ok && !db.isOpen();
+    }
+    // Si la operación falló, la conexión de este hilo puede haber quedado
+    // inservible (la base se reinició): se descarta para que el reintento abra
+    // una nueva.
+    if (!result.ok || connectionBroken)
+        m_pool.discardThreadConnection();
+    return result;
+}
+
+application::VehicleRepository::SaveOutcome SqlVehicleRepository::save(QSqlDatabase &db,
+                                                                       domain::Vehicle &vehicle)
+{
+    SaveOutcome result;
+
+    if (!db.isOpen()) {
+        result.errorMessage = QStringLiteral("No se pudo conectar con la base de datos: %1")
+                                   .arg(db.lastError().text());
+        return result;
+    }
+    if (!db.transaction()) {
         result.errorMessage = QStringLiteral("No se pudo iniciar la transacción: %1")
-                                   .arg(m_db.lastError().text());
+                                   .arg(db.lastError().text());
         return result;
     }
 
     QString errorMessage;
 
-    SqlCounterpartyRepository counterparties(m_db);
+    SqlCounterpartyRepository counterparties(db);
     const int counterpartyId = counterparties.findOrCreate(vehicle.counterparty(), errorMessage);
     if (counterpartyId < 0) {
         result.errorMessage = QStringLiteral("Error registrando a %1: %2")
                                    .arg(vehicle.counterpartyRole().toLower(), errorMessage);
-        m_db.rollback();
+        db.rollback();
         return result;
     }
     vehicle.assignCounterpartyId(counterpartyId);
 
-    const int folio = insertVehicleRow(m_db, vehicle, errorMessage);
+    const int folio = insertVehicleRow(db, vehicle, errorMessage);
     if (folio < 0) {
+        // La restricción UNIQUE del VIN tiene nombre propio en el esquema:
+        // reconocerla deja que el caso de uso lo reporte en el campo, no como
+        // una falla genérica.
+        result.duplicateSerialNumber = errorMessage.contains(QStringLiteral("vehicles_serial_number_key"));
         result.errorMessage = QStringLiteral("Error registrando el vehículo: %1").arg(errorMessage);
-        m_db.rollback();
+        db.rollback();
         return result;
     }
 
     // Doble despacho: la unidad decide qué subtabla escribir.
-    DealInserter dealInserter(m_db, folio, counterpartyId);
+    DealInserter dealInserter(db, folio, counterpartyId);
     vehicle.accept(dealInserter);
     if (!dealInserter.ok()) {
         result.errorMessage = QStringLiteral("Error registrando el vehículo: %1")
                                    .arg(dealInserter.errorMessage());
-        m_db.rollback();
+        db.rollback();
         return result;
     }
 
-    if (!insertConditions(m_db, folio, vehicle.conditions(), errorMessage)
-        || !insertInspection(m_db, folio, vehicle.inspection(), errorMessage)
-        || !insertImages(m_db, folio, vehicle.images(), errorMessage)
-        || !insertDocuments(m_db, folio, vehicle.documents(), errorMessage)) {
+    if (!insertConditions(db, folio, vehicle.conditions(), errorMessage)
+        || !insertInspection(db, folio, vehicle.inspection(), errorMessage)
+        || !insertImages(db, folio, vehicle.images(), errorMessage)
+        || !insertDocuments(db, folio, vehicle.documents(), errorMessage)) {
         result.errorMessage = QStringLiteral("Error registrando el vehículo: %1").arg(errorMessage);
-        m_db.rollback();
+        db.rollback();
         return result;
     }
 
-    if (!m_db.commit()) {
+    if (!db.commit()) {
         result.errorMessage = QStringLiteral("No se pudo confirmar la transacción: %1")
-                                   .arg(m_db.lastError().text());
-        m_db.rollback();
+                                   .arg(db.lastError().text());
+        db.rollback();
         return result;
     }
 

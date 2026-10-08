@@ -25,7 +25,7 @@ constexpr int kColumnPadding = 18;
 } // namespace
 
 ConditionChecklistRow::ColumnWidths
-ConditionChecklistRow::measureColumns(const QList<ConditionCatalogItem> &items)
+ConditionChecklistRow::measureColumns(const QList<application::ChecklistItemDto> &items)
 {
     // OJO: esto corre antes de que los widgets existan y se "pulan" con la
     // hoja de estilos, así que QWidget::font() todavía devuelve la fuente por
@@ -37,10 +37,10 @@ ConditionChecklistRow::measureColumns(const QList<ConditionCatalogItem> &items)
     const QFontMetrics metrics(measureFont);
 
     ColumnWidths widths;
-    for (const ConditionCatalogItem &item : items) {
+    for (const application::ChecklistItemDto &item : items) {
         widths.checkBox = std::max(widths.checkBox, metrics.horizontalAdvance(item.element));
         widths.faultyRadio = std::max(widths.faultyRadio,
-                                      metrics.horizontalAdvance(item.negativeLabel));
+                                      metrics.horizontalAdvance(QStringLiteral("Con fallos")));
     }
 
     const int chrome = kIndicatorWidth + kIndicatorSpacing + kColumnPadding;
@@ -49,7 +49,7 @@ ConditionChecklistRow::measureColumns(const QList<ConditionCatalogItem> &items)
     return widths;
 }
 
-ConditionChecklistRow::ConditionChecklistRow(const ConditionCatalogItem &item,
+ConditionChecklistRow::ConditionChecklistRow(const application::ChecklistItemDto &item,
                                              const ColumnWidths &columns, QWidget *parent)
     : QWidget(parent)
     , m_item(item)
@@ -112,7 +112,7 @@ const QString &ConditionChecklistRow::category() const
     return m_item.category;
 }
 
-std::optional<domain::InspectionItem> ConditionChecklistRow::value() const
+std::optional<application::InspectionEntryDto> ConditionChecklistRow::value() const
 {
     if (!m_checkBox->isChecked())
         return std::nullopt;
@@ -120,6 +120,6 @@ std::optional<domain::InspectionItem> ConditionChecklistRow::value() const
     // La etiqueta del radio negativo varía por ítem ("Deteriorada",
     // "Gastadas"), pero lo que se guarda es un booleano: el texto es solo
     // presentación.
-    return domain::InspectionItem(m_item.id, m_optimalRadio->isChecked(),
-                                  m_observationsEdit->text());
+    return application::InspectionEntryDto{m_item.id, m_optimalRadio->isChecked(),
+                                           m_observationsEdit->text()};
 }

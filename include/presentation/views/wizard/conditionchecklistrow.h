@@ -1,8 +1,8 @@
 #ifndef PRESENTATION_VIEWS_WIZARD_CONDITIONCHECKLISTROW_H
 #define PRESENTATION_VIEWS_WIZARD_CONDITIONCHECKLISTROW_H
 
-#include "adapters/persistence/conditioncatalog.h"
-#include "domain/model/inspectionitem.h"
+#include "application/dto/catalogdtos.h"
+#include "application/dto/registrationdtos.h"
 
 #include <QList>
 #include <QWidget>
@@ -37,9 +37,9 @@ public:
     // constante de compilación; con el catálogo viniendo de la base dejó de
     // serlo, porque el asistente se reconstruye cada vez que se abre y el
     // ancho quedaba congelado con los datos de la primera apertura.
-    static ColumnWidths measureColumns(const QList<ConditionCatalogItem> &items);
+    static ColumnWidths measureColumns(const QList<application::ChecklistItemDto> &items);
 
-    ConditionChecklistRow(const ConditionCatalogItem &item, const ColumnWidths &columns,
+    ConditionChecklistRow(const application::ChecklistItemDto &item, const ColumnWidths &columns,
                           QWidget *parent = nullptr);
 
     // Para agrupar y para el botón "Marcar todo", sin tener que construir un
@@ -51,7 +51,7 @@ public:
     // vehicle_inspection. Devolver un optional y no un InspectionItem con una
     // bandera adentro es lo que mantiene al dominio sin poder representar un
     // "ítem ausente", que es justo el estado que se quiso eliminar.
-    std::optional<domain::InspectionItem> value() const;
+    std::optional<application::InspectionEntryDto> value() const;
     void setChecked(bool checked);
     bool isChecked() const;
 
@@ -59,7 +59,7 @@ private slots:
     void updateRowState();
 
 private:
-    ConditionCatalogItem m_item;
+    application::ChecklistItemDto m_item;
     QCheckBox *m_checkBox;
     QRadioButton *m_optimalRadio;
     QRadioButton *m_faultyRadio;

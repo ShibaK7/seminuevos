@@ -1,17 +1,21 @@
 #ifndef PRESENTATION_VIEWS_WIZARD_VEHICLEWIZARDVIEW_H
 #define PRESENTATION_VIEWS_WIZARD_VEHICLEWIZARDVIEW_H
 
+#include "application/dto/catalogdtos.h"
+#include "application/dto/registrationdtos.h"
 #include "presentation/navigation/wizardnavigator.h"
 
 #include <QPointer>
 #include <QSet>
 #include <QWidget>
 
-#include <memory>
+#include <optional>
 
-namespace domain {
-class ValidationResult;
-class Vehicle;
+namespace application {
+class VehicleRegistrationService;
+}
+namespace presentation {
+class TaskRunner;
 }
 
 class WizardStepper;
@@ -22,14 +26,17 @@ class VehicleFilesView;
 class QPushButton;
 class QLabel;
 class QTimer;
-class VehicleRegistrationWorker;
 
 // Vista embebida (NO modal) con los 3 pasos del wizard de registro de
 // vehículo (US-03.2). MainWindow la muestra reemplazando la página de
 // Inventario dentro del mismo mainContentStack -- no se abre como QDialog.
-// Al confirmar el Paso 3 arma la unidad con un VehicleBuilder a partir de lo
-// que tienen los widgets, dispara el guardado atómico (archivos + BD) y
-// ofrece imprimir el contrato. Emite vehicleRegistered()/returnToInventory() para
+// Al confirmar el Paso 3 arma un VehicleRegistrationDto con lo que tienen los
+// pasos y lo registra por el servicio de aplicación (fuera del hilo de la
+// interfaz), y ofrece imprimir el contrato que devuelve.
+//
+// Hasta que exista su presenter, la vista habla directo con el servicio; por
+// eso recibe el servicio y el TaskRunner por constructor (los inyecta la raíz
+// de composición a través de MainWindow). Emite vehicleRegistered()/returnToInventory() para
 // que MainWindow decida cuándo regresar a la lista de inventario.
 //
 // Navegación entre pasos (el estado lo lleva m_nav, un WizardNavigator):
@@ -51,7 +58,9 @@ class VehicleWizardView : public QWidget
     Q_OBJECT
 
 public:
-    explicit VehicleWizardView(QWidget *parent = nullptr);
+    VehicleWizardView(application::VehicleRegistrationService &service,
+                      presentation::TaskRunner &runner, bool freeNavigation,
+                      QWidget *parent = nullptr);
     ~VehicleWizardView() override;
 
 signals:
@@ -80,12 +89,20 @@ private:
     // intentado cada paso desde el actual hasta el anterior a `target`; en el
     // primero inválido se queda ahí y lo explica. Si todos son válidos, entra.
     void advanceTo(int target);
+    // Pide los catálogos al servicio fuera del hilo de la interfaz y, al
+    // llegar, llena los pasos y hace la validación inicial.
+    void loadLookups();
+    void onLookupsLoaded(const application::RegistrationLookupsDto &lookups);
+    void onRegistrationFinished(const application::RegistrationResult &result);
+    // El paso al que pertenecen los errores de un rechazo al guardar.
+    int stepOwningErrors(const domain::ValidationResult &result) const;
     // Algo cambió en el paso `step`. No revalida en el acto: arranca (o
     // reinicia) un debounce, y revalidateEditedSteps() hace el trabajo cuando
     // el usuario deja de teclear.
     void onStepEdited(int step);
     void revalidateEditedSteps();
-    // Le pregunta al dominio por lo que el paso `step` tiene capturado ahora.
+    // Le pregunta al servicio (y este al dominio) por lo que el paso `step`
+    // tiene capturado ahora. Es pura: no hace E/S.
     domain::ValidationResult validateStep(int step) const;
     // Muestra el paso actual del navegador: la página, el stepper y el texto
     // del botón primario.
@@ -116,6 +133,8 @@ private:
     // Sustituye al "paso más lejano desbloqueado" que había antes, que solo
     // crecía: un paso ya validado seguía abierto aunque después se borrara lo
     // que lo hacía válido.
+    application::VehicleRegistrationService &m_service;
+    presentation::TaskRunner &m_runner;
     presentation::WizardNavigator m_nav;
 
     WizardStepper *m_stepper;
@@ -135,14 +154,14 @@ private:
     QSet<int> m_editedSteps;
 
     bool m_registered = false;
-    // La unidad ya construida y validada. La vista conserva SU ejemplar: al
-    // worker se le manda un clon, porque ese hilo reescribe las rutas de los
-    // archivos y compartir el objeto rompería un reintento tras un fallo.
-    std::unique_ptr<domain::Vehicle> m_vehicle;
-    // QPointer y no un puntero crudo: el hilo se borra solo con deleteLater()
-    // al terminar, y QPointer queda en nulo en ese momento en vez de seguir
-    // apuntando a memoria liberada.
-    QPointer<VehicleRegistrationWorker> m_worker;
+    // Hay un registro corriendo en el TaskRunner.
+    bool m_saving = false;
+    // UMA vigente, leída con los catálogos. Sin ella no se valida el tope de
+    // efectivo y el pago en efectivo se rechaza.
+    std::optional<double> m_umaDailyValue;
+    // Lo que el contrato dice, ya decidido por el dominio al registrar. Es un
+    // valor: la vista no se queda con la entidad.
+    std::optional<domain::ContractData> m_contract;
 };
 
 #endif // PRESENTATION_VIEWS_WIZARD_VEHICLEWIZARDVIEW_H

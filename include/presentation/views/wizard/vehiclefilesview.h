@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_VIEWS_WIZARD_VEHICLEFILESVIEW_H
 #define PRESENTATION_VIEWS_WIZARD_VEHICLEFILESVIEW_H
 
-#include "domain/model/vehiclebuilder.h"
+#include "application/dto/registrationdtos.h"
 
 #include <QList>
 #include <QMap>
@@ -26,7 +26,7 @@ class VehicleFilesView : public QWidget
 public:
     explicit VehicleFilesView(QWidget *parent = nullptr);
 
-    void applyTo(domain::VehicleBuilder &builder) const;
+    application::VehicleFilesDto files() const;
 
 protected:
     // Los tres aceptan un arrastre solo como copia, nunca como Move: la vista

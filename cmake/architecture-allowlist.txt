@@ -6,38 +6,14 @@
 # pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
 # falta, se borra.
 
-
-# --- Commit 9: UploadFormatPolicy pasa a domain/rules ---------------------------
-src/presentation/views/wizard/vehiclefilesview.cpp: incluye "vehiclewizard/uploadformatpolicy.h"  # commit 9
-
-# --- Commit 10: el wizard registra por el servicio y los pasos devuelven DTOs ---
-include/presentation/views/wizard/conditionchecklistrow.h: incluye "adapters/persistence/conditioncatalog.h"  # commit 10
-include/presentation/views/wizard/conditionchecklistrow.h: incluye "domain/model/inspectionitem.h"  # commit 10
-include/presentation/views/wizard/vehicleconditionsview.h: incluye "adapters/persistence/conditioncatalog.h"  # commit 10
-include/presentation/views/wizard/vehicleconditionsview.h: incluye "domain/model/vehiclebuilder.h"  # commit 10
-include/presentation/views/wizard/vehicledetailsview.h: incluye "domain/model/vehiclebuilder.h"  # commit 10
-include/presentation/views/wizard/vehiclefilesview.h: incluye "domain/model/vehiclebuilder.h"  # commit 10
-src/presentation/views/wizard/vehicleconditionsview.cpp: incluye "adapters/persistence/connectionpool.h"  # commit 10
-src/presentation/views/wizard/vehicleconditionsview.cpp: incluye "utils/UIUtils.h"  # commit 10
-src/presentation/views/wizard/vehicleconditionsview.cpp: incluye <QSqlDatabase> (QtSql)  # commit 10
-src/presentation/views/wizard/vehicleconditionsview.cpp: incluye <QSqlQuery> (QtSql)  # commit 10
-src/presentation/views/wizard/vehicledetailsview.cpp: incluye "adapters/persistence/connectionpool.h"  # commit 10
-src/presentation/views/wizard/vehicledetailsview.cpp: incluye "utils/UIUtils.h"  # commit 10
-src/presentation/views/wizard/vehicledetailsview.cpp: incluye <QSqlDatabase> (QtSql)  # commit 10
-src/presentation/views/wizard/vehicledetailsview.cpp: incluye <QSqlQuery> (QtSql)  # commit 10
-src/presentation/views/wizard/vehiclewizardview.cpp: incluye "adapters/contract/contractpdfgenerator.h"  # commit 10
-src/presentation/views/wizard/vehiclewizardview.cpp: incluye "db/vehicleregistrationworker.h"  # commit 10
-src/presentation/views/wizard/vehiclewizardview.cpp: incluye "domain/model/vehicle.h"  # commit 10
-src/presentation/views/wizard/vehiclewizardview.cpp: incluye "domain/model/vehiclebuilder.h"  # commit 10
-src/presentation/views/wizard/vehiclewizardview.cpp: incluye "app/appconfig.h"  # commit 10-13: AppSettings y luego se borra AppConfig
-
-# --- Commit 12: las vistas dejan de tocar disco ---------------------------------
+# --- Commit 12: el wizard pasa a presenters y las vistas dejan de tocar disco ---
+src/presentation/views/wizard/vehiclewizardview.cpp: incluye "application/services/vehicleregistrationservice.h"  # commit 12: lo usará su presenter
+src/presentation/views/wizard/vehiclefilesview.cpp: incluye "vehiclewizard/uploadformatpolicy.h"  # commit 12: regla pura en domain/rules
+src/presentation/views/wizard/vehiclefilesview.cpp: acceso a disco <QFileInfo>  # commit 12: formato y vista previa por el servicio
 src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QDir>  # commit 12: CFDI por el puerto FileStorage
 src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QFile>  # commit 12
 src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QFileInfo>  # commit 12
 src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QStandardPaths>  # commit 12
-src/presentation/views/wizard/vehiclefilesview.cpp: acceso a disco <QFileInfo>  # commit 12: vista previa y formato por el servicio
-src/presentation/views/wizard/vehiclewizardview.cpp: acceso a disco <QFile>  # commit 12
 
 # --- Commit 13: el inventario se carga por un presenter -----------------------
 src/presentation/views/inventory/vehicleitemlist.cpp: incluye "adapters/persistence/vehicleinventoryquery.h"  # commit 13: InventoryItemDto

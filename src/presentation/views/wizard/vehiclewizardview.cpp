@@ -1,28 +1,23 @@
 #include "presentation/views/wizard/vehiclewizardview.h"
-#include "app/appconfig.h"
-#include "adapters/contract/contractpdfgenerator.h"
-#include "db/vehicleregistrationworker.h"
+#include "application/services/vehicleregistrationservice.h"
 #include "presentation/views/wizard/vehicledetailsview.h"
 #include "presentation/views/wizard/vehicleconditionsview.h"
 #include "presentation/views/wizard/vehiclefilesview.h"
 #include "presentation/views/components/wizardstepper.h"
 #include "domain/value_objects/validationresult.h"
-#include "domain/model/vehicle.h"
-#include "domain/model/vehiclebuilder.h"
+#include "presentation/tasks/taskrunner.h"
 #include "presentation/views/support/formsupport.h"
 
 #include <utility>
 
-#include <QCoreApplication>
 #include <QDesktopServices>
-#include <QFile>
+#include <QEvent>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
-#include <QTextStream>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -80,9 +75,13 @@ QString stepStateName(presentation::StepVisual visual)
 
 } // namespace
 
-VehicleWizardView::VehicleWizardView(QWidget *parent)
+VehicleWizardView::VehicleWizardView(application::VehicleRegistrationService &service,
+                                     presentation::TaskRunner &runner, bool freeNavigation,
+                                     QWidget *parent)
     : QWidget(parent)
-    , m_nav(kStepCount, AppConfig::wizardFreeNavigation())
+    , m_service(service)
+    , m_runner(runner)
+    , m_nav(kStepCount, freeNavigation)
 {
     Q_ASSERT(stepTitles().size() == kStepCount);
 
@@ -94,8 +93,6 @@ VehicleWizardView::VehicleWizardView(QWidget *parent)
     m_step1 = new VehicleDetailsView(this);
     m_step2 = new VehicleConditionsView(this);
     m_step3 = new VehicleFilesView(this);
-    m_step1->loadLookups();
-    m_step2->loadLookups();
 
     m_stack = new QStackedWidget(this);
     m_stack->addWidget(m_step1);
@@ -155,11 +152,40 @@ VehicleWizardView::VehicleWizardView(QWidget *parent)
     m_revalidateTimer->setInterval(kRevalidateDelayMs);
     connect(m_revalidateTimer, &QTimer::timeout, this, &VehicleWizardView::revalidateEditedSteps);
 
-    // Después de loadLookups() y no antes: ahí se crean widgets que también
-    // hay que vigilar (el checklist del Paso 2, el editor del combo de marca
-    // del Paso 1), y los combos que se llenan ahí no disparan revalidaciones
-    // de arranque. El Paso 3 no se vigila: rehace sus filas en cada carga, así
-    // que basta validarlo cuando se intenta.
+    showCurrentStep();
+    loadLookups();
+}
+
+VehicleWizardView::~VehicleWizardView() = default;
+
+void VehicleWizardView::loadLookups()
+{
+    // Los catálogos se leen fuera del hilo de la interfaz: mientras llegan, el
+    // asistente está ocupado y no se puede capturar.
+    setBusy(true);
+    m_primaryButton->setText(QStringLiteral("Cargando..."));
+    const application::VehicleRegistrationService *service = &m_service;
+    m_runner.run(this, [service] { return service->loadLookups(); },
+                 [this](const application::RegistrationLookupsDto &lookups) {
+                     onLookupsLoaded(lookups);
+                 });
+}
+
+void VehicleWizardView::onLookupsLoaded(const application::RegistrationLookupsDto &lookups)
+{
+    m_umaDailyValue = lookups.umaDailyValue;
+    m_step1->setLookups(lookups);
+    m_step2->setLookups(lookups);
+    setBusy(false);
+    if (!lookups.errorMessage.isEmpty())
+        showError(QStringLiteral("No se pudieron leer todos los catálogos:\n") + lookups.errorMessage);
+    else if (!m_umaDailyValue)
+        showError(QStringLiteral("No hay UMA configurada: no se podrá registrar una compra pagada en efectivo."));
+
+    // Después de llenar los pasos y no antes: ahí se crean widgets que también
+    // hay que vigilar (el checklist del Paso 2), y los combos que se llenan
+    // ahí no disparan revalidaciones de arranque. El Paso 3 no se vigila: rehace
+    // sus filas en cada carga, así que basta validarlo cuando se intenta.
     formsupport::watchEdits(m_step1, this, [this]() { onStepEdited(kDetailsStep); });
     formsupport::watchEdits(m_step2, this, [this]() { onStepEdited(kConditionStep); });
 
@@ -168,25 +194,20 @@ VehicleWizardView::VehicleWizardView(QWidget *parent)
     // stepper sepa desde el principio qué pasos están bloqueados.
     for (int step = 0; step < kStepCount; ++step)
         m_nav.setValid(step, validateStep(step).isValid());
-
-    showCurrentStep();
+    refreshStepper();
 }
-
-// Fuera de línea: destruir un unique_ptr<domain::Vehicle> exige la definición
-// completa de Vehicle, que el header solo declara.
-VehicleWizardView::~VehicleWizardView() = default;
 
 domain::ValidationResult VehicleWizardView::validateStep(int step) const
 {
     switch (step) {
     case kDetailsStep:
-        return m_step1->validate();
+        return m_service.validateDetails(m_step1->details(), m_umaDailyValue);
     case kConditionStep:
-        return m_step2->validate();
+        return m_service.validateConditions(m_step2->conditions());
     case kFilesStep:
         // El Paso 3 todavía no tiene reglas propias: las fotos y los
         // documentos son opcionales. Lo que sí puede fallar ahí, como un
-        // documento repetido, lo reporta build() al guardar.
+        // documento repetido, lo reporta el servicio al guardar.
         break;
     }
     return domain::ValidationResult();
@@ -272,37 +293,61 @@ void VehicleWizardView::onPrimaryClicked()
     }
     refreshStepper();
 
-    // Se vuelven a leer los tres pasos sobre un builder nuevo. La fuente de
-    // verdad son los widgets, así que volver atrás y corregir algo se refleja
-    // sin necesidad de mantener nada sincronizado.
-    domain::VehicleBuilder builder;
-    m_step1->applyTo(builder);
-    m_step2->applyTo(builder);
-    m_step3->applyTo(builder);
-
-    domain::ValidationResult validation;
-    std::unique_ptr<domain::Vehicle> vehicle = builder.build(validation);
-    if (!vehicle) {
-        // build() revisa también lo que ningún paso valida por su cuenta,
-        // como un documento repetido en el Paso 3. Van todos los mensajes, no
-        // solo el primero.
-        showValidationErrors(QStringLiteral("No se pudo registrar el vehículo"), validation);
-        return;
-    }
-    m_vehicle = std::move(vehicle);
-
+    // Se vuelven a leer los tres pasos: la fuente de verdad son los widgets,
+    // así que volver atrás y corregir algo se refleja sin mantener nada
+    // sincronizado. El registro (validar, copiar archivos, guardar) corre en el
+    // servicio, fuera del hilo de la interfaz.
+    application::VehicleRegistrationDto registration{m_step1->details(), m_step2->conditions(),
+                                                     m_step3->files()};
     setBusy(true);
     hideError();
+    m_saving = true;
+    const application::VehicleRegistrationService *service = &m_service;
+    m_runner.run(this, [service, registration] { return service->registerVehicle(registration); },
+                 [this](const application::RegistrationResult &result) {
+                     m_saving = false;
+                     onRegistrationFinished(result);
+                 });
+}
 
-    // clone(): el worker reescribe las rutas de los archivos a medida que los
-    // copia al almacén. Si compartiera el objeto con esta vista, un reintento
-    // después de un fallo de la base buscaría los archivos en su ruta ya
-    // reescrita, que no existe como origen.
-    m_worker = new VehicleRegistrationWorker(m_vehicle->clone(), AppConfig::storageRoot(), this);
-    connect(m_worker, &VehicleRegistrationWorker::registrationSucceeded, this, &VehicleWizardView::onRegistrationSucceeded);
-    connect(m_worker, &VehicleRegistrationWorker::registrationFailed, this, &VehicleWizardView::onRegistrationFailed);
-    connect(m_worker, &QThread::finished, m_worker, &QObject::deleteLater);
-    m_worker->start();
+void VehicleWizardView::onRegistrationFinished(const application::RegistrationResult &result)
+{
+    switch (result.status) {
+    case application::RegistrationResult::Status::Registered:
+        m_contract = result.contract;
+        onRegistrationSucceeded(result.folio);
+        return;
+    case application::RegistrationResult::Status::Rejected: {
+        // Las reglas se revisaron otra vez al guardar (con la UMA vigente y
+        // contra la base, como un VIN repetido). Los errores se llevan al paso
+        // que tiene el campo.
+        setBusy(false);
+        const int step = stepOwningErrors(result.validation);
+        m_nav.setValid(step, false);
+        markStepFields(step, result.validation);
+        showInvalidStep(step, result.validation);
+        refreshStepper();
+        return;
+    }
+    case application::RegistrationResult::Status::Failed:
+        onRegistrationFailed(result.errorMessage);
+        return;
+    }
+}
+
+int VehicleWizardView::stepOwningErrors(const domain::ValidationResult &result) const
+{
+    // Los campos de condición e inspección son del Paso 2; las fotos y los
+    // documentos, del Paso 3; todo lo demás, del Paso 1.
+    for (const domain::ValidationError &error : result.errors()) {
+        if (error.field.startsWith(QStringLiteral("conditions"))
+            || error.field.startsWith(QStringLiteral("inspection")))
+            return kConditionStep;
+        if (error.field.startsWith(QStringLiteral("images"))
+            || error.field.startsWith(QStringLiteral("documents")))
+            return kFilesStep;
+    }
+    return kDetailsStep;
 }
 
 void VehicleWizardView::advanceTo(int target)
@@ -426,10 +471,7 @@ void VehicleWizardView::showValidationErrors(const QString &title,
 
 void VehicleWizardView::onCancelClicked()
 {
-    // m_worker es un QPointer: cuando el hilo termina, deleteLater() lo borra y
-    // el puntero queda en nulo solo. Con un puntero crudo, "Volver al
-    // Inventario" después de un registro leía un hilo ya destruido.
-    if (m_worker && m_worker->isRunning())
+    if (m_saving)
         return; // el botón ya está deshabilitado por setBusy(), por si acaso.
 
     if (!m_registered) {
@@ -455,9 +497,9 @@ void VehicleWizardView::onRegistrationSucceeded(int folio)
     // Los tres pasos con palomita: Guardar los marcó como intentados y los
     // tres pasaron la validación.
     refreshStepper();
-    // Que decida la unidad si le corresponde contrato: hoy las dos ramas lo
+    // El dominio decidió si la operación lleva contrato: hoy las dos ramas lo
     // emiten, pero una rama futura podría no hacerlo.
-    const bool canPrint = m_vehicle && m_vehicle->canGenerateContract();
+    const bool canPrint = m_contract.has_value();
     m_printContractButton->setEnabled(canPrint);
     m_cancelButton->setText(QStringLiteral("Volver al Inventario"));
 
@@ -504,16 +546,16 @@ void VehicleWizardView::onPrintContractClicked()
 
 bool VehicleWizardView::printContract()
 {
-    if (!m_vehicle)
+    if (!m_contract)
         return false;
 
-    const QString suggestedName = QStringLiteral("contrato_%1.pdf").arg(m_vehicle->serialNumber());
+    const QString suggestedName = QStringLiteral("contrato_%1.pdf").arg(m_contract->fileNameHint);
     const QString outputPath = QFileDialog::getSaveFileName(
         this, QStringLiteral("Guardar contrato"), suggestedName, QStringLiteral("PDF (*.pdf)"));
     if (outputPath.isEmpty())
         return false;
 
-    const ContractPdfGenerator::Result result = ContractPdfGenerator::generate(*m_vehicle, outputPath);
+    const application::ContractGenerator::Outcome result = m_service.generateContract(*m_contract, outputPath);
     if (!result.ok) {
         QMessageBox::warning(this, QStringLiteral("Error al generar el contrato"), result.errorMessage);
         return false;

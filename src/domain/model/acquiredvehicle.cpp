@@ -42,11 +42,6 @@ void AcquiredVehicle::accept(VehicleVisitor &visitor) const
     visitor.visit(*this);
 }
 
-std::unique_ptr<Vehicle> AcquiredVehicle::clone() const
-{
-    return std::make_unique<AcquiredVehicle>(*this);
-}
-
 double AcquiredVehicle::purchasePrice() const
 {
     return m_purchasePrice;

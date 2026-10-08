@@ -1,6 +1,7 @@
 #ifndef APP_COMPOSITIONROOT_H
 #define APP_COMPOSITIONROOT_H
 
+#include "adapters/contract/pdfcontractgenerator.h"
 #include "adapters/security/pbkdf2passwordhasher.h"
 #include "app/appsettings.h"
 #include "application/dto/authdtos.h"
@@ -13,10 +14,14 @@
 
 class LoginWindow;
 class MainWindow;
+class LocalFileStorage;
+class SqlReferenceDataReader;
 class SqlUserDirectory;
+class SqlVehicleRepository;
 
 namespace application {
 class AuthenticationService;
+class VehicleRegistrationService;
 }
 namespace presentation {
 class LoginPresenter;
@@ -50,6 +55,11 @@ private:
     Pbkdf2PasswordHasher m_hasher;
     std::unique_ptr<SqlUserDirectory> m_users;
     std::unique_ptr<application::AuthenticationService> m_auth;
+    std::unique_ptr<SqlVehicleRepository> m_vehicles;
+    std::unique_ptr<LocalFileStorage> m_files;
+    std::unique_ptr<SqlReferenceDataReader> m_referenceData;
+    PdfContractGenerator m_contracts;
+    std::unique_ptr<application::VehicleRegistrationService> m_registration;
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

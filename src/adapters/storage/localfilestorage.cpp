@@ -34,10 +34,10 @@ QString LocalFileStorage::uniqueDestinationPath(const QString &dirPath, const QS
     return QDir(dirPath).filePath(stamped);
 }
 
-QString LocalFileStorage::saveVehicleFile(const QString &vin, const QString &sourcePath,
-                                                   const QString &subfolder, QString &errorMessage) const
+QString LocalFileStorage::saveFile(const QString &folder, const QString &sourcePath,
+                                  QString &errorMessage) const
 {
-    const QString dirPath = QDir(m_storageRoot).filePath(QStringLiteral("vehicles/%1/%2").arg(vin, subfolder));
+    const QString dirPath = QDir(m_storageRoot).filePath(folder);
     if (!QDir().mkpath(dirPath)) {
         errorMessage = QStringLiteral("No se pudo crear la carpeta de almacenamiento: %1").arg(dirPath);
         return QString();
@@ -52,8 +52,8 @@ QString LocalFileStorage::saveVehicleFile(const QString &vin, const QString &sou
     return QDir(m_storageRoot).relativeFilePath(destPath);
 }
 
-QString LocalFileStorage::saveVehicleImageCompressed(const QString &vin, const QString &sourcePath,
-                                                              const QString &subfolder, QString &errorMessage) const
+QString LocalFileStorage::saveImageCompressed(const QString &folder, const QString &sourcePath,
+                                             QString &errorMessage) const
 {
     QImage image(sourcePath);
     if (image.isNull()) {
@@ -61,7 +61,7 @@ QString LocalFileStorage::saveVehicleImageCompressed(const QString &vin, const Q
         return QString();
     }
 
-    const QString dirPath = QDir(m_storageRoot).filePath(QStringLiteral("vehicles/%1/%2").arg(vin, subfolder));
+    const QString dirPath = QDir(m_storageRoot).filePath(folder);
     if (!QDir().mkpath(dirPath)) {
         errorMessage = QStringLiteral("No se pudo crear la carpeta de almacenamiento: %1").arg(dirPath);
         return QString();
@@ -82,4 +82,38 @@ QString LocalFileStorage::saveVehicleImageCompressed(const QString &vin, const Q
     }
 
     return QDir(m_storageRoot).relativeFilePath(destPath);
+}
+
+QString LocalFileStorage::safeFolderName(const QString &vehicleKey)
+{
+    QString name;
+    for (const QChar ch : vehicleKey.trimmed().toUpper()) {
+        if (ch.isLetterOrNumber() || ch == QLatin1Char('-') || ch == QLatin1Char('_'))
+            name.append(ch);
+        else
+            name.append(QLatin1Char('_'));
+    }
+    return name.isEmpty() ? QStringLiteral("_sin_vin") : name;
+}
+
+application::FileStorage::Stored LocalFileStorage::store(const QString &vehicleKey,
+                                                         const QString &sourcePath, Kind kind)
+{
+    Stored stored;
+    const QString folder = QStringLiteral("vehicles/%1/%2")
+                               .arg(safeFolderName(vehicleKey),
+                                    kind == Kind::Image ? QStringLiteral("images")
+                                                        : QStringLiteral("documents"));
+    stored.relativePath = kind == Kind::Image
+                              ? saveImageCompressed(folder, sourcePath, stored.errorMessage)
+                              : saveFile(folder, sourcePath, stored.errorMessage);
+    stored.ok = !stored.relativePath.isEmpty();
+    return stored;
+}
+
+bool LocalFileStorage::remove(const QString &relativePath)
+{
+    if (relativePath.isEmpty() || QDir::isAbsolutePath(relativePath))
+        return false; // solo se borra lo que está dentro del almacén
+    return QFile::remove(QDir(m_storageRoot).filePath(relativePath));
 }

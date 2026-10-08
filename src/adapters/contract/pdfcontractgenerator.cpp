@@ -1,7 +1,6 @@
-#include "adapters/contract/contractpdfgenerator.h"
+#include "adapters/contract/pdfcontractgenerator.h"
 #include "adapters/contract/companyprofile.h"
 #include "adapters/contract/numbertowordses.h"
-#include "domain/model/vehicle.h"
 
 #include <QFile>
 #include <QIODevice>
@@ -31,38 +30,23 @@ QString loadTemplate(QString &errorMessage)
 }
 
 // La lista de documentos es lo único que se arma como HTML y no como texto
-// plano, así que cada campo se escapa por separado antes de envolverlo en las
-// etiquetas.
-QString buildDocumentsListHtml(const domain::Vehicle &vehicle)
+// plano, así que cada renglón se escapa antes de envolverlo en las etiquetas.
+QString buildDocumentsListHtml(const QStringList &lines)
 {
     QStringList items;
-
-    if (!vehicle.invoiceNumber().trimmed().isEmpty()) {
-        items << QStringLiteral("<li>FACTURA %1 No. %2 EXPEDIDA POR %3</li>")
-                     .arg(domain::toDbString(vehicle.invoiceType()).toHtmlEscaped(),
-                          vehicle.invoiceNumber().toHtmlEscaped(),
-                          vehicle.invoiceIssuer().toHtmlEscaped());
-    }
-    for (const domain::VehicleDocument &document : vehicle.documents())
-        items << QStringLiteral("<li>%1</li>").arg(document.documentType.toHtmlEscaped());
-
+    for (const QString &line : lines)
+        items << QStringLiteral("<li>%1</li>").arg(line.toHtmlEscaped());
     if (items.isEmpty())
         items << QStringLiteral("<li>Sin documentos registrados.</li>");
-
     return items.join(QStringLiteral("\n"));
 }
 
 } // namespace
 
-ContractPdfGenerator::Result ContractPdfGenerator::generate(const domain::Vehicle &vehicle,
-                                                            const QString &outputPath)
+application::ContractGenerator::Outcome PdfContractGenerator::generate(
+    const domain::ContractData &contract, const QString &outputPath)
 {
-    Result result;
-
-    if (!vehicle.canGenerateContract()) {
-        result.errorMessage = QStringLiteral("Este tipo de operación no genera contrato.");
-        return result;
-    }
+    Outcome result;
 
     QString errorMessage;
     QString html = loadTemplate(errorMessage);
@@ -73,7 +57,7 @@ ContractPdfGenerator::Result ContractPdfGenerator::generate(const domain::Vehicl
 
     // Lo que aporta la unidad. Todo texto plano, así que se escapa al
     // sustituir.
-    const QMap<QString, QString> placeholders = vehicle.contractPlaceholders();
+    const QMap<QString, QString> &placeholders = contract.placeholders;
     for (auto it = placeholders.constBegin(); it != placeholders.constEnd(); ++it) {
         html.replace(QStringLiteral("{{%1}}").arg(it.key()), it.value().toHtmlEscaped());
     }
@@ -87,11 +71,11 @@ ContractPdfGenerator::Result ContractPdfGenerator::generate(const domain::Vehicl
     // El importe llega como número y se formatea aquí: convertirlo a letras o
     // ponerle separadores de miles es presentación, no negocio.
     const QLocale locale(QLocale::Spanish, QLocale::Mexico);
-    const double amount = vehicle.contractAmount();
+    const double amount = contract.amount;
     html.replace(QStringLiteral("{{precio_numero}}"), locale.toString(amount, 'f', 2));
     html.replace(QStringLiteral("{{precio_letras}}"), NumberToWordsEs::convert(amount));
 
-    html.replace(QStringLiteral("{{documentos_lista}}"), buildDocumentsListHtml(vehicle));
+    html.replace(QStringLiteral("{{documentos_lista}}"), buildDocumentsListHtml(contract.documentLines));
 
     // Si quedó alguna marca sin sustituir, el documento saldría con un
     // "{{algo}}" impreso en medio de una cláusula. Es preferible no generar

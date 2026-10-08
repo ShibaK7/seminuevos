@@ -2,6 +2,7 @@
 #define DOMAIN_MODEL_VEHICLE_H
 
 #include "domain/value_objects/catalogref.h"
+#include "domain/value_objects/contractdata.h"
 #include "domain/model/counterparty.h"
 #include "domain/value_objects/enums.h"
 #include "domain/model/inspection.h"
@@ -16,6 +17,7 @@
 #include <QString>
 
 #include <memory>
+#include <optional>
 
 namespace domain {
 
@@ -74,12 +76,6 @@ public:
     // Doble despacho. Ver vehiclevisitor.h.
     virtual void accept(VehicleVisitor &visitor) const = 0;
 
-    // Constructor virtual. Existe porque el registro corre en otro hilo y el
-    // worker reescribe las rutas de los archivos sobre su propio ejemplar:
-    // la vista conserva el suyo con las rutas originales, que es lo que hace
-    // posible reintentar el guardado después de un error.
-    virtual std::unique_ptr<Vehicle> clone() const = 0;
-
     // --- Contrato ---------------------------------------------------------
     // La concesionaria usa el mismo documento para las dos ramas, con la
     // misma información; lo único que cambia es cómo se titula la operación.
@@ -97,6 +93,12 @@ public:
     // suyos sobre los comunes; el generador solo sustituye lo que recibe, sin
     // saber de qué tipo de unidad se trata.
     virtual QMap<QString, QString> contractPlaceholders() const;
+
+    // Todo lo que el contrato dice, ya decidido, para que el adaptador del PDF
+    // solo lo dibuje. NO es virtual (Template Method): arma el resultado con
+    // los ganchos de arriba, que sí lo son. nullopt si la operación no genera
+    // contrato.
+    std::optional<ContractData> contractData() const;
 
     // --- Validación (Template Method, deliberadamente NO virtual) --------
     // Comprueba lo común a toda unidad y delega lo propio de cada rama en el
@@ -241,8 +243,7 @@ protected:
     // Copia y movimiento protegidos y por omisión. Protegidos para que nadie
     // pueda copiar a través de una referencia a la base y rebanar el objeto;
     // por omisión y no borrados porque marcarlos = delete aquí borraría
-    // implícitamente la copia de las derivadas, que sí la necesitan para
-    // implementar clone().
+    // implícitamente la copia de las derivadas.
     Vehicle(const Vehicle &) = default;
     Vehicle &operator=(const Vehicle &) = default;
     Vehicle(Vehicle &&) = default;

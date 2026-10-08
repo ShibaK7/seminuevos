@@ -1,7 +1,6 @@
 #include "presentation/views/wizard/vehicleconditionsview.h"
-#include "adapters/persistence/connectionpool.h"
 #include "presentation/views/wizard/conditionchecklistrow.h"
-#include "utils/UIUtils.h"
+#include "presentation/views/support/formsupport.h"
 
 #include <QComboBox>
 #include <QFormLayout>
@@ -10,8 +9,6 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QSqlDatabase>
-#include <QSqlQuery>
 #include <QVBoxLayout>
 
 #include <optional>
@@ -28,7 +25,7 @@ QWidget *VehicleConditionsView::buildBasicSpecsPanel()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
-    UIUtils::applyFloatingShadow(card);
+    formsupport::applyFloatingShadow(card);
 
     auto *title = new QLabel(QStringLiteral("Especificaciones básicas"), card);
     title->setProperty("class", QStringLiteral("h3"));
@@ -100,7 +97,7 @@ QWidget *VehicleConditionsView::buildChecklistPanel()
 {
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("cardPanel"));
-    UIUtils::applyFloatingShadow(card);
+    formsupport::applyFloatingShadow(card);
 
 
     auto *cardLayout = new QVBoxLayout(card);
@@ -126,7 +123,7 @@ QWidget *VehicleConditionsView::buildChecklistPanel()
     // ninguna fila tiene una clave fija que llevar.
     scrollArea->setProperty("field", QStringLiteral("inspection"));
 
-    // El contenedor se crea vacío y se puebla en loadLookups(). OJO: el
+    // El contenedor se crea vacío y se puebla en setLookups(). OJO: el
     // addStretch() final NO va aquí -- tiene que quedar después de las filas,
     // o el espaciador las empuja al fondo del área desplazable.
     m_checklistContent = new QWidget(scrollArea);
@@ -170,42 +167,20 @@ void VehicleConditionsView::markAllInGroup(const QString &category, bool checked
     }
 }
 
-void VehicleConditionsView::loadLookups()
+void VehicleConditionsView::setLookups(const application::RegistrationLookupsDto &lookups)
 {
-    UIUtils::populateComboBox(m_fuelTypeCombo, "fuel_type_cat");
+    formsupport::fillCombo(m_fuelTypeCombo, lookups.fuelTypes);
 
-    QList<ConditionCatalogItem> catalog;
-    QString catalogError;
-
-    {
-        ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
-        QSqlDatabase &db = handle.database();
-        if (!db.isOpen()) {
-            showChecklistMessage(QStringLiteral(
-                "No se pudo conectar con la base de datos, así que el checklist de condición "
-                "no está disponible."));
-            return;
-        }
-
-        catalog = ConditionCatalog::load(db, &catalogError);
-        // El handle se libera aquí, antes de construir un par de cientos de
-        // widgets: no tiene sentido retener una conexión del pool durante eso.
-    }
-
-    if (catalog.isEmpty()) {
-        showChecklistMessage(
-            catalogError.isEmpty()
-                ? QStringLiteral("El catálogo de condiciones (vehicle_conditions_cat) está "
-                                 "vacío. Revisa que la aplicación haya podido sembrarlo al "
-                                 "arrancar.")
-                : QStringLiteral("No se pudo leer el catálogo de condiciones: %1").arg(catalogError));
+    if (lookups.checklist.isEmpty()) {
+        showChecklistMessage(QStringLiteral(
+            "El catálogo de condiciones (vehicle_conditions_cat) está vacío o no se pudo "
+            "leer, así que el checklist no está disponible."));
         return;
     }
-
-    populateChecklist(catalog);
+    populateChecklist(lookups.checklist);
 }
 
-void VehicleConditionsView::populateChecklist(const QList<ConditionCatalogItem> &items)
+void VehicleConditionsView::populateChecklist(const QList<application::ChecklistItemDto> &items)
 {
     const ConditionChecklistRow::ColumnWidths columns =
         ConditionChecklistRow::measureColumns(items);
@@ -213,7 +188,7 @@ void VehicleConditionsView::populateChecklist(const QList<ConditionCatalogItem> 
     // Un solo recorrido: el catálogo ya viene ordenado y con las categorías
     // contiguas, así que basta abrir un encabezado cada vez que cambia.
     QString currentCategory;
-    for (const ConditionCatalogItem &item : items) {
+    for (const application::ChecklistItemDto &item : items) {
         if (item.category != currentCategory) {
             if (!currentCategory.isEmpty()) {
                 auto *separator = new QFrame(m_checklistContent);
@@ -248,58 +223,40 @@ void VehicleConditionsView::populateChecklist(const QList<ConditionCatalogItem> 
     m_checklistLayout->addStretch();
 }
 
-void VehicleConditionsView::applyTo(domain::VehicleBuilder &builder) const
+application::VehicleConditionsDto VehicleConditionsView::conditions() const
 {
-    domain::VehicleConditions conditions;
+    application::VehicleConditionsDto dto;
 
-    domain::CatalogRef fuelType;
     const QVariant fuelData = m_fuelTypeCombo->currentData();
-    if (fuelData.isValid() && !fuelData.isNull())
-        fuelType.id = fuelData.toInt();
-    fuelType.name = m_fuelTypeCombo->currentText();
-    conditions.setFuelType(fuelType);
+    if (m_fuelTypeCombo->currentIndex() >= 0 && fuelData.isValid() && !fuelData.isNull())
+        dto.fuelType.id = fuelData.toInt();
+    dto.fuelType.name = m_fuelTypeCombo->currentText();
 
-    // Un combo sin elegir (índice -1) no se vuelca: así el dominio lo reporta
-    // como faltante. Leerlo de todos modos convertía el userData vacío en 0,
-    // es decir, en el primer valor del enum, y ese dato inventado llegaba a la
-    // base sin que nadie lo hubiera capturado.
+    // Un combo sin elegir (índice -1) queda vacío: así el dominio lo reporta
+    // como faltante. Leerlo de todos modos convertía el userData vacío en 0, es
+    // decir, en el primer valor del enum.
     if (m_cylindersCombo->currentIndex() >= 0)
-        (void)conditions.setCylinders(m_cylindersCombo->currentText().toInt());
-    if (m_transmissionCombo->currentIndex() >= 0) {
-        conditions.setTransmission(
-            static_cast<domain::Transmission>(m_transmissionCombo->currentData().toInt()));
-    }
-    (void)conditions.setInteriorMaterial(m_interiorMaterialCombo->currentText());
+        dto.cylinders = m_cylindersCombo->currentText().toInt();
+    if (m_transmissionCombo->currentIndex() >= 0)
+        dto.transmission = static_cast<domain::Transmission>(m_transmissionCombo->currentData().toInt());
+    if (m_interiorMaterialCombo->currentIndex() >= 0)
+        dto.interiorMaterial = m_interiorMaterialCombo->currentText();
     if (m_windowRegulatorsCombo->currentIndex() >= 0) {
-        conditions.setWindowRegulators(
-            static_cast<domain::WindowRegulators>(m_windowRegulatorsCombo->currentData().toInt()));
+        dto.windowRegulators =
+            static_cast<domain::WindowRegulators>(m_windowRegulatorsCombo->currentData().toInt());
     }
     if (m_airConditioningCombo->currentIndex() >= 0) {
-        conditions.setAirConditioning(
-            static_cast<domain::AirConditioning>(m_airConditioningCombo->currentData().toInt()));
+        dto.airConditioning =
+            static_cast<domain::AirConditioning>(m_airConditioningCombo->currentData().toInt());
     }
 
-    builder.setConditions(conditions);
-
-    // Solo se vuelcan las filas marcadas. Las desmarcadas no generan renglón:
-    // en vehicle_inspection la ausencia ya significa "la unidad no lo trae", y
-    // el checklist completo se puede reconstruir con un LEFT JOIN contra el
-    // catálogo (vehicle_conditions_cat).
-    domain::Inspection inspection;
+    // Solo viajan las filas marcadas: en vehicle_inspection la ausencia ya
+    // significa "la unidad no lo trae", y el checklist completo se puede
+    // reconstruir con un LEFT JOIN contra el catálogo.
     for (ConditionChecklistRow *row : m_checklistRows) {
-        if (const std::optional<domain::InspectionItem> item = row->value())
-            inspection.setItem(*item);
+        if (const std::optional<application::InspectionEntryDto> entry = row->value())
+            dto.inspection << *entry;
     }
-
-    builder.setInspection(inspection);
+    return dto;
 }
 
-domain::ValidationResult VehicleConditionsView::validate() const
-{
-    // Mismo criterio que VehicleDetailsView::validate(): un builder desechable
-    // con lo capturado, y las reglas las pone el dominio. validateConditionData()
-    // revisa solo las condiciones y el checklist, no los datos del Paso 1.
-    domain::VehicleBuilder builder;
-    applyTo(builder);
-    return builder.validateConditionData();
-}

@@ -38,7 +38,6 @@ public:
 
     bool acceptsInvoiceType(InvoiceType type) const override;
     void accept(VehicleVisitor &visitor) const override;
-    std::unique_ptr<Vehicle> clone() const override;
 
     // Mismo documento que la compra, con la misma información: lo único que
     // cambia es cómo se titula la operación.

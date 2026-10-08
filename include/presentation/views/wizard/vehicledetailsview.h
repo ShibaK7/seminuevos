@@ -1,8 +1,8 @@
 #ifndef PRESENTATION_VIEWS_WIZARD_VEHICLEDETAILSVIEW_H
 #define PRESENTATION_VIEWS_WIZARD_VEHICLEDETAILSVIEW_H
 
-#include "domain/value_objects/validationresult.h"
-#include "domain/model/vehiclebuilder.h"
+#include "application/dto/catalogdtos.h"
+#include "application/dto/registrationdtos.h"
 
 #include <QList>
 #include <QWidget>
@@ -22,7 +22,9 @@ class QTextEdit;
 // mostrando los campos de una u otra según el selector de tipo.
 //
 // Cuáles campos son obligatorios y con qué reglas lo decide el dominio, no
-// esta vista: validate() arma un VehicleBuilder y le pregunta. Cada widget de
+// esta vista: entrega lo capturado como VehicleDetailsDto y el asistente se lo
+// pasa al servicio de aplicación para validarlo. La vista ya no conoce el
+// VehicleBuilder ni consulta la base. Cada widget de
 // captura lleva en la propiedad dinámica "field" la clave con la que el
 // dominio reporta sus errores, y con ella el asistente marca los que fallan.
 class VehicleDetailsView : public QWidget
@@ -32,21 +34,13 @@ class VehicleDetailsView : public QWidget
 public:
     explicit VehicleDetailsView(QWidget *parent = nullptr);
 
-    // Llena Tipo Vehículo / Marca desde los catálogos y lee el valor UMA
-    // vigente de global_configurations (consulta síncrona, catálogos
-    // pequeños -- mismo criterio que VehicleConditionsView::loadLookups()).
-    void loadLookups();
+    // Llena Tipo Vehículo y Marca con los catálogos que el asistente leyó por
+    // el servicio, y guarda los subtipos para filtrarlos por tipo.
+    void setLookups(const application::RegistrationLookupsDto &lookups);
 
-    // Vuelca los widgets sobre el builder. Se llama en cada intento de
-    // guardado: la fuente de verdad son los widgets, no un objeto que haya
-    // que mantener sincronizado.
-    void applyTo(domain::VehicleBuilder &builder) const;
-
-    // Ya no comprueba las reglas por su cuenta: arma un builder con lo
-    // capturado y deja que el dominio decida. Así la regla del pago en
-    // efectivo o el mínimo del precio viven en un solo sitio, y esta vista
-    // solo traduce el resultado a un mensaje en pantalla.
-    domain::ValidationResult validate() const;
+    // Lo capturado, tal cual. Se pide en cada validación y en cada intento de
+    // guardado: la fuente de verdad son los widgets.
+    application::VehicleDetailsDto details() const;
 
 private slots:
     void reloadSubtypes();
@@ -150,7 +144,7 @@ private:
     bool m_cfdiRequestGenerated = false;
     // La factura elegida con Facturado que se apartó al pasar a Autofactura
     // sin la solicitud de CFDI; vacía si no hay ninguna. Mientras está aquí no
-    // cuenta como adjunta: m_invoiceFilePath queda vacío, así que applyTo() no
+    // cuenta como adjunta: m_invoiceFilePath queda vacío, así que details() no
     // la manda al guardado. Se conserva en vez de tirarla para devolverla si
     // se sale de Autofactura; generar la solicitud sí la descarta, porque en
     // autofactura solo vale la factura que se sube después.
@@ -177,12 +171,8 @@ private:
     QList<QWidget *> m_acquisitionOnlyWidgets;
     QList<QWidget *> m_consignmentOnlyWidgets;
 
-    // UMA diaria leída de global_configurations (la siembra init-db). Sin
-    // valor de respaldo a propósito: el 108.57 que había aquí era la UMA de
-    // 2024 y aplicaba un tope desactualizado sin que nadie lo notara. Si la
-    // consulta no trae nada queda en 0 y el dominio rechaza el pago en
-    // efectivo con un mensaje claro.
-    double m_umaValue = 0.0;
+    // Todos los subtipos con su tipo padre; reloadSubtypes() filtra.
+    QList<application::CatalogOptionDto> m_subtypes;
 };
 
 #endif // PRESENTATION_VIEWS_WIZARD_VEHICLEDETAILSVIEW_H

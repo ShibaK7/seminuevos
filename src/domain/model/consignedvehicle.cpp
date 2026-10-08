@@ -58,11 +58,6 @@ void ConsignedVehicle::accept(VehicleVisitor &visitor) const
     visitor.visit(*this);
 }
 
-std::unique_ptr<Vehicle> ConsignedVehicle::clone() const
-{
-    return std::make_unique<ConsignedVehicle>(*this);
-}
-
 double ConsignedVehicle::basePrice() const
 {
     return m_basePrice;

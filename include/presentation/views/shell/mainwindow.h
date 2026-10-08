@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QPointer>
 
+#include <functional>
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
     class MainWindow;
@@ -28,7 +30,14 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+    // Cómo se crea el asistente de registro. Lo pone la raíz de composición,
+    // que es quien tiene el servicio y el TaskRunner que el asistente necesita:
+    // esta ventana no sabe armarlos.
+    using WizardFactory = std::function<VehicleWizardView *(QWidget *parent)>;
+    void setWizardFactory(WizardFactory factory);
+
 private:
+    WizardFactory m_wizardFactory;
     // --- Barra lateral ---
     // Los renglones del menú no vienen del .ui: SidebarMenuItem recibe título
     // e ícono por constructor, y el Designer solo sabe instanciar widgets con

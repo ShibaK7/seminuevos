@@ -6,8 +6,13 @@
 // casos de uso y los presenters se prueban sin base de datos, sin disco y sin
 // ventanas.
 
+#include "application/ports/contractgenerator.h"
+#include "application/ports/filestorage.h"
 #include "application/ports/passwordhasher.h"
+#include "application/ports/referencedatareader.h"
 #include "application/ports/userdirectory.h"
+#include "application/ports/vehiclerepository.h"
+#include "domain/model/vehicle.h"
 #include "presentation/presenters/iloginview.h"
 #include "presentation/tasks/taskrunner.h"
 
@@ -64,6 +69,103 @@ public:
         if (!users.contains(username))
             return std::nullopt;
         return users.value(username);
+    }
+};
+
+class InMemoryVehicleRepository final : public application::VehicleRepository
+{
+public:
+    QStringList existingSerialNumbers;
+    bool failNextAdd = false;
+    bool duplicateOnAdd = false;
+    int adds = 0;
+    int nextFolio = 100;
+
+    bool serialNumberExists(const QString &serialNumber, QString *) override
+    {
+        return existingSerialNumbers.contains(serialNumber);
+    }
+    SaveOutcome add(domain::Vehicle &vehicle) override
+    {
+        ++adds;
+        SaveOutcome outcome;
+        if (duplicateOnAdd) {
+            outcome.duplicateSerialNumber = true;
+            outcome.errorMessage = QStringLiteral("duplicate key vehicles_serial_number_key");
+            return outcome;
+        }
+        if (failNextAdd) {
+            outcome.errorMessage = QStringLiteral("server closed the connection");
+            return outcome;
+        }
+        outcome.ok = true;
+        outcome.folio = nextFolio++;
+        vehicle.assignFolio(outcome.folio);
+        return outcome;
+    }
+};
+
+// Almacén falso: anota lo que se guarda y lo que se borra. failAtStore = n
+// hace fallar la n-ésima copia (1 = la primera).
+class FakeFileStorage final : public application::FileStorage
+{
+public:
+    QStringList stored;
+    QStringList removed;
+    int failAtStore = 0;
+
+    Stored store(const QString &vehicleKey, const QString &sourcePath, Kind) override
+    {
+        Stored result;
+        if (failAtStore > 0 && stored.size() + 1 == failAtStore) {
+            result.errorMessage = QStringLiteral("disco lleno");
+            return result;
+        }
+        result.ok = true;
+        result.relativePath = QStringLiteral("vehicles/%1/%2").arg(vehicleKey, sourcePath);
+        stored << result.relativePath;
+        return result;
+    }
+    bool remove(const QString &relativePath) override
+    {
+        removed << relativePath;
+        return true;
+    }
+    QString absolutePath(const QString &relativePath) const override { return relativePath; }
+};
+
+class FakeReferenceDataReader final : public application::ReferenceDataReader
+{
+public:
+    std::optional<double> uma = 117.31;
+
+    QList<application::CatalogOptionDto> vehicleCategories(QString *) override
+    {
+        return {{1, QStringLiteral("Automóvil"), -1}, {5, QStringLiteral("Sedán"), 1}};
+    }
+    QList<application::CatalogOptionDto> brands(QString *) override
+    {
+        return {{3, QStringLiteral("Nissan"), -1}};
+    }
+    QList<application::CatalogOptionDto> fuelTypes(QString *) override
+    {
+        return {{1, QStringLiteral("Gasolina"), -1}};
+    }
+    QList<application::ChecklistItemDto> conditionChecklist(QString *) override
+    {
+        return {{7, QStringLiteral("Exterior"), QStringLiteral("Llantas")}};
+    }
+    std::optional<double> umaDailyValue(QString *) override { return uma; }
+};
+
+class FakeContractGenerator final : public application::ContractGenerator
+{
+public:
+    QList<domain::ContractData> generated;
+    Outcome generate(const domain::ContractData &contract, const QString &) override
+    {
+        generated << contract;
+        return {true, QString()};
     }
 };
 
