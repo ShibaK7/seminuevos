@@ -130,7 +130,7 @@ Ejemplos en el código:
 | Pantalla | Vista | Presenter |
 |---|---|---|
 | Inicio de sesión | `LoginWindow` | `LoginPresenter` |
-| Inventario | `MainWindow` (rejilla y filtros) | `InventoryPresenter` |
+| Inventario | `InventoryView` (pestañas, filtros y rejilla; dentro de la cáscara `MainWindow`) | `InventoryPresenter` |
 | Asistente de registro | `VehicleWizardView` + `VehicleDetailsView`, `VehicleConditionsView`, `VehicleFilesView` | `VehicleWizardPresenter` + un `WizardStepPresenter` por paso |
 
 ## Recetas
