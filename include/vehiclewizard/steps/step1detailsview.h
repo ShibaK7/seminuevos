@@ -21,8 +21,10 @@ class QTextEdit;
 // Consignación (la agencia vende por cuenta del dueño y cobra comisión) --
 // mostrando los campos de una u otra según el selector de tipo.
 //
-// Único paso con campos obligatorios. Cuáles y con qué reglas lo decide el
-// dominio, no esta vista: validate() arma un VehicleBuilder y le pregunta.
+// Cuáles campos son obligatorios y con qué reglas lo decide el dominio, no
+// esta vista: validate() arma un VehicleBuilder y le pregunta. Cada widget de
+// captura lleva en la propiedad dinámica "field" la clave con la que el
+// dominio reporta sus errores, y con ella el asistente marca los que fallan.
 class Step1DetailsView : public QWidget
 {
     Q_OBJECT
@@ -45,9 +47,6 @@ public:
     // efectivo o el mínimo del precio viven en un solo sitio, y esta vista
     // solo traduce el resultado a un mensaje en pantalla.
     domain::ValidationResult validate() const;
-
-    void showError(const QString &message);
-    void hideError();
 
 private slots:
     void reloadSubtypes();
@@ -166,8 +165,6 @@ private:
     QComboBox *m_paymentTypeCombo;
     QComboBox *m_paymentMethodCombo;
     QDoubleSpinBox *m_salePriceSpin;
-    QLabel *m_priceErrorLabel;
-    QLabel *m_purchasePriceErrorLabel;
 
     // --- Solo Consignación ---
     QDoubleSpinBox *m_basePriceSpin;
@@ -180,11 +177,7 @@ private:
     QList<QWidget *> m_acquisitionOnlyWidgets;
     QList<QWidget *> m_consignmentOnlyWidgets;
 
-    QLabel *m_errorLabel;
-
     double m_umaValue = 108.57;
-
-    void validatePurchaseConditions();
 };
 
 #endif // STEP1DETAILSVIEW_H

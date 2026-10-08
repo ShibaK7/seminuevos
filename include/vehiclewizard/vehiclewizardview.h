@@ -36,9 +36,12 @@ class VehicleRegistrationWorker;
 //   - Regresar a un paso anterior siempre se puede, sin validar nada.
 //   - Avanzar ("Siguiente" o un clic hacia adelante en el stepper) valida
 //     desde el paso actual hasta el anterior al destino y se detiene en el
-//     primero inválido, con todos sus mensajes en el aviso.
+//     primero inválido: marca sus campos, le da el foco al primero y pone
+//     todos sus mensajes en el aviso.
 //   - La palomita significa "intentado y válido ahora": cada edición
-//     revalida su paso, así que se apaga y se vuelve a encender sola.
+//     revalida su paso, así que se apaga y se vuelve a encender sola. En un
+//     paso ya intentado, los campos marcados también siguen a la edición,
+//     pero el foco no se mueve.
 //   - Al abrir, los pasos se validan en silencio: nada en rojo, solo los
 //     bloqueos del stepper.
 // Qué hace válido a un paso no se decide aquí: cada paso arma un
@@ -87,9 +90,15 @@ private:
     // Muestra el paso actual del navegador: la página, el stepper y el texto
     // del botón primario.
     void showCurrentStep();
-    // Lleva al usuario al paso `step`, que no pasó la validación, y lo explica
-    // en el aviso con todos sus mensajes.
+    // Lleva al usuario al paso `step`, que no pasó la validación, lo explica
+    // en el aviso con todos sus mensajes y le da el foco al primer campo que
+    // falla. Solo para intentos explícitos (avanzar o guardar), y con los
+    // campos ya marcados por markStepFields().
     void showInvalidStep(int step, const domain::ValidationResult &result);
+    // Marca en la página del paso `step` los campos que fallaron y limpia los
+    // demás. Solo se llama con pasos ya intentados: antes de eso no se pinta
+    // nada en rojo. No mueve el foco.
+    void markStepFields(int step, const domain::ValidationResult &result);
     void refreshStepper();
     void refreshPrimaryButton();
     // El aviso con un título y, debajo, todos los mensajes del resultado.

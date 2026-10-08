@@ -4,7 +4,9 @@
 
 #include <QComboBox>
 #include <QDateEdit>
+#include <QDir>
 #include <QDoubleSpinBox>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -19,9 +21,9 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QTextEdit>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QCompleter>
-#include "loginwindow.h"
 #include <QStandardPaths>
 #include <QDesktopServices>
 
@@ -51,15 +53,11 @@ const QString kNoInvoiceFileText = QStringLiteral("Sin archivo");
 Step1DetailsView::Step1DetailsView(QWidget *parent)
     : QWidget(parent)
 {
+    // Sin aviso propio: los errores de este paso los explica el aviso del
+    // asistente, y los campos que fallan se marcan por su propiedad "field".
     auto *layout = new QVBoxLayout(this);
     layout->addWidget(buildGeneralInfoCard());
     layout->addWidget(buildOwnerAndAcquisitionCard());
-
-    m_errorLabel = new QLabel(this);
-    m_errorLabel->setProperty("class", QStringLiteral("error-text"));
-    m_errorLabel->setWordWrap(true);
-    m_errorLabel->setVisible(false);
-    layout->addWidget(m_errorLabel);
 
     connect(m_vehicleTypeCombo, &QComboBox::currentIndexChanged, this, &Step1DetailsView::reloadSubtypes);
     connect(m_acquisitionTypeCombo, &QComboBox::currentIndexChanged, this,
@@ -234,21 +232,34 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
 
     int row = 0;
 
+    // Cada widget de captura lleva en "field" la clave con la que el dominio
+    // reporta sus errores (la misma que usan Vehicle::validate() y los
+    // rechazos de VehicleBuilder). Con ella el asistente marca en rojo los que
+    // fallan y le da el foco al primero, sin que esta vista traduzca errores.
+    // También la llevan los campos que hoy no tienen regla: si el dominio
+    // agrega una, la marca funciona sin tocar esta vista.
     m_folioEdit = new QLineEdit(card);
+    m_folioEdit->setProperty("field", QStringLiteral("folio"));
     m_folioEdit->setPlaceholderText(QStringLiteral("(auto)"));
     m_folioEdit->setDisabled(true);
     m_dateEdit = new QDateEdit(QDate::currentDate(), card);
+    m_dateEdit->setProperty("field", QStringLiteral("dealDate"));
     m_dateEdit->setCalendarPopup(true);
     m_dateEdit->setMaximumDate(QDate::currentDate());
     QDate minimumDate(2000, 1, 1);
     m_dateEdit->setMinimumDate(minimumDate);
     m_dateEdit->setMaximumDate(QDate::currentDate());
     m_vehicleTypeCombo = new QComboBox(card);
+    m_vehicleTypeCombo->setProperty("field", QStringLiteral("vehicleType"));
     m_subtypeCombo = new QComboBox(card);
+    m_subtypeCombo->setProperty("field", QStringLiteral("subtype"));
     m_brandCombo = new QComboBox(card);
+    m_brandCombo->setProperty("field", QStringLiteral("brand"));
     m_modelEdit = new QLineEdit(card);
+    m_modelEdit->setProperty("field", QStringLiteral("model"));
     m_modelEdit->setPlaceholderText(QStringLiteral("p.ej. Kicks Advance TM"));
     m_yearModelSpin = new QSpinBox(card);
+    m_yearModelSpin->setProperty("field", QStringLiteral("yearModel"));
     m_yearModelSpin->setRange(1980, QDate::currentDate().year() + 1);
     m_yearModelSpin->setValue(QDate::currentDate().year());
 
@@ -275,41 +286,49 @@ QWidget *Step1DetailsView::buildGeneralInfoCard()
     grid->addWidget(m_yearModelSpin, row, 1);
 
     m_colorEdit = new QLineEdit(card);
+    m_colorEdit->setProperty("field", QStringLiteral("color"));
     grid->addWidget(new QLabel(QStringLiteral("Color:"), card), row, 2);
     grid->addWidget(m_colorEdit, row, 3);
     ++row;
 
     m_mileageSpin = new QSpinBox(card);
+    m_mileageSpin->setProperty("field", QStringLiteral("mileage"));
     m_mileageSpin->setRange(0, 2000000);
     m_mileageSpin->setSuffix(QStringLiteral(" km"));
     grid->addWidget(new QLabel(QStringLiteral("Kilometraje:"), card), row, 0);
     grid->addWidget(m_mileageSpin, row, 1);
 
     m_motorNumberEdit = new QLineEdit(card);
+    m_motorNumberEdit->setProperty("field", QStringLiteral("motorNumber"));
     grid->addWidget(UIUtils::createRequiredLabel("No. Motor: ", card), row, 2);
     grid->addWidget(m_motorNumberEdit, row, 3);
     ++row;
 
     m_serialNumberEdit = new QLineEdit(card);
+    m_serialNumberEdit->setProperty("field", QStringLiteral("serialNumber"));
     m_serialNumberEdit->setPlaceholderText(QStringLiteral("VIN"));
     grid->addWidget(UIUtils::createRequiredLabel("No. Serie (VIN): ", card), row, 0);
     grid->addWidget(m_serialNumberEdit, row, 1);
 
     m_repuveEdit = new QLineEdit(card);
+    m_repuveEdit->setProperty("field", QStringLiteral("repuve"));
     grid->addWidget(UIUtils::createRequiredLabel("REPUVE: ", card), row, 2);
     grid->addWidget(m_repuveEdit, row, 3);
     ++row;
 
     m_platesEdit = new QLineEdit(card);
+    m_platesEdit->setProperty("field", QStringLiteral("plates"));
     grid->addWidget(UIUtils::createRequiredLabel("Placas: ", card), row, 0);
     grid->addWidget(m_platesEdit, row, 1);
 
     m_platesHolderEdit = new QLineEdit(card);
+    m_platesHolderEdit->setProperty("field", QStringLiteral("platesHolder"));
     grid->addWidget(UIUtils::createRequiredLabel("Titular Placas: ", card), row, 2);
     grid->addWidget(m_platesHolderEdit, row, 3);
     ++row;
 
     m_descriptionEdit = new QTextEdit(card);
+    m_descriptionEdit->setProperty("field", QStringLiteral("description"));
     m_descriptionEdit->setMaximumHeight(60);
     grid->addWidget(new QLabel(QStringLiteral("Descripción:"), card), row, 0);
     grid->addWidget(m_descriptionEdit, row, 1, 1, 3);
@@ -338,41 +357,51 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     // campos de precio se piden y qué valores admite el combo de factura.
     m_acquisitionTypeCombo = new QComboBox(card);
     m_acquisitionTypeCombo->setObjectName(QStringLiteral("acquisitionTypeCombo"));
+    m_acquisitionTypeCombo->setProperty("field", QStringLiteral("acquisitionType"));
     for (domain::AcquisitionType value : domain::allAcquisitionTypes())
         m_acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
     grid->addWidget(UIUtils::createRequiredLabel("Tipo Operación: ", card), row, 0);
     grid->addWidget(m_acquisitionTypeCombo, row, 1);
     ++row;
 
+    // Los datos de la contraparte llevan el prefijo "counterparty.": así los
+    // reporta Vehicle::validate() al juntar la validación de Counterparty.
     m_ownerNameEdit = new QLineEdit(card);
+    m_ownerNameEdit->setProperty("field", QStringLiteral("counterparty.fullName"));
     m_counterpartyLabel = new QLabel(QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"), card);
     grid->addWidget(m_counterpartyLabel, row, 0);
     grid->addWidget(m_ownerNameEdit, row, 1);
 
     m_ownerIdEdit = new QLineEdit(card);
+    m_ownerIdEdit->setProperty("field", QStringLiteral("counterparty.nationalId"));
     grid->addWidget(UIUtils::createRequiredLabel("Identificación: ", card), row, 2);
     grid->addWidget(m_ownerIdEdit, row, 3);
     ++row;
 
     m_ownerAddressEdit = new QLineEdit(card);
+    m_ownerAddressEdit->setProperty("field", QStringLiteral("counterparty.streetAddress"));
     grid->addWidget(new QLabel(QStringLiteral("Domicilio:"), card), row, 0);
     grid->addWidget(m_ownerAddressEdit, row, 1);
 
     m_ownerSuburbEdit = new QLineEdit(card);
+    m_ownerSuburbEdit->setProperty("field", QStringLiteral("counterparty.suburb"));
     grid->addWidget(new QLabel(QStringLiteral("Colonia:"), card), row, 2);
     grid->addWidget(m_ownerSuburbEdit, row, 3);
     ++row;
 
     m_ownerLocalityEdit = new QLineEdit(card);
+    m_ownerLocalityEdit->setProperty("field", QStringLiteral("counterparty.locality"));
     grid->addWidget(new QLabel(QStringLiteral("Localidad:"), card), row, 0);
     grid->addWidget(m_ownerLocalityEdit, row, 1);
 
     m_ownerStateEdit = new QLineEdit(card);
+    m_ownerStateEdit->setProperty("field", QStringLiteral("counterparty.state"));
     grid->addWidget(new QLabel(QStringLiteral("Estado:"), card), row, 2);
     grid->addWidget(m_ownerStateEdit, row, 3);
     ++row;
 
     m_ownerPostalCodeEdit = new QLineEdit(card);
+    m_ownerPostalCodeEdit->setProperty("field", QStringLiteral("counterparty.postalCode"));
     grid->addWidget(new QLabel(QStringLiteral("Código Postal:"), card), row, 0);
     grid->addWidget(m_ownerPostalCodeEdit, row, 1);
     ++row;
@@ -381,12 +410,16 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     // dependen de la rama y los conjuntos son disjuntos.
     m_invoiceTypeCombo = new QComboBox(card);
     m_invoiceTypeCombo->setObjectName(QStringLiteral("invoiceTypeCombo"));
+    m_invoiceTypeCombo->setProperty("field", QStringLiteral("invoiceType"));
     grid->addWidget(UIUtils::createRequiredLabel("Tipo Factura: ", card), row, 0);
     grid->addWidget(m_invoiceTypeCombo, row, 1);
 
     // El archivo de factura solo existe en la compra: el esquema pone
     // invoice_file_path únicamente en vehicle_acquisitions. Va envuelto en un
     // widget porque un QHBoxLayout suelto no se puede ocultar de una pieza.
+    // Sus botones no llevan "field": abren un diálogo en vez de capturar un
+    // dato, y el tooltip del de subir explica cuándo está bloqueado, algo que
+    // el tooltip de un error taparía.
     auto *invoiceFileWidget = new QWidget(card);
     auto *invoiceFileLayout = new QHBoxLayout(invoiceFileWidget);
     invoiceFileLayout->setContentsMargins(0, 0, 0, 0);
@@ -422,10 +455,12 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     ++row;
 
     m_invoiceNumberEdit = new QLineEdit(card);
+    m_invoiceNumberEdit->setProperty("field", QStringLiteral("invoiceNumber"));
     grid->addWidget(UIUtils::createRequiredLabel("No. Factura: ", card), row, 0);
     grid->addWidget(m_invoiceNumberEdit, row, 1);
 
     m_invoiceIssuerEdit = new QLineEdit(card);
+    m_invoiceIssuerEdit->setProperty("field", QStringLiteral("invoiceIssuer"));
     grid->addWidget(new QLabel(QStringLiteral("Expidió Factura:"), card), row, 2);
     grid->addWidget(m_invoiceIssuerEdit, row, 3);
     ++row;
@@ -435,7 +470,14 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     // filas colapsan enteras en vez de dejar huecos a un lado.
 
     // --- Solo Adquisición ---
+    // Las reglas de los precios y del tope de pago en efectivo no van aquí:
+    // son del dominio (AcquiredVehicle), que conoce la UMA vigente y reporta
+    // cada error con la clave del campo que lo provoca, y el asistente marca
+    // ese campo. Una revisión propia en esta vista repetía el tope con otro
+    // criterio, se pintaba en rojo desde que se abría el paso y movía el foco
+    // por su cuenta.
     m_purchasePriceSpin = new QDoubleSpinBox(card);
+    m_purchasePriceSpin->setProperty("field", QStringLiteral("purchasePrice"));
     m_purchasePriceSpin->setRange(0, 99999999);
     m_purchasePriceSpin->setPrefix(QStringLiteral("$ "));
     m_purchasePriceSpin->setDecimals(2);
@@ -444,6 +486,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     grid->addWidget(m_purchasePriceSpin, row, 1);
 
     m_paymentTypeCombo = new QComboBox(card);
+    m_paymentTypeCombo->setProperty("field", QStringLiteral("paymentType"));
     for (domain::PaymentType value : domain::allPaymentTypes())
         m_paymentTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
     auto *paymentTypeLabel = UIUtils::createRequiredLabel("Tipo Pago: ", card);
@@ -454,66 +497,29 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     ++row;
 
     m_paymentMethodCombo = new QComboBox(card);
+    m_paymentMethodCombo->setProperty("field", QStringLiteral("paymentMethod"));
     for (domain::PaymentMethod value : domain::allPaymentMethods())
         m_paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
     auto *paymentMethodLabel = UIUtils::createRequiredLabel("Método Pago: ", card);
     grid->addWidget(paymentMethodLabel, row, 0);
     grid->addWidget(m_paymentMethodCombo, row, 1);
-    m_purchasePriceErrorLabel = new QLabel(QStringLiteral("El precio de compra en efectivo no puede superar las 3210 UMAs."), card);
-    m_purchasePriceErrorLabel->setStyleSheet(QStringLiteral("color: red; font-size: 11px; font-weight: bold;"));
-    m_purchasePriceErrorLabel->setVisible(false); // Oculto por defecto
-    grid->addWidget(m_purchasePriceErrorLabel, row + 1, 1);
-
-    connect(m_purchasePriceSpin, &QDoubleSpinBox::valueChanged, this, [this](double value) {
-        validatePurchaseConditions();
-    });
-
-    connect(m_paymentMethodCombo, &QComboBox::currentIndexChanged, this, [this](int index){
-        validatePurchaseConditions();
-    });
-
 
     m_salePriceSpin = new QDoubleSpinBox(card);
+    m_salePriceSpin->setProperty("field", QStringLiteral("salePrice"));
     m_salePriceSpin->setRange(0, 99999999);
     m_salePriceSpin->setPrefix(QStringLiteral("$ "));
     auto *salePriceLabel = UIUtils::createRequiredLabel("Precio Venta: ", card);
-    m_priceErrorLabel = new QLabel(QStringLiteral("El precio de venta debe ser mayor a 0"), card);
-    m_priceErrorLabel->setStyleSheet(QStringLiteral("color: red; font-size: 11px; font-weight: bold;"));
-    m_priceErrorLabel->setVisible(false); 
     grid->addWidget(salePriceLabel, row, 2);
     grid->addWidget(m_salePriceSpin, row, 3);
-    grid->addWidget(m_priceErrorLabel, row + 1, 3);
     m_acquisitionOnlyWidgets << paymentMethodLabel << m_paymentMethodCombo
                              << salePriceLabel << m_salePriceSpin;
     ++row;
-
-    if (m_salePriceSpin->value() <= 0.0) {
-        m_salePriceSpin->setStyleSheet(QStringLiteral(
-            "QDoubleSpinBox { border: 1px solid red; background-color: #FFF0F0; }"
-        ));
-        m_priceErrorLabel->setVisible(true);
-        m_salePriceSpin->setFocus();
-    }
-
-    connect(m_salePriceSpin, &QDoubleSpinBox::valueChanged, this, [this](double value) {
-        if (value > 0.0) {
-            m_salePriceSpin->setStyleSheet(QStringLiteral(""));
-            m_priceErrorLabel->setVisible(false);
-        } else
-        {
-            m_salePriceSpin->setStyleSheet(QStringLiteral(
-                "QDoubleSpinBox { border: 1px solid red; background-color: #FFF0F0; }"
-            ));
-            m_priceErrorLabel->setVisible(true);
-            m_salePriceSpin->setFocus();
-        }
-    });
-
 
     // --- Solo Consignación ---
     // No hay precio de venta que capturar: sale de base + comisión, igual que
     // la columna generada de vehicle_consignments.
     m_basePriceSpin = new QDoubleSpinBox(card);
+    m_basePriceSpin->setProperty("field", QStringLiteral("basePrice"));
     m_basePriceSpin->setRange(0, 99999999);
     m_basePriceSpin->setPrefix(QStringLiteral("$ "));
     m_basePriceSpin->setDecimals(2);
@@ -522,6 +528,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     grid->addWidget(m_basePriceSpin, row, 1);
 
     m_commissionRateSpin = new QDoubleSpinBox(card);
+    m_commissionRateSpin->setProperty("field", QStringLiteral("commissionRate"));
     m_commissionRateSpin->setRange(0, 100);
     m_commissionRateSpin->setSuffix(QStringLiteral(" %"));
     m_commissionRateSpin->setDecimals(2);
@@ -534,6 +541,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
 
     // --- Común a las dos ramas ---
     m_maintenanceCostSpin = new QDoubleSpinBox(card);
+    m_maintenanceCostSpin->setProperty("field", QStringLiteral("maintenanceCost"));
     m_maintenanceCostSpin->setRange(0, 9999999);
     m_maintenanceCostSpin->setPrefix(QStringLiteral("$ "));
     grid->addWidget(new QLabel(QStringLiteral("Mantenimientos:"), card), row, 0);
@@ -541,6 +549,7 @@ QWidget *Step1DetailsView::buildOwnerAndAcquisitionCard()
     ++row;
 
     m_observationsEdit = new QTextEdit(card);
+    m_observationsEdit->setProperty("field", QStringLiteral("observations"));
     m_observationsEdit->setMaximumHeight(60);
     grid->addWidget(new QLabel(QStringLiteral("Observaciones:"), card), row, 0);
     grid->addWidget(m_observationsEdit, row, 1, 1, 3);
@@ -672,8 +681,12 @@ void Step1DetailsView::loadLookups()
 
         int indexValido = m_brandCombo->findText(wroteText, Qt::MatchExactly);
 
+        // Una marca que no está en el catálogo deja el combo sin elegir (-1),
+        // no en la primera marca: así el dominio la reporta como faltante y el
+        // asistente marca el campo, en vez de guardar una marca que nadie
+        // eligió.
         if (indexValido == -1) {
-            m_brandCombo->setCurrentIndex(0);
+            m_brandCombo->setCurrentIndex(-1);
         }
     });
 
@@ -692,17 +705,6 @@ domain::ValidationResult Step1DetailsView::validate() const
     domain::VehicleBuilder builder;
     applyTo(builder);
     return builder.validateVehicleData();
-}
-
-void Step1DetailsView::showError(const QString &message)
-{
-    m_errorLabel->setText(message);
-    m_errorLabel->setVisible(true);
-}
-
-void Step1DetailsView::hideError()
-{
-    m_errorLabel->setVisible(false);
 }
 
 void Step1DetailsView::applyTo(domain::VehicleBuilder &builder) const
@@ -772,33 +774,4 @@ void Step1DetailsView::applyTo(domain::VehicleBuilder &builder) const
         builder.setPurchasePrice(m_purchasePriceSpin->value());
     if (m_basePriceSpin->value() > 0.0)
         builder.setBasePrice(m_basePriceSpin->value());
-}
-
-void Step1DetailsView::validatePurchaseConditions()
-{
-    double umaSum = m_umaValue * 3210;
-
-    if (m_paymentMethodCombo->currentIndex() == 0)
-    {
-        if (m_purchasePriceSpin->value() < umaSum) {
-            m_purchasePriceSpin->setStyleSheet(QStringLiteral(""));
-            m_paymentMethodCombo->setStyleSheet(QStringLiteral(""));
-            m_purchasePriceErrorLabel->setVisible(false);
-        } else {
-            m_purchasePriceSpin->setStyleSheet(QStringLiteral(
-                "QDoubleSpinBox { border: 1px solid red; background-color: #FFF0F0; }"
-            ));
-            m_paymentMethodCombo->setStyleSheet(QStringLiteral(
-                "QComboBox { border: 1px solid red; background-color: #FFF0F0; }"
-            ));
-            m_purchasePriceErrorLabel->setVisible(true);
-            m_purchasePriceSpin->setFocus();
-        }
-    }
-    else
-    {
-        m_purchasePriceSpin->setStyleSheet(QStringLiteral(""));
-        m_paymentMethodCombo->setStyleSheet(QStringLiteral(""));
-        m_purchasePriceErrorLabel->setVisible(false);
-    }
 }

@@ -32,10 +32,15 @@ QWidget *Step2ConditionView::buildBasicSpecsPanel()
 
     auto *title = new QLabel(QStringLiteral("Especificaciones básicas"), card);
     title->setProperty("class", QStringLiteral("h3"));
-    title->setStyleSheet("margin-bottom: 15px;");
 
+    // Cada combo lleva en "field" la clave con la que el dominio reporta sus
+    // errores: así el asistente sabe cuál marcar en rojo y a cuál darle el
+    // foco. Las condiciones llegan con el prefijo "conditions." porque así
+    // las agrupa VehicleBuilder::validateConditionData().
     m_fuelTypeCombo = new QComboBox(card);
+    m_fuelTypeCombo->setProperty("field", QStringLiteral("conditions.fuelType"));
     m_cylindersCombo = new QComboBox(card);
+    m_cylindersCombo->setProperty("field", QStringLiteral("conditions.cylinders"));
     m_cylindersCombo->setPlaceholderText("Seleccione una opción...");
     m_cylindersCombo->addItems({QStringLiteral("3"), QStringLiteral("4"), QStringLiteral("5"),
                                  QStringLiteral("6"), QStringLiteral("8")});
@@ -44,21 +49,25 @@ QWidget *Step2ConditionView::buildBasicSpecsPanel()
     // misma fuente que decide qué texto acepta la base. Antes eran literales
     // repetidos aquí, y cualquier retoque a una etiqueta rompía el CHECK.
     m_transmissionCombo = new QComboBox(card);
+    m_transmissionCombo->setProperty("field", QStringLiteral("conditions.transmission"));
     m_transmissionCombo->setPlaceholderText("Seleccione una opción...");
     for (domain::Transmission value : domain::allTransmissions())
         m_transmissionCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
     m_interiorMaterialCombo = new QComboBox(card);
+    m_interiorMaterialCombo->setProperty("field", QStringLiteral("conditions.interiorMaterial"));
     //m_interiorMaterialCombo->setEditable(true);
     m_interiorMaterialCombo->setPlaceholderText("Seleccione una opción...");
     m_interiorMaterialCombo->addItems({QStringLiteral("Tela"), QStringLiteral("Piel"), QStringLiteral("Piel sintética")});
 
     m_windowRegulatorsCombo = new QComboBox(card);
+    m_windowRegulatorsCombo->setProperty("field", QStringLiteral("conditions.windowRegulators"));
     m_windowRegulatorsCombo->setPlaceholderText("Seleccione una opción...");
     for (domain::WindowRegulators value : domain::allWindowRegulators())
         m_windowRegulatorsCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
     m_airConditioningCombo = new QComboBox(card);
+    m_airConditioningCombo->setProperty("field", QStringLiteral("conditions.airConditioning"));
     m_airConditioningCombo->setPlaceholderText("Seleccione una opción...");
     for (domain::AirConditioning value : domain::allAirConditioningModes())
         m_airConditioningCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
@@ -73,6 +82,12 @@ QWidget *Step2ConditionView::buildBasicSpecsPanel()
 
     auto *cardLayout = new QVBoxLayout(card);
     cardLayout->addWidget(title);
+    // El aire bajo el título lo pone el layout y no una hoja de estilos propia
+    // del título: esa hoja le gana a la global en ese widget y deja estilo
+    // regado por el código, fuera del QSS. El layout no suma su espaciado
+    // alrededor de un espacio fijo, así que la separación total queda igual
+    // que antes: estos 15 px más el espaciado normal entre elementos.
+    cardLayout->addSpacing(15);
     cardLayout->addLayout(form);
     cardLayout->addStretch();
 
@@ -105,6 +120,11 @@ QWidget *Step2ConditionView::buildChecklistPanel()
     auto *scrollArea = new QScrollArea(card);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
+    // La clave va en el checklist completo y no en cada fila: el dominio
+    // reporta los renglones de la inspección por su posición entre los
+    // marcados ("inspection.items[2]..."), no por fila de la pantalla, así que
+    // ninguna fila tiene una clave fija que llevar.
+    scrollArea->setProperty("field", QStringLiteral("inspection"));
 
     // El contenedor se crea vacío y se puebla en loadLookups(). OJO: el
     // addStretch() final NO va aquí -- tiene que quedar después de las filas,

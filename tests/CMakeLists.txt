@@ -45,3 +45,14 @@ seminuevos_add_test(tst_wizardnavigator
         "${PROJECT_SOURCE_DIR}/include/presentation/navigation/wizardnavigator.h"
         "${PROJECT_SOURCE_DIR}/src/presentation/navigation/wizardnavigator.cpp"
 )
+
+seminuevos_add_test(tst_formsupport
+    SOURCES
+        presentation/tst_formsupport.cpp
+        "${PROJECT_SOURCE_DIR}/include/presentation/views/support/formsupport.h"
+        "${PROJECT_SOURCE_DIR}/src/presentation/views/support/formsupport.cpp"
+        "${PROJECT_SOURCE_DIR}/include/domain/validationresult.h"
+)
+# formsupport es apoyo de las vistas: además de Core necesita Qt Widgets, que
+# seminuevos_add_test() no enlaza.
+target_link_libraries(tst_formsupport PRIVATE Qt6::Widgets)

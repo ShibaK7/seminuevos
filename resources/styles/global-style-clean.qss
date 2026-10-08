@@ -60,10 +60,19 @@ QComboBox:disabled {
     color: #ADB5BD;
 }
 
-/* Validation */
+/* Validation
+   hasError es una propiedad dinámica que pone formsupport::showFieldErrors()
+   en los campos que el dominio rechazó. Los colores viven solo aquí: nada de
+   setStyleSheet() en las vistas, porque la hoja propia de un widget le gana a
+   esta y anula su foco, hover y deshabilitado. Cubre todos los tipos de campo
+   que usan los formularios; un tipo que falte aquí se marcaría sin verse. */
 QLineEdit[hasError="true"],
 QComboBox[hasError="true"],
-QDateEdit[hasError="true"] {
+QSpinBox[hasError="true"],
+QDoubleSpinBox[hasError="true"],
+QDateEdit[hasError="true"],
+QTextEdit[hasError="true"],
+QPlainTextEdit[hasError="true"] {
     border: 1.5px solid #D90429;
     background-color: #FFF5F5;
 }
@@ -534,6 +543,23 @@ QLabel[class="wizard-step-text"] {
 QLabel[class="wizard-step-text"][stepState="current"],
 QLabel[class="wizard-step-text"][stepState="done"] {
     color: #212529;
+}
+
+/* Bloqueado: todavía no se puede entrar porque falta completar un paso
+   anterior. Más apagado que "pending" y nunca subrayado, para que no parezca
+   el paso actual. Sigue recibiendo clics: el asistente los usa para explicar
+   qué falta. */
+QPushButton[class="wizard-step"][stepState="locked"] {
+    border-bottom-color: transparent;
+}
+
+QLabel[class="wizard-step-text"][stepState="locked"] {
+    color: #ADB5BD;
+}
+
+/* Con error: ya se intentó y tiene campos por corregir. */
+QLabel[class="wizard-step-text"][stepState="error"] {
+    color: #D90429;
 }
 
 /* Condition checklist */

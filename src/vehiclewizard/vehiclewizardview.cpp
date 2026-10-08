@@ -258,6 +258,9 @@ void VehicleWizardView::onPrimaryClicked()
     for (int step = 0; step < kStepCount; ++step) {
         domain::ValidationResult result = validateStep(step);
         m_nav.setValid(step, result.isValid());
+        // Los tres quedaron como intentados, así que cada uno marca sus campos,
+        // también los que no se ven: al regresar a ellos ya dicen qué falta.
+        markStepFields(step, result);
         if (!result.isValid() && firstInvalidStep < 0) {
             firstInvalidStep = step;
             firstInvalidResult = std::move(result);
@@ -321,6 +324,10 @@ void VehicleWizardView::advanceTo(int target)
         const domain::ValidationResult result = validateStep(step);
         m_nav.setValid(step, result.isValid());
         m_nav.markAttempted(step);
+        // Ya intentado, el paso marca sus campos. Si es válido, esto limpia lo
+        // que quedara de un intento anterior sin esperar a la revalidación en
+        // vivo, que corre después del debounce.
+        markStepFields(step, result);
         if (!result.isValid()) {
             // Los pasos posteriores ni se validan: el usuario se queda en el
             // primero que falta y ve todo lo que le falta a ese.
@@ -349,6 +356,27 @@ void VehicleWizardView::showInvalidStep(int step, const domain::ValidationResult
     showValidationErrors(alreadyVisible ? QStringLiteral("Revisa los campos marcados")
                                         : blockedHint(step),
                          result);
+
+    // El foco va al primer error que tenga un campo donde mostrarse: uno que no
+    // se captura en pantalla, como la UMA, no debe dejar al usuario sin cursor.
+    // Solo aquí se mueve el foco, porque el usuario acaba de pedir avanzar o
+    // guardar; la revalidación en vivo nunca lo toca, ya que a media captura lo
+    // mandaría a teclear en otro campo.
+    QWidget *page = m_stack->widget(step);
+    for (const domain::ValidationError &error : result.errors()) {
+        if (formsupport::focusField(page, error.field))
+            break;
+    }
+}
+
+void VehicleWizardView::markStepFields(int step, const domain::ValidationResult &result)
+{
+    // Las páginas del stack se agregaron en el orden de los pasos.
+    QWidget *page = m_stack->widget(step);
+    if (result.isValid())
+        formsupport::clearFieldErrors(page);
+    else
+        formsupport::showFieldErrors(page, result.errors());
 }
 
 void VehicleWizardView::onStepEdited(int step)
@@ -366,10 +394,17 @@ void VehicleWizardView::revalidateEditedSteps()
         const domain::ValidationResult result = validateStep(step);
         m_nav.setValid(step, result.isValid());
 
-        // El aviso habla del paso que se ve, y solo cuando ya se intentó: antes
-        // de eso, nadie quiere ver errores en un formulario que apenas está
-        // llenando.
-        if (step == m_nav.current() && m_nav.isAttempted(step)) {
+        // Los errores se muestran solo en un paso ya intentado: antes de eso,
+        // nadie quiere ver en rojo un formulario que apenas está llenando.
+        if (!m_nav.isAttempted(step))
+            continue;
+
+        // Los campos se marcan y se limpian mientras el usuario corrige, pero
+        // el foco se queda donde está.
+        markStepFields(step, result);
+
+        // El aviso habla del paso que se ve.
+        if (step == m_nav.current()) {
             if (result.isValid())
                 hideError();
             else
