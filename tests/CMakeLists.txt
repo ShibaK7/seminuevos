@@ -2,24 +2,24 @@
 #   ctest --test-dir <carpeta de build> --output-on-failure
 #
 # Cada prueba es un ejecutable de consola aparte (sin WIN32: ctest necesita su
-# salida estándar y su código de salida). Por ahora cada una compila
-# directamente las fuentes que prueba, porque todavía no hay bibliotecas por
-# capa a las que enlazarse.
+# salida estándar y su código de salida) y enlaza SOLO la biblioteca de la capa
+# que prueba. Esa es la segunda cerca de la arquitectura: si el dominio usara
+# algo de Qt Sql, sus pruebas no enlazarían.
 
 # Carpeta del compilador. Ahí están libstdc++, libgcc y libwinpthread de
 # MinGW, sin las que un ejecutable de prueba no arranca.
 get_filename_component(SEMINUEVOS_TOOLCHAIN_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
 
-# seminuevos_add_test(<nombre> SOURCES <archivos>...)
+# seminuevos_add_test(<nombre> SOURCES <archivos>... [LIBS <bibliotecas>...])
 function(seminuevos_add_test name)
-    cmake_parse_arguments(ARG "" "" "SOURCES" ${ARGN})
+    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
     if(NOT ARG_SOURCES)
         message(FATAL_ERROR "seminuevos_add_test(${name}): falta SOURCES")
     endif()
 
     add_executable(${name} ${ARG_SOURCES})
     target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/include")
-    target_link_libraries(${name} PRIVATE Qt6::Core Qt6::Test)
+    target_link_libraries(${name} PRIVATE ${ARG_LIBS} Qt6::Core Qt6::Test)
 
     add_test(NAME ${name} COMMAND ${name})
     # En Windows las DLL se buscan en el PATH. Desde Qt Creator la prueba las
@@ -39,48 +39,39 @@ function(seminuevos_add_test name)
     )
 endfunction()
 
-seminuevos_add_test(tst_wizardnavigator
-    SOURCES
-        presentation/tst_wizardnavigator.cpp
-        "${PROJECT_SOURCE_DIR}/include/presentation/navigation/wizardnavigator.h"
-        "${PROJECT_SOURCE_DIR}/src/presentation/navigation/wizardnavigator.cpp"
+# --- Dominio ---------------------------------------------------------------
+seminuevos_add_test(tst_cashpaymentlimit
+    SOURCES domain/tst_cashpaymentlimit.cpp
+    LIBS seminuevos_domain
 )
 
+seminuevos_add_test(tst_acquiredvehicle
+    SOURCES domain/tst_acquiredvehicle.cpp domain/vehiclefixtures.h
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_vehicle
+    SOURCES domain/tst_vehicle.cpp domain/vehiclefixtures.h
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_vehiclepolymorphism
+    SOURCES domain/tst_vehiclepolymorphism.cpp domain/vehiclefixtures.h
+    LIBS seminuevos_domain
+)
+
+# --- Presentación ---------------------------------------------------------------
+seminuevos_add_test(tst_wizardnavigator
+    SOURCES presentation/tst_wizardnavigator.cpp
+    LIBS seminuevos_presentation
+)
+
+# formsupport es apoyo de las vistas (Qt Widgets) y las vistas todavía no son
+# biblioteca: la prueba compila sus fuentes directamente.
 seminuevos_add_test(tst_formsupport
     SOURCES
         presentation/tst_formsupport.cpp
         "${PROJECT_SOURCE_DIR}/include/presentation/views/support/formsupport.h"
         "${PROJECT_SOURCE_DIR}/src/presentation/views/support/formsupport.cpp"
-        "${PROJECT_SOURCE_DIR}/include/domain/validationresult.h"
-)
-# formsupport es apoyo de las vistas: además de Core necesita Qt Widgets, que
-# seminuevos_add_test() no enlaza.
-target_link_libraries(tst_formsupport PRIVATE Qt6::Widgets)
-
-# --- Dominio ---------------------------------------------------------------
-# Las pruebas del dominio compilan todas sus fuentes (solo QtCore) hasta que
-# exista la biblioteca seminuevos_domain; entonces se enlazarán a ella.
-file(GLOB_RECURSE SEMINUEVOS_DOMAIN_SOURCES CONFIGURE_DEPENDS
-    "${PROJECT_SOURCE_DIR}/src/domain/*.cpp"
-    "${PROJECT_SOURCE_DIR}/include/domain/*.h"
-)
-
-seminuevos_add_test(tst_cashpaymentlimit
-    SOURCES
-        domain/tst_cashpaymentlimit.cpp
-        ${SEMINUEVOS_DOMAIN_SOURCES}
-)
-
-seminuevos_add_test(tst_acquiredvehicle
-    SOURCES
-        domain/tst_acquiredvehicle.cpp
-        domain/vehiclefixtures.h
-        ${SEMINUEVOS_DOMAIN_SOURCES}
-)
-
-seminuevos_add_test(tst_vehicle
-    SOURCES
-        domain/tst_vehicle.cpp
-        domain/vehiclefixtures.h
-        ${SEMINUEVOS_DOMAIN_SOURCES}
+    LIBS seminuevos_domain Qt6::Widgets
 )

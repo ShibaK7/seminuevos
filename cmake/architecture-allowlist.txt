@@ -1,0 +1,12 @@
+# Violaciones de la arquitectura que existen A PROPÓSITO, cada una con el
+# commit del plan que la quita. Formato: el texto exacto que imprime la prueba
+# `architecture`, y después de "#" la razón.
+#
+# Este archivo solo se encoge: una violación nueva no se agrega aquí para que
+# pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
+# falta, se borra.
+
+include/presentation/views/support/formsupport.h: incluye "domain/validationresult.h"  # commit 7: pasa a domain/value_objects/
+ui/loginwindow.ui: styleSheet en LoginWindow  # commit 17: el QSS embebido pasa a la hoja global
+ui/loginwindow.ui: styleSheet en frame  # commit 17
+ui/vehicleitemlist.ui: styleSheet en VehicleItemList  # commit 17

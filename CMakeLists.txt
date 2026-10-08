@@ -9,9 +9,33 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport Test)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql Network PrintSupport Test)
+# Solo Qt 6: el proyecto usa APIs de Qt 6 y las bibliotecas por capa enlazan
+# los targets Qt6:: por nombre. La plantilla Qt5/Android del asistente de Qt
+# Creator se quitó porque nunca se usó.
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Sql Network PrintSupport Test)
 
+# --- Capas (arquitectura hexagonal) -----------------------------------------
+# Cada capa es una biblioteca estática que solo enlaza los módulos de Qt que
+# tiene permitidos; ver cmake/SeminuevosLayers.cmake. Las carpetas que todavía
+# no tienen capa propia se compilan dentro del ejecutable, más abajo, hasta que
+# la mudanza del plan las ubique.
+include(cmake/SeminuevosLayers.cmake)
+
+# Dominio: entidades, value objects y reglas. Solo QtCore y sin moc.
+seminuevos_layer(seminuevos_domain
+    DIRS domain
+    NO_MOC
+)
+
+# Presentación sin widgets: solo QtCore, para poder probarla sin GUI. Hoy solo
+# tiene la navegación del wizard; los presenters y las tareas se suman cuando
+# existan. Las vistas (presentation/views) son Widgets y siguen en el
+# ejecutable hasta que tengan su propia biblioteca.
+seminuevos_layer(seminuevos_presentation
+    DIRS presentation/navigation
+)
+
+# --- Ejecutable ---------------------------------------------------------------
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
 set(PROJECT_SOURCES
@@ -19,6 +43,13 @@ set(PROJECT_SOURCES
         src/loginwindow.cpp
         include/loginwindow.h
         ui/loginwindow.ui
+        include/mainwindow.h
+        src/mainwindow.cpp
+        ui/mainwindow.ui
+        include/vehicleitemlist.h
+        src/vehicleitemlist.cpp
+        ui/vehicleitemlist.ui
+        include/utils/UIUtils.h
         include/db/connectionpool.h
         src/db/connectionpool.cpp
         include/db/devseeder.h
@@ -27,6 +58,12 @@ set(PROJECT_SOURCES
         src/db/conditioncatalog.cpp
         include/db/vehicleinventoryquery.h
         src/db/vehicleinventoryquery.cpp
+        include/db/counterpartyrepository.h
+        src/db/counterpartyrepository.cpp
+        include/db/vehiclerepository.h
+        src/db/vehiclerepository.cpp
+        include/db/vehicleregistrationworker.h
+        src/db/vehicleregistrationworker.cpp
         include/app/appconfig.h
         src/app/appconfig.cpp
         include/components/statefultextbutton.h
@@ -41,36 +78,6 @@ set(PROJECT_SOURCES
         src/auth/passwordhasher.cpp
         include/auth/loginworker.h
         src/auth/loginworker.cpp
-        include/domain/enums.h
-        src/domain/enums.cpp
-        include/domain/validationresult.h
-        src/domain/validationresult.cpp
-        include/domain/catalogref.h
-        include/domain/counterparty.h
-        src/domain/counterparty.cpp
-        include/domain/vehicleconditions.h
-        src/domain/vehicleconditions.cpp
-        include/domain/inspectionitem.h
-        src/domain/inspectionitem.cpp
-        include/domain/inspection.h
-        src/domain/inspection.cpp
-        include/domain/vehicleimage.h
-        include/domain/vehicledocument.h
-        include/domain/vehiclevisitor.h
-        include/domain/vehicle.h
-        src/domain/vehicle.cpp
-        include/domain/acquiredvehicle.h
-        src/domain/acquiredvehicle.cpp
-        include/domain/consignedvehicle.h
-        src/domain/consignedvehicle.cpp
-        include/domain/vehiclebuilder.h
-        src/domain/vehiclebuilder.cpp
-        include/domain/rules/cashpaymentlimit.h
-        src/domain/rules/cashpaymentlimit.cpp
-        include/db/counterpartyrepository.h
-        src/db/counterpartyrepository.cpp
-        include/db/vehiclerepository.h
-        src/db/vehiclerepository.cpp
         include/vehiclewizard/vehiclewizardview.h
         src/vehiclewizard/vehiclewizardview.cpp
         include/vehiclewizard/components/conditionchecklistrow.h
@@ -87,65 +94,39 @@ set(PROJECT_SOURCES
         src/vehiclewizard/steps/step3filesview.cpp
         include/vehiclewizard/uploadformatpolicy.h
         src/vehiclewizard/uploadformatpolicy.cpp
-        include/presentation/navigation/wizardnavigator.h
-        src/presentation/navigation/wizardnavigator.cpp
         include/presentation/views/support/formsupport.h
         src/presentation/views/support/formsupport.cpp
         include/storage/localfilestoragemanager.h
         src/storage/localfilestoragemanager.cpp
-        include/db/vehicleregistrationworker.h
-        src/db/vehicleregistrationworker.cpp
         include/contract/numbertowordses.h
         src/contract/numbertowordses.cpp
         include/contract/companyprofile.h
         include/contract/contractpdfgenerator.h
         src/contract/contractpdfgenerator.cpp
+        resources/Resources.qrc
         ${TS_FILES}
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(desktop-win-car-dealership
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
-            resources/Resources.qrc
-            include/mainwindow.h src/mainwindow.cpp ui/mainwindow.ui
-            include/vehicleitemlist.h src/vehicleitemlist.cpp ui/vehicleitemlist.ui
-            include/utils/UIUtils.h
-
-    )
+qt_add_executable(desktop-win-car-dealership
+    MANUAL_FINALIZATION
+    ${PROJECT_SOURCES}
+)
 
 target_include_directories(desktop-win-car-dealership PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/ui
 )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET desktop-win-car-dealership APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 
-    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
-else()
-    if(ANDROID)
-        add_library(desktop-win-car-dealership SHARED
-            ${PROJECT_SOURCES}
-        )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
-    else()
-        add_executable(desktop-win-car-dealership
-            ${PROJECT_SOURCES}
-        )
-    endif()
-
-    qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
-endif()
+qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 
 target_link_libraries(desktop-win-car-dealership PRIVATE
-    Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::Sql
-    Qt${QT_VERSION_MAJOR}::Network
-    Qt${QT_VERSION_MAJOR}::PrintSupport
+    seminuevos_domain
+    seminuevos_presentation
+    Qt6::Widgets
+    Qt6::Sql
+    Qt6::Network
+    Qt6::PrintSupport
 )
 
 # Le da a main.cpp la ruta raíz del repo en tiempo de compilación, para poder
@@ -155,14 +136,7 @@ target_compile_definitions(desktop-win-car-dealership PRIVATE
     PROJECT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.desktop-win-car-dealership)
-endif()
 set_target_properties(desktop-win-car-dealership PROPERTIES
-    ${BUNDLE_ID_OPTION}
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -176,13 +150,24 @@ install(TARGETS desktop-win-car-dealership
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(desktop-win-car-dealership)
+qt_finalize_executable(desktop-win-car-dealership)
+
+# --- Pruebas --------------------------------------------------------------------
+# Unitarias con QtTest (tests/CMakeLists.txt) y la de arquitectura, que revisa
+# las dependencias entre capas sin compilar nada.
+enable_testing()
+add_subdirectory(tests)
+
+# La carpeta include/ de Qt le permite a la prueba saber de qué módulo es un
+# header sin prefijo (<QSqlQuery> es de QtSql).
+if(DEFINED QT6_INSTALL_PREFIX AND DEFINED QT6_INSTALL_HEADERS)
+    set(SEMINUEVOS_QT_HEADERS "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_HEADERS}")
+else()
+    get_filename_component(SEMINUEVOS_QT_HEADERS "${Qt6Core_DIR}/../../../include" ABSOLUTE)
 endif()
 
-# Pruebas unitarias (QtTest + ctest), ver tests/CMakeLists.txt. Solo con Qt 6:
-# las pruebas enlazan los targets Qt6:: por nombre.
-if(QT_VERSION_MAJOR EQUAL 6)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+add_test(NAME architecture
+    COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DQT_HEADERS=${SEMINUEVOS_QT_HEADERS}
+            -P ${PROJECT_SOURCE_DIR}/cmake/CheckArchitecture.cmake
+)
+set_tests_properties(architecture PROPERTIES LABELS "unit")
