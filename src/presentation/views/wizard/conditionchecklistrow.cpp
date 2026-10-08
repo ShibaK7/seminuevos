@@ -13,7 +13,7 @@
 
 namespace {
 
-// Espejo de resources/styles/global-style.qss: el font-size base de QWidget
+// Espejo de resources/styles/global-style-clean.qss: el font-size base de QWidget
 // (12pt), el ancho del indicador de checkbox/radio (14px) y su spacing (8px).
 // Están duplicados aquí porque la medición ocurre antes de que la hoja de
 // estilos se aplique -- ver measureColumns().

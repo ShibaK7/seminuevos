@@ -5,10 +5,10 @@
         <file>images/logo-seminuevos.svg</file>
         <file>images/background.png</file>
     </qresource>
-    <qresource prefix="/resources/styles"/>
-    <qresource prefix="/resourcess/styles">
-        <file>styles/global-style.qss</file>
-        <file>styles/global-style-clean.qss</file>
+    <qresource prefix="/styles">
+        <file alias="global-style-clean.qss">styles/global-style-clean.qss</file>
+        <file alias="login.qss">styles/login.qss</file>
+        <file alias="vehicle-card.qss">styles/vehicle-card.qss</file>
     </qresource>
     <qresource prefix="/resources/icons"/>
     <qresource prefix="/">

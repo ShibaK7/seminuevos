@@ -6,7 +6,3 @@
 # pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
 # falta, se borra.
 
-# --- Commit 17: el QSS embebido de los .ui pasa a la hoja global ----------------
-src/ui/loginwindow.ui: styleSheet en LoginWindow  # commit 17
-src/ui/loginwindow.ui: styleSheet en frame  # commit 17
-src/ui/vehicleitemlist.ui: styleSheet en VehicleItemList  # commit 17

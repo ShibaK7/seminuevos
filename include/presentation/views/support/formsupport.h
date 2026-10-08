@@ -89,6 +89,11 @@ bool focusField(QWidget *root, const QString &field);
 void applyFloatingShadow(QWidget *widget, int xOffset = 0, int yOffset = 5, int blur = 25,
                          int opacity = 25);
 
+// Hoja de estilos de una pantalla, leída de un recurso compilado
+// (":/styles/login.qss"). Vacía si el recurso no existe. Se guarda en caché:
+// la tarjeta del inventario la pide una vez por unidad.
+QString styleSheetResource(const QString &resourcePath);
+
 // Etiqueta con el asterisco rojo de "obligatorio".
 QLabel *requiredLabel(const QString &text, QWidget *parent = nullptr);
 

@@ -59,7 +59,7 @@ void applyGlobalStyle()
     globalFont.setPointSize(15);
     QApplication::setFont(globalFont);
 
-    QFile styleFile(QStringLiteral(":/resourcess/styles/styles/global-style-clean.qss"));
+    QFile styleFile(QStringLiteral(":/styles/global-style-clean.qss"));
     if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
         QTextStream stream(&styleFile);
         qApp->setStyleSheet(stream.readAll());

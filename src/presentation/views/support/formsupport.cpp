@@ -10,6 +10,7 @@
 #include <QHash>
 #include <QLineEdit>
 #include <QPlainTextEdit>
+#include <QResource>
 #include <QSpinBox>
 #include <QStringList>
 #include <QStyle>
@@ -172,6 +173,22 @@ void applyFloatingShadow(QWidget *widget, int xOffset, int yOffset, int blur, in
     shadow->setBlurRadius(blur);
     shadow->setColor(QColor(0, 0, 0, opacity));
     widget->setGraphicsEffect(shadow);
+}
+
+QString styleSheetResource(const QString &resourcePath)
+{
+    // Con QResource y no con QFile: es un recurso compilado en el ejecutable,
+    // no un archivo en disco.
+    static QHash<QString, QString> cache;
+    const auto cached = cache.constFind(resourcePath);
+    if (cached != cache.cend())
+        return *cached;
+
+    const QResource resource(resourcePath);
+    const QString sheet =
+        resource.isValid() ? QString::fromUtf8(resource.uncompressedData()) : QString();
+    cache.insert(resourcePath, sheet);
+    return sheet;
 }
 
 QLabel *requiredLabel(const QString &text, QWidget *parent)

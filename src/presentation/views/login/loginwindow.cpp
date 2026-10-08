@@ -1,6 +1,7 @@
 #include "presentation/views/login/loginwindow.h"
 #include <qgraphicseffect.h>
 #include "ui_loginwindow.h"
+#include "presentation/views/support/formsupport.h"
 
 #include <QStyle>
 #include <QPropertyAnimation>
@@ -10,6 +11,9 @@ LoginWindow::LoginWindow(QWidget* parent)
       , ui(new Ui::LoginWindow)
 {
     ui->setupUi(this);
+    // Su hoja propia (resources/styles/login.qss): el login se muestra antes
+    // que la hoja global, que pisaría su fondo.
+    setStyleSheet(formsupport::styleSheetResource(QStringLiteral(":/styles/login.qss")));
 
     // Sombra para dar jerarquía visual a la tarjeta sobre el fondo.
     // (Este tipo de efecto no se define en el .ui, se agrega en código.)

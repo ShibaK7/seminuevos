@@ -25,104 +25,10 @@
   <property name="windowTitle">
    <string>LoginWindow</string>
   </property>
-  <property name="styleSheet">
-   <string notr="true">QFrame {
-	border: 0px solid transparent;
-}
-
-#right_frame {
-    background-color: qlineargradient(
-        spread:pad,
-        x1:0, y1:0, x2:1, y2:0,
-        stop:0 rgba(244, 246, 250, 0),     /* completamente transparente */
-        stop:0.25 rgba(244, 246, 250, 220),/* cambio brusco a blanco casi opaco */
-        stop:1 rgba(244, 246, 250, 220)    /* mantiene blanco hasta el final */
-    );
-}
-
-#panel_login{
-	background-color: rgba(255, 255, 255,240);
-	border-radius: 10px;
-}
-
-#titleLabel {
-	color: #16233F;
-	font-size: 26px;
-	font-weight: 700;
-}
-
-#subtitleLabel {
-	color: #6B7280;
-	font-size: 12px;
-	margin-bottom: 4px;
-}
-
-#userLabel, #passLabel {
-	color: #384258;
-	font-size: 12px;
-	font-weight: 600;
-	margin-top: 4px;
-	margin-bottom: 4px;
-}
-
-#usernameEdit, #passwordEdit {
-	border: 1px solid #D7DCE5;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 13px;
-    color: #16233F;
-    background-color: #FBFCFE;
-    selection-background-color: #2F6FED;
-}
-#usernameEdit:hover, #passwordEdit:hover {
-    border: 1px solid #B7C1D6;
-}
-#usernameEdit:focus, #passwordEdit:focus {
-    border: 1.5px solid #2F6FED;
-    background-color: #FFFFFF;
-}
-
-#loginButton {
-    background-color: #2F6FED;
-    color: #FFFFFF;
-    border: none;
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 13px;
-    font-weight: 600;
-}
-#loginButton:hover {
-    background-color: #2559C9;
-}
-#loginButton:pressed {
-    background-color: #1E47A8;
-}
-#loginButton:disabled {
-    background-color: #A9BCE8;
-}
-
-#errorBox {
-	background-color: #FDECEC;
-	border: 1px solid #F6C6C6;
-    border-radius: 8px;
- }
-
-#errorLabel {
-	color: #C62828;
-    font-size: 12px;
-}</string>
-  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
      <widget class="QFrame" name="frame">
-      <property name="styleSheet">
-       <string notr="true">#frame {
-	background-image: url(:/resources/images/images/background.png);
-    background-repeat: no-repeat; 
-    background-position: center; 
-    }</string>
-      </property>
       <property name="frameShape">
        <enum>QFrame::Shape::StyledPanel</enum>
       </property>
@@ -147,9 +53,6 @@
        </property>
        <item>
         <widget class="QFrame" name="left_frame">
-         <property name="styleSheet">
-          <string notr="true"/>
-         </property>
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
@@ -163,9 +66,6 @@
        </item>
        <item>
         <widget class="QFrame" name="right_frame">
-         <property name="styleSheet">
-          <string notr="true"/>
-         </property>
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
@@ -203,9 +103,6 @@
           </item>
           <item>
            <widget class="QFrame" name="panel_login">
-            <property name="styleSheet">
-             <string notr="true"/>
-            </property>
             <property name="frameShape">
              <enum>QFrame::Shape::NoFrame</enum>
             </property>
@@ -221,9 +118,6 @@
             <layout class="QVBoxLayout" name="verticalLayout_2">
              <item>
               <widget class="QFrame" name="frame_7">
-               <property name="styleSheet">
-                <string notr="true"/>
-               </property>
                <property name="frameShape">
                 <enum>QFrame::Shape::StyledPanel</enum>
                </property>
@@ -478,9 +372,6 @@
                     <height>0</height>
                    </size>
                   </property>
-                  <property name="styleSheet">
-                   <string notr="true"/>
-                  </property>
                   <property name="text">
                    <string>Iniciar Sesión</string>
                   </property>
@@ -535,7 +426,7 @@
   </widget>
  </widget>
  <resources>
-  <include location="../resources/Resources.qrc"/>
+  <include location="../../resources/Resources.qrc"/>
  </resources>
  <connections/>
 </ui>

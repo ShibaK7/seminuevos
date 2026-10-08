@@ -19,7 +19,7 @@ constexpr int kVerticalPadding = 6;
 // que la mitad y Qt dejaba de redondear del todo, devolviendo un rectángulo.
 //
 // *** Al cambiar este valor hay que cambiar el border-radius de
-//     QPushButton[class="outline-button"] en global-style.qss a la mitad. ***
+//     QPushButton[class="outline-button"] en global-style-clean.qss a la mitad. ***
 constexpr int kHeight = 34;
 
 } // namespace

@@ -1,5 +1,6 @@
 #include "presentation/views/inventory/vehicleitemlist.h"
 #include "ui_vehicleitemlist.h"
+#include "presentation/views/support/formsupport.h"
 
 #include <QLocale>
 #include <QPushButton>
@@ -49,6 +50,9 @@ VehicleItemList::VehicleItemList(QWidget *parent)
     , ui(new Ui::VehicleItemList)
 {
     ui->setupUi(this);
+    // Su hoja propia (resources/styles/vehicle-card.qss), sobre la tarjeta
+    // misma para que sus reglas ganen sobre las genéricas de la global.
+    setStyleSheet(formsupport::styleSheetResource(QStringLiteral(":/styles/vehicle-card.qss")));
 
     connect(ui->detailsButton, &QPushButton::clicked, this,
             [this] { emit detailsRequested(m_folio); });
