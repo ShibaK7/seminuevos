@@ -14,9 +14,10 @@ namespace domain {
 // unidad lo trae. No hay un isChecked, y quitarlo no perdió información: un
 // renglón marcado como "no lo trae" y la ausencia del renglón decían lo
 // mismo, y mantener las dos formas obligaba a que cada consulta contemplara
-// ambas. Los elementos que la unidad NO trae no viven aquí; se obtienen
-// cruzando el catálogo contra esta tabla con un LEFT JOIN (ver el comentario
-// de vehicle_inspection en db/001_init_schema.sql y VehicleInspectionQuery).
+// ambas. Los elementos que la unidad NO trae no viven aquí; se pueden obtener
+// cruzando el catálogo (vehicle_conditions_cat) contra esta tabla con un LEFT
+// JOIN. La condición del vehículo va en el ON y no en el WHERE: en el WHERE
+// el LEFT JOIN se degrada a INNER y desaparecen justo las filas que faltan.
 //
 // isOptimal, entonces, ya no tiene un estado en el que "no significa nada":
 // el elemento está presente por construcción, e isOptimal dice cómo salió.

@@ -126,25 +126,3 @@ void LoginWindow::setBusy(bool busy)
     ui->passwordEdit->setEnabled(!busy);
     ui->loginButton->setText(busy ? QStringLiteral("Iniciando sesión...") : QStringLiteral("Iniciar sesión"));
 }
-
-/*
- *Respaldo de codigo del manejo de imagenes para su compresion y disminucion de tamaño
-    //Lectura de imagen 9.44MB para la prueba
-        QImage image("C:/tmp/imagen.jpeg");
-    if (image.isNull()) {
-        qDebug() << "Error al cargar imagen";
-    }
-
-    //Guardado reduciendo calidad al 50% sin cambiar dimensiones 1.81MB
-    image.save("C:/tmp/imagen_opt_1.jpg", "JPG", 50);
-
-    //Cambio de resolucion a un estandar de 800x600
-    QImage scaled = image.scaled(
-        800, 600,
-        Qt::KeepAspectRatio,
-        Qt::SmoothTransformation
-        );
-
-    //Guardado con una reduccion de calidad al 70% 50.3KB
-    scaled.save("C:/tmp/imagen_opt_2.jpg", "JPG", 70);
- */

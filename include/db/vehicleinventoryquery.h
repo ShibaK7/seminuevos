@@ -15,10 +15,10 @@ class QSqlDatabase;
 // que pinta una tarjeta, ni uno más.
 //
 // No es un domain::Vehicle recortado ni aspira a serlo. Una unidad completa
-// arrastra su Inspection, y el esquema guarda TODOS los ítems del catálogo por
-// vehículo (ver el comentario de vehicle_inspection en db/001_init_schema.sql):
-// son unas 37 filas por unidad que la tarjeta jamás muestra. Para cien
-// vehículos serían casi cuatro mil filas traídas para pintar cien rectángulos.
+// arrastra su Inspection: una fila de vehicle_inspection por cada ítem del
+// catálogo que la unidad trae, hasta 37 por unidad, y la tarjeta no muestra
+// ninguna. Para cien vehículos podrían ser casi cuatro mil filas traídas para
+// pintar cien rectángulos.
 //
 // Hay una segunda razón, menos obvia y más seria: reconstruir un Vehicle
 // obligaría a pasar por VehicleBuilder, que valida. Una unidad vieja que ya no
@@ -81,9 +81,7 @@ struct VehicleInventoryFilter
 //
 // Va aparte de VehicleRepository a propósito: esa clase es un mapeador de
 // ESCRITURA (una transacción, seis tablas, un visitante para elegir subtabla) y
-// esto es una proyección de lectura sin transacción ni objetos de dominio. Es
-// el mismo reparto que ya existe entre ConditionCatalog (lectura) y
-// ConditionCatalogSeeder (escritura) sobre una misma tabla.
+// esto es una proyección de lectura sin transacción ni objetos de dominio.
 //
 // Lista vacía + errorMessage lleno  = falló la consulta.
 // Lista vacía + errorMessage vacío  = no hay unidades que cumplan los filtros.

@@ -32,9 +32,6 @@
         <file>icons/cancel_dark.png</file>
         <file>icons/cancel_white.png</file>
     </qresource>
-    <qresource prefix="/db">
-        <file alias="001_init_schema.sql">../db/001_init_schema.sql</file>
-    </qresource>
     <qresource prefix="/templates">
         <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
         <file>request_issuance_cfdi.html</file>

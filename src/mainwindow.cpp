@@ -16,11 +16,9 @@
 #include <QComboBox>
 #include <QDateEdit>
 #include <QEvent>
-#include <QFile>
 #include <QFrame>
 #include <QMargins>
 #include <QLabel>
-#include <QLineEdit>
 #include <QListWidgetItem>
 #include <QPixmap>
 #include <QPixmapCache>
@@ -35,25 +33,13 @@ namespace {
 // disco. Es preferible a dejar el hueco negro de un QPixmap nulo.
 const char *kPlaceholderImage = ":/resources/images/images/background.png";
 
-// Icono de calendario de los campos de fecha. El tamaño es el del PNG
-// generado. El margen tiene que librar la flecha del desplegable, que ocupa
-// los 24 px pegados al borde derecho (ver ::drop-down en global-style.qss):
-// con un margen menor el icono se montaba encima de ella.
-constexpr int kCalendarIconSize = 16;
-constexpr int kCalendarIconMargin = 30;
-
-// Ancho mínimo del campo de fecha. Se fija en código y no con el `min-width`
-// del QSS porque sobre un QDateEdit esa propiedad no llega a aplicarse: el
-// control se queda con el ancho que calcula él mismo a partir del formato de
-// fecha, que es bastante más angosto.
-constexpr int kDateFieldMinWidth = 230;
+// Ancho mínimo del filtro de estado. Manda sobre el `min-width` del QSS; en
+// el constructor se explica por qué.
 constexpr int kStatusFilterMinWidth = 200;
 
-// Alto de los controles de filtro. También va en código y no como `padding`
-// del QSS, por el mismo motivo que el ancho: sobre el QDateEdit ese padding no
-// llega a aplicarse. Fijándolo aquí, el combo y los dos campos de fecha miden
-// exactamente lo mismo. Coincide a propósito con el kHeight de OutlineButton,
-// para que los cuatro controles de la barra queden a la misma altura.
+// Alto del filtro de estado. Coincide a propósito con el kHeight de
+// OutlineButton, para que el combo y el botón "Agregar Vehículo" queden a la
+// misma altura. Los campos de fecha no lo usan: su tamaño lo da el QSS.
 constexpr int kFilterControlHeight = 34;
 
 // La lista se reconstruye entera en cada cambio de filtro. Sin caché, cada
@@ -85,13 +71,15 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    // Las propiedades `class` de mainwindow.ui van marcadas como no
+    // traducibles (notr="true"), y así tienen que quedarse si se editan en
+    // Designer. Las traducibles las asigna uic al final de setupUi, en
+    // retranslateUi, y para entonces la pila ya mostró inventoryPage; al
+    // mostrarla, Qt pule con el QSS global esa página y todos sus hijos, y si
+    // todavía no tienen `class`, las reglas [class="..."] de navBar,
+    // filterCombo y dateFilter ya no les llegan. El aviso va aquí y no en el
+    // .ui porque Designer borra los comentarios XML al guardar.
     ui->setupUi(this);
-
-    QFile styleFile(":/resourcess/styles/styles/global-style-clean.qss");
-    if (styleFile.open(QFile::ReadOnly)) {
-        this->setStyleSheet(styleFile.readAll()); // Or apply to qApp
-    }
-
 
     ui->vehicleList->setSpacing(0);
     ui->vehicleList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -114,12 +102,15 @@ MainWindow::MainWindow(QWidget *parent)
     populateStatusFilter();
     applyDefaultDateRange();
 
-    // Los anchos de los filtros se fijan aquí y no con el `min-width` del QSS:
-    // sobre estos controles esa propiedad no llega a aplicarse (ver el
-    // comentario de kDateFieldMinWidth). Son fijos a propósito, no
-    // proporcionales a la ventana: el layout ya no les da factor de
-    // estiramiento, así que se ven igual en una pantalla grande que en una
-    // chica.
+    // El ancho mínimo y el alto del filtro de estado se fijan aquí y mandan
+    // sobre el `min-width` y el `min-height` de QComboBox[class="filterCombo"]:
+    // Qt convierte esas propiedades del QSS (más padding y borde) en el tamaño
+    // mínimo del widget al pulirlo, eso ya pasó dentro de setupUi (ver arriba)
+    // y estas llamadas lo sobrescriben. El `min-width` sigue contando para el
+    // ancho preferido; este valor solo decide hasta dónde lo encoge el layout
+    // cuando falta espacio. Es fijo a propósito, no proporcional a la ventana:
+    // el layout ya no le da factor de estiramiento, así que se ve igual en una
+    // pantalla grande que en una chica.
     ui->estado->setMinimumWidth(kStatusFilterMinWidth);
     ui->estado->setFixedHeight(kFilterControlHeight);
 
@@ -240,52 +231,8 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
     if (event->type() == QEvent::Resize) {
         if (watched == ui->navBar)
             layoutNavDivider();
-        else if (auto *dateEdit = qobject_cast<QDateEdit *>(watched))
-            layoutCalendarIcon(dateEdit);
     }
     return QMainWindow::eventFilter(watched, event);
-}
-
-void MainWindow::attachCalendarIcon(QDateEdit *dateEdit)
-{
-    dateEdit->setMinimumWidth(kDateFieldMinWidth);
-    dateEdit->setFixedHeight(kFilterControlHeight);
-
-    // El texto de la fecha lo dibuja un QLineEdit interno que el estilo
-    // posiciona por su cuenta, así que el `padding` que el QSS le da al
-    // QDateEdit no lo mueve: la fecha se montaba encima del icono y de la
-    // flecha. Estos márgenes de texto sí lo empujan, y reservan exactamente el
-    // hueco que ocupan los dos indicadores de la derecha.
-    if (auto *lineEdit = dateEdit->findChild<QLineEdit *>())
-        lineEdit->setTextMargins(0, 0, kCalendarIconMargin + kCalendarIconSize, 0);
-
-    auto *icon = new QLabel(dateEdit);
-    icon->setObjectName(QStringLiteral("dateFilterIcon"));
-    icon->setPixmap(QPixmap(QStringLiteral(":/icons/calendar.png")));
-    // Transparente al ratón para que el clic llegue al campo: el área de la
-    // derecha es la que abre el calendario, y un icono opaco encima la
-    // bloquearía justo donde el usuario va a apuntar.
-    icon->setAttribute(Qt::WA_TransparentForMouseEvents);
-    icon->setFixedSize(kCalendarIconSize, kCalendarIconSize);
-
-    m_calendarIcons.insert(dateEdit, icon);
-    dateEdit->installEventFilter(this);
-    layoutCalendarIcon(dateEdit);
-}
-
-void MainWindow::layoutCalendarIcon(QDateEdit *dateEdit)
-{
-    QLabel *icon = m_calendarIcons.value(dateEdit);
-    if (!icon)
-        return;
-
-    // Pegado al borde derecho y centrado a lo alto. El margen coincide con el
-    // padding derecho que el QSS le da al campo, así que el texto de la fecha
-    // nunca llega a montarse encima.
-    const int x = dateEdit->width() - kCalendarIconMargin - kCalendarIconSize;
-    const int y = (dateEdit->height() - kCalendarIconSize) / 2;
-    icon->move(qMax(0, x), qMax(0, y));
-    icon->raise();
 }
 
 void MainWindow::layoutNavDivider()

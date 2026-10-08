@@ -10,12 +10,11 @@ QList<ConditionCatalogItem> ConditionCatalog::load(QSqlDatabase &db, QString *er
     QList<ConditionCatalogItem> items;
 
     QSqlQuery query(db);
-    // El sort_order que siembra ConditionCatalogSeeder es global y creciente
-    // a lo largo de todo el catálogo, así que este ORDER BY ya entrega los
-    // ítems agrupados por categoría y con los grupos en su orden. El `id`
-    // final desempata: sin él, dos renglones con el mismo sort_order (por
-    // ejemplo insertados a mano con el DEFAULT 0) saldrían en orden
-    // indefinido y la lista "bailaría" entre arranques.
+    // init-db/13_vehicle_conditions_cat.sql inserta el catálogo agrupado por
+    // categoría y en el orden de despliegue, y el id SERIAL conserva ese
+    // orden, así que este ORDER BY ya entrega los ítems agrupados y con los
+    // grupos en su orden. Ojo: un ítem que se agregue después a mano queda al
+    // final, fuera de su grupo, y el Paso 2 le abriría un grupo repetido.
     if (!query.exec(QStringLiteral(
             "SELECT id, category, element "
             "FROM vehicle_conditions_cat ORDER BY id"))) {

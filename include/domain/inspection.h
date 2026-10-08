@@ -11,7 +11,7 @@ namespace domain {
 // El checklist de condición de UN vehículo: SOLO los elementos que la unidad
 // trae, uno por renglón de vehicle_inspection. Lo que la unidad no trae se
 // nota por ausencia, igual que en la tabla. Para obtener la lista de lo que
-// falta hay que cruzar contra el catálogo (VehicleInspectionQuery), porque
+// falta hay que cruzar contra el catálogo (vehicle_conditions_cat), porque
 // esta clase por sí sola no sabe qué elementos existen.
 //
 // Es una clase y no un QList<InspectionItem> suelto porque tiene una

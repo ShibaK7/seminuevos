@@ -6,10 +6,11 @@
 class QSqlDatabase;
 
 // Inserta usuarios de prueba para poder ejercitar el login en desarrollo.
-// A diferencia de SchemaInitializer (que SIEMPRE debe correr, porque
-// garantiza que la estructura exista), esto es una comodidad de desarrollo
-// y se controla aparte con SEED_TEST_USERS en el .env -- en un ambiente
-// real no se querría crear usuarios de prueba solos en cada arranque.
+// A diferencia del esquema y los catálogos (que crean los scripts de init-db/
+// cuando el contenedor arranca con el volumen vacío, porque sin ellos la app
+// no funciona), esto es una comodidad de desarrollo y se controla aparte con
+// SEED_TEST_USERS en el .env -- en un ambiente real no se querría crear
+// usuarios de prueba solos en cada arranque.
 namespace DevSeeder
 {
 struct Result

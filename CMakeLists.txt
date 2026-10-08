@@ -21,18 +21,12 @@ set(PROJECT_SOURCES
         ui/loginwindow.ui
         include/db/connectionpool.h
         src/db/connectionpool.cpp
-        include/db/schemainitializer.h
-        src/db/schemainitializer.cpp
         include/db/devseeder.h
         src/db/devseeder.cpp
-        include/db/catalogseeder.h
-        src/db/catalogseeder.cpp
         include/db/conditioncatalog.h
         src/db/conditioncatalog.cpp
         include/db/vehicleinventoryquery.h
         src/db/vehicleinventoryquery.cpp
-        include/db/vehicleinspectionquery.h
-        src/db/vehicleinspectionquery.cpp
         include/app/appconfig.h
         src/app/appconfig.cpp
         include/components/statefultextbutton.h
@@ -43,8 +37,6 @@ set(PROJECT_SOURCES
         src/components/navtabitem.cpp
         include/components/outlinebutton.h
         src/components/outlinebutton.cpp
-        include/db/conditioncatalogseeder.h
-        src/db/conditioncatalogseeder.cpp
         include/auth/passwordhasher.h
         src/auth/passwordhasher.cpp
         include/auth/loginworker.h

@@ -2,10 +2,7 @@
 #include "include/loginwindow.h"
 #include "include/mainwindow.h"
 #include "include/db/connectionpool.h"
-#include "include/db/catalogseeder.h"
-#include "include/db/conditioncatalogseeder.h"
 #include "include/db/devseeder.h"
-#include "include/db/schemainitializer.h"
 #include "include/auth/loginworker.h"
 
 #include <QApplication>
@@ -144,11 +141,12 @@ int main(int argc, char *argv[])
             || freeNavigation == QStringLiteral("1"));
     }
 
-    // Antes de mostrar el login dejamos el esquema al día. El script solo se
-    // ejecuta cuando la versión instalada no coincide con
-    // SchemaInitializer::kSchemaVersion; en un arranque normal esto no toca
-    // nada. Si la base no está disponible, avisamos con claridad en vez de
-    // abrir una app rota.
+    // Antes de mostrar el login se comprueba que la base responda: si no está
+    // disponible, avisamos con claridad en vez de abrir una app rota. La app no
+    // crea el esquema ni llena los catálogos; eso lo hacen los scripts de
+    // init-db/, que Docker corre solo cuando levanta el contenedor con el
+    // volumen vacío. Para regenerar la base desde cero (borra todos sus
+    // datos): docker compose down -v && docker compose up -d.
     {
         ConnectionPool::Handle handle = ConnectionPool::instance().acquire();
         QSqlDatabase &db = handle.database();
@@ -161,36 +159,6 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        /* TODO: Gradually remove schema initializer and seeders logic.
-        Let's let the infrastructure handle database creation and catalog filling. */
-
-
-        // Aplicar el esquema BORRA la base. Por defecto se permite (estamos
-        // en fase de definición y regenerar es más barato que migrar), pero
-        // el .env puede desactivarlo para que un ambiente con datos reales
-        // no se vacíe solo al instalar una build nueva.
-        /*const bool allowSchemaReset =
-            env.value(QStringLiteral("SCHEMA_AUTO_RESET"), QStringLiteral("true"))
-                .compare(QStringLiteral("false"), Qt::CaseInsensitive) != 0;
-
-        const SchemaInitializer::Result schemaResult = SchemaInitializer::run(db, allowSchemaReset);
-        if (!schemaResult.ok) {
-            QMessageBox::critical(nullptr, QStringLiteral("Error al inicializar la base de datos"),
-                schemaResult.errorMessage);
-            return 1;
-        }*/
-
-        // Catálogo REAL del checklist de condición (US-03.2). Va fuera de la
-        // bandera SEED_TEST_USERS a propósito: el Paso 2 del wizard construye
-        // sus renglones leyendo vehicle_conditions_cat, así que sin esto la
-        // pantalla saldría vacía en cualquier ambiente. Es idempotente.
-        /*const ConditionCatalogSeeder::Result conditionCatalogResult = ConditionCatalogSeeder::run(db);
-        if (!conditionCatalogResult.ok) {
-            QMessageBox::critical(nullptr, QStringLiteral("Error al sembrar el catálogo de condiciones"),
-                conditionCatalogResult.errorMessage);
-            return 1;
-        }*/
-
         // A diferencia del esquema, los usuarios de prueba son solo una
         // comodidad de desarrollo -- se insertan nada más si el .env lo pide
         // explícitamente, para no crear cuentas de prueba en cualquier
@@ -202,35 +170,7 @@ int main(int argc, char *argv[])
                     seedResult.errorMessage);
                 return 1;
             }
-
-            // Catálogos dummy (tipos/subtipos de vehículo, marcas, combustibles)
-            // para que los combos del wizard de registro no queden vacíos --
-            // ver comentario en catalogseeder.h.
-            /*const CatalogSeeder::Result catalogResult = CatalogSeeder::run(db);
-            if (!catalogResult.ok) {
-                QMessageBox::critical(nullptr, QStringLiteral("Error al crear catálogos de prueba"),
-                    catalogResult.errorMessage);
-                return 1;
-            }*/
         }
-
-        // El aviso del reset va AL FINAL, no justo después de aplicarlo: es un
-        // diálogo modal, y entre el reset y este punto se siembran el catálogo
-        // de condiciones y los datos de desarrollo. Avisar antes dejaba la
-        // aplicación esperando un clic con la base a medio poblar, y cerrarla
-        // ahí la dejaba sin catálogo -- con el Paso 2 del wizard en blanco.
-        /*if (schemaResult.applied && schemaResult.hadExistingSchema) {
-            QMessageBox::information(nullptr, QStringLiteral("Base de datos regenerada"),
-                QStringLiteral("La base se recreó desde cero y se perdieron los datos que "
-                                "tenía (esquema %1 -> %2).\n\n"
-                                "Es el comportamiento esperado mientras el esquema sigue en "
-                                "definición. Para desactivarlo, pon SCHEMA_AUTO_RESET=false "
-                                "en el archivo .env.")
-                    .arg(schemaResult.previousVersion < 0
-                             ? QStringLiteral("sin versionar")
-                             : QString::number(schemaResult.previousVersion))
-                    .arg(SchemaInitializer::kSchemaVersion));
-        }*/
     }
 
     LoginWindow login;

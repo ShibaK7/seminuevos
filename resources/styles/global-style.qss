@@ -657,9 +657,10 @@ QDateEdit[class="dateFilter"] {
     background-color: #FFFFFF;
     border: 1px solid #E1E4EA;
     border-radius: 8px;
-    /* El padding derecho tiene que dar cabida a DOS cosas apiladas contra el
-       borde: la flecha del desplegable y, a su izquierda, el icono de
-       calendario. Sin él, la fecha se metía debajo de los dos. */
+    /* El padding derecho reserva el hueco pegado al borde donde va la flecha
+       del desplegable; sin él, la fecha se metía debajo. Es así de ancho
+       porque también dejaba sitio a un icono de calendario a la izquierda de
+       la flecha, que ya se quitó. */
     padding: 6px 56px 6px 14px;
     min-width: 170px;
     font-size: 11pt;
@@ -684,9 +685,7 @@ QDateEdit[class="dateFilter"]::drop-down {
 }
 
 /* Aquí va SOLO la flecha del desplegable, que es la que indica que el control
-   se abre. El icono de calendario es aparte: lo pone
-   MainWindow::attachCalendarIcon() como QLabel encima del campo, a la
-   izquierda de esta flecha.
+   se abre.
 
    El calendario no se pinta como `image` de este subcontrol porque así no
    llegaba a dibujarse en la aplicación, aunque la misma regla sí pinta en un
@@ -697,13 +696,6 @@ QDateEdit[class="dateFilter"]::down-arrow {
     width: 12px;
     height: 12px;
     image: url(:/icons/chevron_down.png);
-}
-
-/* La caja del icono no pinta fondo propio: la regla base de QWidget (sección
-   1) le pondría blanco y taparía el borde redondeado del campo. */
-QLabel#dateFilterIcon {
-    background: transparent;
-    border: none;
 }
 
 

@@ -1,7 +1,6 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QHash>
 #include <QMainWindow>
 #include <QPointer>
 
@@ -16,9 +15,7 @@ class SidebarMenuItem;
 class NavTabItem;
 class OutlineButton;
 class VehicleWizardView;
-class QDateEdit;
 class QFrame;
-class QLabel;
 
 // Ventana principal: barra lateral de módulos y, dentro del área de contenido,
 // una pila que alterna entre la rejilla de inventario y el asistente de
@@ -43,16 +40,10 @@ private:
     // constructor y el Designer no sabe instanciarlo.
     void buildNavTabs();
 
-    // Recoloca el divisor y los iconos de calendario. Van por filtro de
-    // eventos porque ninguno está en un layout: se superponen a su widget.
+    // Recoloca el divisor de las pestañas. Va por filtro de eventos porque no
+    // está en un layout: se superpone a la fila de pestañas.
     bool eventFilter(QObject *watched, QEvent *event) override;
     void layoutNavDivider();
-
-    // Cuelga el icono de calendario dentro del campo de fecha. Va como QLabel
-    // y no como `image` del subcontrol ::down-arrow porque por QSS no llegaba
-    // a dibujarse -- ver el comentario de esa regla en global-style.qss.
-    void attachCalendarIcon(QDateEdit *dateEdit);
-    void layoutCalendarIcon(QDateEdit *dateEdit);
 
     // --- Inventario ---
     void populateStatusFilter();
@@ -94,9 +85,5 @@ private:
     // destruyera por otro camino que closeVehicleWizard() (al destruirse el
     // stack, por ejemplo), el puntero queda en nulo en vez de colgando.
     QPointer<VehicleWizardView> m_wizard;
-
-    // Icono por campo de fecha, indexado por el campo al que se superpone: el
-    // filtro de eventos recibe el QDateEdit y necesita llegar a su icono.
-    QHash<QDateEdit *, QLabel *> m_calendarIcons;
 };
 #endif // MAINWINDOW_H

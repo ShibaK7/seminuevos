@@ -1,0 +1,30 @@
+# Finales de línea. El repositorio guarda todo el texto en LF y cada copia de
+# trabajo recibe los de su sistema (CRLF en Windows, LF en Linux y macOS).
+# Sin este archivo eso dependía de la configuración de git de cada quien, y un
+# commit desde una máquina sin autocrlf podía meter CRLF al repositorio.
+* text=auto
+
+# Código, interfaz y configuración del build: texto siempre, sin depender de
+# que git lo adivine por el contenido.
+*.cpp text
+*.h text
+*.ui text
+*.qss text
+*.qrc text
+*.md text
+*.txt text
+*.cmake text
+CMakeLists.txt text
+
+# Los scripts de init-db/ los corre psql dentro del contenedor de PostgreSQL
+# (Linux), y Docker le monta la carpeta tal como está en la copia de trabajo:
+# van siempre en LF, también en Windows.
+*.sql text eol=lf
+
+# Binarios: git no les convierte finales de línea ni intenta mostrarlos como
+# diff de texto.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary

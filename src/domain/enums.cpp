@@ -19,7 +19,7 @@ std::optional<Enum> fromDbString(const QList<Enum> &values, const QString &raw)
 } // namespace
 
 // ---------------------------------------------------------------------------
-// toDbString: literales EXACTOS de los CHECK de db/001_init_schema.sql.
+// toDbString: literales EXACTOS de los CHECK de init-db/00_schema.sql.
 // ---------------------------------------------------------------------------
 
 QString toDbString(AcquisitionType value)

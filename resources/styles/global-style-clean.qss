@@ -710,12 +710,6 @@ QFrame#navDivider {
     color: #374151;
 }
 
-/* Date picker icon */
-QLabel#dateFilterIcon {
-    background: transparent;
-    border: none;
-}
-
 /* Vehicle list */
 QListWidget#vehicleList {
     background-color: transparent;

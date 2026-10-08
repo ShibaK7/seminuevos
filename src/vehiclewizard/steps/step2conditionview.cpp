@@ -283,8 +283,8 @@ void Step2ConditionView::applyTo(domain::VehicleBuilder &builder) const
 
     // Solo se vuelcan las filas marcadas. Las desmarcadas no generan renglón:
     // en vehicle_inspection la ausencia ya significa "la unidad no lo trae", y
-    // el checklist completo se reconstruye después con el LEFT JOIN contra el
-    // catálogo (VehicleInspectionQuery).
+    // el checklist completo se puede reconstruir con un LEFT JOIN contra el
+    // catálogo (vehicle_conditions_cat).
     domain::Inspection inspection;
     for (ConditionChecklistRow *row : m_checklistRows) {
         if (const std::optional<domain::InspectionItem> item = row->value())
