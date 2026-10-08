@@ -13,7 +13,7 @@ This document outlines the official User Interface Design System for the **DE LA
 | `vehicle-card.qss` | `:/styles/vehicle-card.qss` | Each inventory card (`VehicleItemList`), on the card itself so its rules win over the generic global ones. |
 
 * **No `styleSheet` inside `.ui` files** and no `setStyleSheet()` for states: states are dynamic properties (`hasError`, `stepState`, `status`) matched by rules in these files. The `architecture` test rejects embedded style sheets.
-* Style classes go in the `class` dynamic property (for example `primary`, `secondary`, `card`); see `docs/DESIGNER.md`.
+* Style classes go in the `class` dynamic property (for example `primary`, `secondary`, `card`).
 
 ---
 

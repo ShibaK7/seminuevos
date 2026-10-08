@@ -37,6 +37,5 @@ ctest --test-dir <carpeta de build> --output-on-failure
 
 ## Documentación
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): la arquitectura hexagonal, qué va en cada carpeta, las reglas de dependencia, los hilos y las recetas para agregar campos y pantallas.
-- [`docs/DESIGNER.md`](docs/DESIGNER.md): cómo editar las pantallas en Qt Designer y promover los componentes propios.
+- [`docs/ESTRUCTURA.md`](docs/ESTRUCTURA.md): qué contiene cada carpeta.
 - [`resources/styles/README.md`](resources/styles/README.md): el sistema de diseño (colores, tipografía, componentes).

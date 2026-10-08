@@ -1,7 +1,5 @@
 # Estructura del proyecto
 
-Qué contiene cada carpeta. `include/` (headers) y `src/` (fuentes) tienen el mismo árbol, así que se muestran juntos: cada clase tiene su `.h` en `include/<ruta>` y su `.cpp` en `src/<ruta>`. Por qué está organizado así: [`ARCHITECTURE.md`](ARCHITECTURE.md). Cómo se editan las pantallas: [`DESIGNER.md`](DESIGNER.md).
-
 ```
 seminuevos/
 │
@@ -18,8 +16,6 @@ seminuevos/
 │   └── architecture-allowlist.txt   Excepciones conocidas a la prueba (hoy vacío; solo puede encogerse)
 │
 ├── docs/                            Guías del equipo
-│   ├── ARCHITECTURE.md              Capas, dependencias, DTOs, hilos, MVP, recetas, "De 3-Tier a hexagonal"
-│   ├── DESIGNER.md                  Cómo editar las pantallas en Qt Designer y promover componentes
 │   └── ESTRUCTURA.md                Este archivo
 │
 ├── init-db/                         Scripts que Docker corre al crear la base (en orden por su número)
@@ -127,7 +123,7 @@ seminuevos/
 │   ├── vehicleconditionsview.ui     Paso 2: especificaciones y checklist
 │   └── vehiclefilesview.ui          Paso 3: galería y documentos
 │
-├── src/README.md                    Guía anterior de backend (3-Tier); la reemplaza docs/ARCHITECTURE.md
+├── src/README.md                    Guía anterior de backend (3-Tier); ya no refleja la arquitectura actual
 │
 └── tests/                           Pruebas QtTest; cada una enlaza solo la capa que prueba
     ├── CMakeLists.txt               Registro de pruebas en ctest

@@ -1,6 +1,6 @@
 # Backend Execution & Database Access Guidelines
 
-> **Note:** the project now follows a hexagonal (ports and adapters) architecture, described in [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md). Where the two disagree (SQL inside UI code, `static` repositories, transactions inside services), that document wins; its section "De 3-Tier a hexagonal" maps each rule below to its replacement. What still applies is kept there: orchestrating services, DTOs, and repositories without business logic. This guide is kept for reference until it is rewritten together with Laura.
+> **Note:** the project now follows a hexagonal (ports and adapters) architecture; [`docs/ESTRUCTURA.md`](../docs/ESTRUCTURA.md) shows what lives in each folder. Where this guide disagrees with the code (SQL inside UI code, `static` repositories, transactions inside services), the code wins. What still applies: orchestrating services, DTOs, and repositories without business logic. This guide is kept for reference until it is rewritten together with Laura.
 
 To achieve maximum development velocity while maintaining a clean code base, our team follows a Pragmatic 3-Tier Execution Rule Set.
 

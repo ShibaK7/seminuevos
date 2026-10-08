@@ -26,7 +26,7 @@ class VehicleWizardView;
 // del inventario (InventoryView, con su propio .ui) y el asistente de registro.
 //
 // El menú lateral y el logo vienen de mainwindow.ui como widgets promovidos
-// (ver docs/DESIGNER.md). Esta clase solo los conecta y decide qué página se
+// ("Promover a…"). Esta clase solo los conecta y decide qué página se
 // ve; lo que pasa dentro de cada página es de esa página y de su presenter.
 class MainWindow : public QMainWindow
 {

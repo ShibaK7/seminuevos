@@ -27,7 +27,7 @@ class VehicleFilesView;
 //
 // El marco (título, pila de páginas, aviso y botones) está en
 // src/ui/vehiclewizardview.ui, con las tres páginas como widgets promovidos.
-// El stepper también está en el .ui, promovido (ver docs/DESIGNER.md).
+// El stepper también está en el .ui, promovido.
 //
 // Es una vista pasiva: no valida, no navega por su cuenta ni habla con el
 // servicio. Todo eso lo decide VehicleWizardPresenter; esta clase solo pinta

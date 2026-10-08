@@ -22,8 +22,8 @@ class AspectRatioImageLabel : public QLabel
     // alimenta el pixmap ORIGINAL del que se reescala, y la imagen quedaba en
     // blanco al primer cambio de tamaño.
     //
-    // Solo acepta recursos ":/": las vistas no tocan el disco (ver
-    // docs/ARCHITECTURE.md). Una ruta de archivo se ignora con un aviso en
+    // Solo acepta recursos ":/": las vistas no tocan el disco (la prueba
+    // `architecture` lo revisa). Una ruta de archivo se ignora con un aviso en
     // consola y la etiqueta queda vacía; una imagen del disco la carga quien
     // sí puede leerlo y llega por setSourcePixmap().
     Q_PROPERTY(QString sourcePath READ sourcePath WRITE setSourcePath)

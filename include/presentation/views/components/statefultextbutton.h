@@ -41,7 +41,7 @@ class QVBoxLayout;
 // El constructor es protected: la clase no corresponde por sí sola a ningún
 // control de la interfaz, solo al comportamiento que sus herederas comparten.
 // Por lo mismo, en Qt Designer no se promueve a esta clase sino a sus
-// herederas (ver docs/DESIGNER.md).
+// herederas.
 class StatefulTextButton : public QPushButton
 {
     Q_OBJECT
