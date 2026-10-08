@@ -38,11 +38,6 @@
    <property name="spacing">
     <number>2</number>
    </property>
-   <!-- 24 px a cada lado para alinear el borde de la tarjeta con las pestañas
-        y con la barra de filtros: la columna del inventario ya no aporta esa
-        sangría (la cedió para que el divisor llegue de orilla a orilla), así
-        que cada zona la pone por su cuenta. Arriba y abajo se quedan en el
-        valor por omisión, que es lo que separa una tarjeta de la siguiente. -->
    <property name="leftMargin">
     <number>24</number>
    </property>
@@ -84,10 +79,6 @@
         <property name="frameShadow">
          <enum>QFrame::Shadow::Raised</enum>
         </property>
-        <!-- La foto va en un layout y no con geometry fija: antes eran 241x161
-             clavados, que ya no caben en una tarjeta de 150 px de alto y se
-             desbordaban por abajo. Con el layout, la caja se ajusta a lo que
-             mida la tarjeta. -->
         <layout class="QVBoxLayout" name="leftFrameLayout">
          <property name="leftMargin">
           <number>4</number>
@@ -181,10 +172,6 @@
             </item>
             <item>
              <widget class="QLabel" name="statusBadge">
-              <!-- Sin styleSheet inline: tenia el verde fijo, y al aplicarse
-                   directamente sobre el widget le ganaba a las reglas
-                   [status="..."] de arriba. Con el inline puesto, una unidad
-                   vendida se seguia viendo verde. -->
               <property name="text">
                <string>Estatus</string>
               </property>
@@ -366,7 +353,6 @@
               <property name="font">
                <font>
                 <family>Segoe UI</family>
-                <pointsize>-1</pointsize>
                 <bold>false</bold>
                </font>
               </property>

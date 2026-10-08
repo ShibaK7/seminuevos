@@ -49,6 +49,18 @@ VehicleItemList::VehicleItemList(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::VehicleItemList)
 {
+    // Notas del formulario (vehicleitemlist.ui). Van aquí porque Designer borra
+    // los comentarios XML al guardar:
+    //   - La tarjeta deja 24 px a cada lado para alinear su borde con las
+    //     pestañas y con la barra de filtros: la columna del inventario ya no
+    //     aporta esa sangría (la cedió para que el divisor llegue de orilla a
+    //     orilla). Arriba y abajo quedan en el valor por omisión, que es lo que
+    //     separa una tarjeta de la siguiente.
+    //   - La foto va en un layout y no con geometry fija: antes eran 241x161
+    //     clavados, que no caben en una tarjeta de 150 px de alto.
+    //   - La insignia de estado no lleva estilo propio: uno aplicado sobre el
+    //     widget le ganaba a las reglas [status="..."] de vehicle-card.qss, y
+    //     una unidad vendida se seguía viendo verde.
     ui->setupUi(this);
     // Su hoja propia (resources/styles/vehicle-card.qss), sobre la tarjeta
     // misma para que sus reglas ganen sobre las genéricas de la global.

@@ -456,15 +456,12 @@
                    <property name="buttonSymbols">
                     <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
                    </property>
-                   <property name="minimumDateTime">
-                    <datetime>
-                     <hour>18</hour>
-                     <minute>0</minute>
-                     <second>0</second>
+                   <property name="minimumDate">
+                    <date>
                      <year>2015</year>
                      <month>1</month>
-                     <day>11</day>
-                    </datetime>
+                     <day>1</day>
+                    </date>
                    </property>
                    <property name="calendarPopup">
                     <bool>true</bool>
@@ -483,15 +480,12 @@
                  </item>
                  <item>
                   <widget class="QDateEdit" name="fechaFin">
-                   <property name="minimumDateTime">
-                    <datetime>
-                     <hour>18</hour>
-                     <minute>0</minute>
-                     <second>0</second>
+                   <property name="minimumDate">
+                    <date>
                      <year>2015</year>
                      <month>1</month>
-                     <day>11</day>
-                    </datetime>
+                     <day>1</day>
+                    </date>
                    </property>
                    <property name="calendarPopup">
                     <bool>true</bool>
@@ -558,7 +552,7 @@
      <x>0</x>
      <y>0</y>
      <width>1060</width>
-     <height>30</height>
+     <height>17</height>
     </rect>
    </property>
   </widget>
