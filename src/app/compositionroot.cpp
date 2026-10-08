@@ -97,6 +97,10 @@ CompositionRoot::~CompositionRoot() = default;
 bool CompositionRoot::start()
 {
     ConnectionPool &pool = m_pool;
+    // Todavía no hay ventana: comprobar la base aquí no congela nada. En
+    // cuanto termina el arranque, el SQL en el hilo de la interfaz vuelve a
+    // estar prohibido (ConnectionPool::acquire lo revisa en Debug).
+    pool.setGuiThreadAllowed(true);
 
     // Antes de mostrar el login se comprueba que la base responda, para avisar
     // con claridad en vez de abrir una app rota. El esquema y los catálogos los
@@ -123,6 +127,7 @@ bool CompositionRoot::start()
             }
         }
     }
+    pool.setGuiThreadAllowed(false);
 
     m_users = std::make_unique<SqlUserDirectory>(pool);
     m_auth = std::make_unique<application::AuthenticationService>(*m_users, m_hasher);

@@ -112,6 +112,8 @@ private slots:
         config.userName = env.value(QStringLiteral("POSTGRES_USER"), QStringLiteral("seminuevos_app"));
         config.password = env.value(QStringLiteral("POSTGRES_PASSWORD"));
         m_pool = std::make_unique<ConnectionPool>(config);
+        // Las pruebas corren en el hilo principal.
+        m_pool->setGuiThreadAllowed(true);
 
         {
             ConnectionPool::Handle handle = m_pool->acquire();

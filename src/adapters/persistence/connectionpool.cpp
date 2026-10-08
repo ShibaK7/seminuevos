@@ -1,5 +1,6 @@
 #include "adapters/persistence/connectionpool.h"
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QSqlError>
 #include <QThread>
@@ -50,7 +51,19 @@ QSqlDatabase &ConnectionPool::threadConnection()
 
 ConnectionPool::Handle ConnectionPool::acquire()
 {
+    // Solo en Debug: así un descuido aparece en cuanto se prueba la pantalla,
+    // con el lugar exacto en la pila, en vez de como una congelada ocasional.
+    const QCoreApplication *app = QCoreApplication::instance();
+    Q_ASSERT_X(m_guiThreadAllowed || !app || QThread::currentThread() != app->thread(),
+               "ConnectionPool::acquire",
+               "SQL en el hilo de la interfaz: corre la consulta con el TaskRunner");
+    Q_UNUSED(app);
     return Handle(*this);
+}
+
+void ConnectionPool::setGuiThreadAllowed(bool allowed)
+{
+    m_guiThreadAllowed = allowed;
 }
 
 void ConnectionPool::discardThreadConnection()

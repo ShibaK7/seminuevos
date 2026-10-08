@@ -55,7 +55,14 @@ public:
         ConnectionPool &m_pool;
     };
 
+    // En Debug truena si se llama desde el hilo de la interfaz sin permiso:
+    // una consulta ahí congela la pantalla. El SQL va en el TaskRunner.
     Handle acquire();
+
+    // Permite usar el pool desde el hilo de la interfaz. Solo lo hacen el
+    // arranque (comprobar la base y crear usuarios de prueba, antes de que
+    // haya ventana) y las pruebas de integración.
+    void setGuiThreadAllowed(bool allowed);
 
     // Cierra y olvida la conexión del hilo actual, para que el siguiente
     // acquire() abra una nueva. Lo llaman los adaptadores cuando una operación
@@ -76,6 +83,7 @@ private:
     };
 
     DatabaseConfig m_config;
+    bool m_guiThreadAllowed = false;
     QSemaphore m_semaphore;
     QThreadStorage<ThreadConnection *> m_connections;
 };
