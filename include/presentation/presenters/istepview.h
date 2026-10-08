@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_PRESENTERS_ISTEPVIEW_H
 #define PRESENTATION_PRESENTERS_ISTEPVIEW_H
 
-#include "domain/value_objects/validationresult.h"
+#include "domain/common/value_objects/validationresult.h"
 
 #include <QList>
 #include <QString>

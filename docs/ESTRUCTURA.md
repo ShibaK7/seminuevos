@@ -35,55 +35,59 @@ seminuevos/
 │   ├── templates/                   Plantilla HTML del contrato (se imprime a PDF)
 │   └── request_issuance_cfdi.html   Formulario de solicitud de CFDI (autofactura)
 │
-├── include/ + src/                  CÓDIGO, por capas (hexagonal)
+├── include/ + src/                  CÓDIGO, por capas (hexagonal). Dentro de cada capa, una carpeta por
+│   │                                módulo (inventory, auth…) y common/ para lo que usan varios
 │   │
 │   ├── domain/                      NÚCLEO: reglas del negocio. Solo QtCore; no conoce a nadie
-│   │   ├── model/                   Entidades con sus invariantes
-│   │   │   ├── vehicle               Vehicle (abstracta): datos comunes, validate() como Template Method, contrato
-│   │   │   ├── acquiredvehicle       Rama compra: precios, tipo y método de pago, tope de efectivo
-│   │   │   ├── consignedvehicle      Rama consignación: precio base y comisión
-│   │   │   ├── counterparty          Vendedor o propietario (contraparte)
-│   │   │   ├── vehicleconditions     Especificaciones del Paso 2 (combustible, transmisión, A.C.…)
-│   │   │   ├── inspection(item)      Checklist de condición
-│   │   │   ├── vehiclebuilder        Único que decide qué subclase crear; valida por paso
-│   │   │   └── vehiclevisitor        Visitor para tratar cada rama sin preguntar su tipo
-│   │   ├── value_objects/           Valores sin identidad: enums, CatalogRef, ValidationResult, ContractData,
-│   │   │                            FileFacts, VehicleImage, VehicleDocument
-│   │   └── rules/                   Reglas que no son de una sola entidad
-│   │       ├── cashpaymentlimit      Tope LFPIORPI: 3,210 UMA en pagos en efectivo
-│   │       └── uploadformatpolicy    Formatos admitidos de fotos y documentos
+│   │   ├── common/                  Lo que usan varios módulos
+│   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts
+│   │   │   └── rules/
+│   │   │       └── cashpaymentlimit  Tope LFPIORPI: 3,210 UMA en pagos en efectivo
+│   │   └── inventory/               Módulo Inventario
+│   │       ├── model/               Entidades con sus invariantes
+│   │       │   ├── vehicle           Vehicle (abstracta): datos comunes, validate() como Template Method, contrato
+│   │       │   ├── counterparty      Vendedor o propietario (contraparte)
+│   │       │   ├── vehicleconditions Especificaciones del Paso 2 (combustible, transmisión, A.C.…)
+│   │       │   ├── inspection(item)  Checklist de condición
+│   │       │   ├── vehiclebuilder    Único que decide qué subclase crear; valida por paso
+│   │       │   ├── vehiclevisitor    Visitor para tratar cada rama sin preguntar su tipo
+│   │       │   ├── acquisition/
+│   │       │   │   └── acquiredvehicle   Rama compra: precios, tipo y método de pago, tope de efectivo
+│   │       │   └── consignment/
+│   │       │       └── consignedvehicle  Rama consignación: precio base y comisión
+│   │       ├── value_objects/       VehicleImage, VehicleDocument, ContractData
+│   │       └── rules/
+│   │           └── uploadformatpolicy  Formatos admitidos de fotos y documentos
 │   │
-│   ├── application/                 NÚCLEO: casos de uso. Solo QtCore; no conoce adaptadores ni widgets
-│   │   ├── dto/                     Datos que cruzan la frontera, uno por caso de uso
-│   │   │   ├── authdtos              Sesión e inicio de sesión
-│   │   │   ├── registrationdtos      Lo que captura cada paso del asistente y el resultado del registro
-│   │   │   ├── catalogdtos           Opciones de catálogo, checklist y UMA
-│   │   │   ├── inventorydtos         Filtro y tarjeta del inventario
-│   │   │   └── uploaddtos            Formatos, revisión de archivos y archivos temporales
-│   │   ├── ports/                   Interfaces que el núcleo necesita de afuera (los "repositorios")
-│   │   │   ├── vehiclerepository     Guardar una unidad y revisar VIN duplicado
-│   │   │   ├── inventoryreader       Leer el inventario
-│   │   │   ├── referencedatareader   Catálogos y UMA
-│   │   │   ├── userdirectory         Buscar usuarios para el login
-│   │   │   ├── filestorage           Todo el acceso a disco (almacén, miniaturas, temporales)
-│   │   │   ├── contractgenerator     Generar el PDF del contrato
-│   │   │   └── passwordhasher        Hash de contraseñas
-│   │   └── services/                Casos de uso
-│   │       ├── authenticationservice     Iniciar sesión
-│   │       ├── vehicleregistrationservice Registrar un vehículo (valida, revisa VIN, copia archivos, guarda,
-│   │       │                             deshace lo copiado si algo falla) y apoyos del asistente
-│   │       ├── registrationmapping   (privado) DTOs del asistente → VehicleBuilder
-│   │       └── inventoryservice      Consultar el inventario con sus miniaturas
+│   ├── application/                 NÚCLEO: casos de uso. Solo QtCore; no conoce adaptadores ni widgets.
+│   │   │                            En cada módulo: dto/ (datos que cruzan la frontera, uno por caso de uso),
+│   │   │                            ports/ (interfaces que el núcleo necesita de afuera: los "repositorios")
+│   │   │                            y services/ (los casos de uso)
+│   │   ├── common/
+│   │   │   ├── dto/                 catalogoptiondto (opción de un catálogo), uploaddtos (archivos)
+│   │   │   └── ports/               filestorage: todo el acceso a disco (almacén, miniaturas, temporales)
+│   │   ├── auth/                    Inicio de sesión
+│   │   │   ├── dto/                 authdtos
+│   │   │   ├── ports/               userdirectory, passwordhasher
+│   │   │   └── services/            authenticationservice
+│   │   └── inventory/               Módulo Inventario
+│   │       ├── dto/                 inventorydtos: filtro y tarjeta de la rejilla
+│   │       ├── ports/               inventoryreader
+│   │       ├── services/            inventoryservice: consultar el inventario con sus miniaturas
+│   │       └── registration/        Registrar un vehículo (las dos ramas)
+│   │           ├── dto/             registrationdtos (lo que captura cada paso y el resultado),
+│   │           │                    catalogdtos (catálogos, checklist y UMA del asistente)
+│   │           ├── ports/           vehiclerepository, referencedatareader, contractgenerator
+│   │           └── services/        vehicleregistrationservice (valida, revisa VIN, copia archivos, guarda,
+│   │                                deshace lo copiado si algo falla) y registrationmapping (privado)
 │   │
-│   ├── adapters/                    Implementan los puertos con tecnología concreta (cada uno es su biblioteca)
+│   ├── adapters/                    Implementan los puertos. Primero la tecnología (cada una es su
+│   │   │                            biblioteca, con solo su módulo de Qt), luego el módulo
 │   │   ├── persistence/             PostgreSQL (Qt Sql)
 │   │   │   ├── connectionpool        Una conexión por hilo; en Debug prohíbe SQL en el hilo de la interfaz
-│   │   │   ├── sqlvehiclerepository  Guardado transaccional de la unidad
-│   │   │   ├── sqlcounterpartyrepository  Contrapartes (lo usa el repositorio de vehículos)
-│   │   │   ├── sqlinventoryreader    Proyección de lectura para la rejilla
-│   │   │   ├── sqlreferencedatareader Catálogos y UMA
-│   │   │   ├── sqluserdirectory      Usuarios
-│   │   │   └── devseeder             Usuarios de prueba (solo desarrollo)
+│   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
+│   │   │   └── inventory/           sqlvehiclerepository (guardado transaccional), sqlcounterpartyrepository,
+│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA)
 │   │   ├── storage/                 Disco local (localfilestorage): almacén por VIN, miniaturas, temporales
 │   │   ├── contract/                PDF del contrato: pdfcontractgenerator, datos de la agencia, número a letras
 │   │   └── security/                Hash PBKDF2 de contraseñas
@@ -140,3 +144,5 @@ seminuevos/
 **Fuera del repositorio** (las ignora git): `build/` (compilación), `storage/` (fotos y documentos guardados, por VIN) y `.env` (configuración local).
 
 **Regla de dependencias, en una línea:** `presentation → application → domain ← adapters`, y `app/` arma todo. Las vistas nunca tocan `adapters/`, SQL ni el disco.
+
+**Módulos:** cada menú de la app (Inventario, Comercial, Finanzas, Reportes) es un módulo con su carpeta dentro de cada capa. Comercial, Finanzas y Reportes nacen con su primera pantalla. Lo de `common/` no depende de ningún módulo; un módulo puede usar `common/` y el dominio de otro módulo (las ventas, por ejemplo, van a usar `Vehicle`).

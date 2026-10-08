@@ -1,7 +1,7 @@
 #ifndef ADAPTERS_SECURITY_PBKDF2PASSWORDHASHER_H
 #define ADAPTERS_SECURITY_PBKDF2PASSWORDHASHER_H
 
-#include "application/ports/passwordhasher.h"
+#include "application/auth/ports/passwordhasher.h"
 
 #include <QString>
 

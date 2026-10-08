@@ -7,11 +7,11 @@
 
 #include "adapters/contract/pdfcontractgenerator.h"
 #include "adapters/persistence/connectionpool.h"
-#include "adapters/persistence/sqlinventoryreader.h"
-#include "adapters/persistence/sqlreferencedatareader.h"
-#include "adapters/persistence/sqlvehiclerepository.h"
+#include "adapters/persistence/inventory/sqlinventoryreader.h"
+#include "adapters/persistence/inventory/sqlreferencedatareader.h"
+#include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
-#include "application/services/vehicleregistrationservice.h"
+#include "application/inventory/registration/services/vehicleregistrationservice.h"
 
 #include <QDateTime>
 #include <QFile>

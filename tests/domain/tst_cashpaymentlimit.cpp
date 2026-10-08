@@ -3,7 +3,7 @@
 // MÉTODO de pago (efectivo) y no sobre el tipo (contado), y sin UMA
 // configurada el efectivo se rechaza en vez de dejarse pasar.
 
-#include "domain/rules/cashpaymentlimit.h"
+#include "domain/common/rules/cashpaymentlimit.h"
 
 #include <QtTest>
 

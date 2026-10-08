@@ -1,8 +1,8 @@
 #ifndef PRESENTATION_PRESENTERS_IVEHICLEDETAILSVIEW_H
 #define PRESENTATION_PRESENTERS_IVEHICLEDETAILSVIEW_H
 
-#include "application/dto/catalogdtos.h"
-#include "application/dto/registrationdtos.h"
+#include "application/inventory/registration/dto/catalogdtos.h"
+#include "application/inventory/registration/dto/registrationdtos.h"
 #include "presentation/presenters/istepview.h"
 
 #include <QString>

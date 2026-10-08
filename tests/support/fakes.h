@@ -6,14 +6,14 @@
 // casos de uso y los presenters se prueban sin base de datos, sin disco y sin
 // ventanas.
 
-#include "application/ports/contractgenerator.h"
-#include "application/ports/filestorage.h"
-#include "application/ports/inventoryreader.h"
-#include "application/ports/passwordhasher.h"
-#include "application/ports/referencedatareader.h"
-#include "application/ports/userdirectory.h"
-#include "application/ports/vehiclerepository.h"
-#include "domain/model/vehicle.h"
+#include "application/inventory/registration/ports/contractgenerator.h"
+#include "application/common/ports/filestorage.h"
+#include "application/inventory/ports/inventoryreader.h"
+#include "application/auth/ports/passwordhasher.h"
+#include "application/inventory/registration/ports/referencedatareader.h"
+#include "application/auth/ports/userdirectory.h"
+#include "application/inventory/registration/ports/vehiclerepository.h"
+#include "domain/inventory/model/vehicle.h"
 #include "presentation/presenters/iinventoryview.h"
 #include "presentation/presenters/iloginview.h"
 #include "presentation/tasks/taskrunner.h"

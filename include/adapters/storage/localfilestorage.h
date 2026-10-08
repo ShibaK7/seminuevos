@@ -1,7 +1,7 @@
 #ifndef ADAPTERS_STORAGE_LOCALFILESTORAGE_H
 #define ADAPTERS_STORAGE_LOCALFILESTORAGE_H
 
-#include "application/ports/filestorage.h"
+#include "application/common/ports/filestorage.h"
 
 #include <QString>
 

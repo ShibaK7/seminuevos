@@ -5,7 +5,7 @@
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/security/pbkdf2passwordhasher.h"
 #include "app/appsettings.h"
-#include "application/dto/authdtos.h"
+#include "application/auth/dto/authdtos.h"
 #include "presentation/tasks/pooledtaskrunner.h"
 
 #include <QObject>

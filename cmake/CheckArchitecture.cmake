@@ -11,6 +11,8 @@
 #     Sql; y mientras una capa se compile dentro del ejecutable, que enlaza
 #     todo, ni siquiera <QSqlQuery> falla al compilar);
 #   - QObject / Q_OBJECT / Q_GADGET en domain y application;
+#   - que lo común de una capa (domain/common, application/common...) no
+#     dependa de un módulo (inventory, auth...);
 #   - acceso a disco desde las vistas;
 #   - slots autoconectados (on_<objeto>_<señal>) y conexiones o estilos
 #     escritos dentro de los .ui.
@@ -170,11 +172,11 @@ function(allowed_project_includes layer outvar)
     elseif(layer STREQUAL "application")
         set(rx "^(domain|application)/")
     elseif(layer MATCHES "^adapters/(.+)$")
-        set(rx "^(domain/|application/ports/|application/dto/|adapters/${CMAKE_MATCH_1}/)")
+        set(rx "^(domain/|application/(.+/)?(ports|dto)/|adapters/${CMAKE_MATCH_1}/)")
     elseif(layer STREQUAL "presentation")
-        set(rx "^(application/services/|application/dto/|domain/value_objects/|presentation/(presenters|navigation|tasks)/)")
+        set(rx "^(application/(.+/)?(services|dto)/|domain/(.+/)?value_objects/|presentation/(presenters|navigation|tasks)/)")
     elseif(layer STREQUAL "views")
-        set(rx "^(presentation/|application/dto/|domain/value_objects/)")
+        set(rx "^(presentation/|application/(.+/)?dto/|domain/(.+/)?value_objects/)")
     endif()
     set(${outvar} "${rx}" PARENT_SCOPE)
 endfunction()
@@ -249,6 +251,11 @@ foreach(path IN LISTS code_files)
             elseif(inc MATCHES "/")
                 if(NOT inc MATCHES "${allowed_rx}")
                     list(APPEND violations "${rel}: incluye \"${inc}\"")
+                elseif(rel MATCHES "^(include|src)/[^/]+/common/" AND inc MATCHES "^(domain|application|adapters|presentation)/[^/]+/"
+                       AND NOT inc MATCHES "^[^/]+/common/")
+                    # Lo común no depende de un módulo: si lo hiciera, el
+                    # módulo dejaría de poder usarlo sin un ciclo.
+                    list(APPEND violations "${rel}: lo común incluye un módulo \"${inc}\"")
                 endif()
             elseif(inc MATCHES "\\.moc$")
                 # Código que genera moc para el propio archivo.

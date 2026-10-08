@@ -1,7 +1,7 @@
 // Pruebas del caso de uso "iniciar sesión" con puertos falsos: sin base de
 // datos y sin las 210,000 iteraciones del hash real.
 
-#include "application/services/authenticationservice.h"
+#include "application/auth/services/authenticationservice.h"
 #include "fakes.h"
 
 #include <QtTest>

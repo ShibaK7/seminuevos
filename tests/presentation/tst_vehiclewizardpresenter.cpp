@@ -2,7 +2,7 @@
 // servicio real sobre puertos falsos: la navegación, la validación en vivo y
 // el registro se prueban sin ventanas, sin base y sin disco.
 
-#include "application/services/vehicleregistrationservice.h"
+#include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "fakes.h"
 #include "presentation/presenters/vehicledetailspresenter.h"
 #include "presentation/presenters/vehiclefilespresenter.h"

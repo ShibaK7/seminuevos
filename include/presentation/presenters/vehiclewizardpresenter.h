@@ -1,9 +1,9 @@
 #ifndef PRESENTATION_PRESENTERS_VEHICLEWIZARDPRESENTER_H
 #define PRESENTATION_PRESENTERS_VEHICLEWIZARDPRESENTER_H
 
-#include "application/dto/catalogdtos.h"
-#include "application/dto/registrationdtos.h"
-#include "domain/value_objects/contractdata.h"
+#include "application/inventory/registration/dto/catalogdtos.h"
+#include "application/inventory/registration/dto/registrationdtos.h"
+#include "domain/inventory/value_objects/contractdata.h"
 #include "presentation/navigation/wizardnavigator.h"
 
 #include <QObject>

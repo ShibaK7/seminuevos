@@ -3,7 +3,7 @@
 // el VIN, copiar, guardar) y la compensación cuando algo falla después de
 // copiar.
 
-#include "application/services/vehicleregistrationservice.h"
+#include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "fakes.h"
 #include "registrationfixtures.h"
 

@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_VIEWS_SHELL_MAINWINDOW_H
 #define PRESENTATION_VIEWS_SHELL_MAINWINDOW_H
 
-#include "application/dto/authdtos.h"
+#include "application/auth/dto/authdtos.h"
 
 #include <QMainWindow>
 #include <QPointer>

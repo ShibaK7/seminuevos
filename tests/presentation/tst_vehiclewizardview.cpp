@@ -3,7 +3,7 @@
 // no ven: que bind() conecte de verdad, que las páginas pinten lo que el
 // presenter manda y que nada truene al recorrer los pasos.
 
-#include "application/services/vehicleregistrationservice.h"
+#include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "fakes.h"
 #include "presentation/presenters/vehiclefilespresenter.h"
 #include "presentation/presenters/vehiclewizardpresenter.h"

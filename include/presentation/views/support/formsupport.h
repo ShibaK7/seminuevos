@@ -1,8 +1,8 @@
 #ifndef PRESENTATION_VIEWS_SUPPORT_FORMSUPPORT_H
 #define PRESENTATION_VIEWS_SUPPORT_FORMSUPPORT_H
 
-#include "application/dto/catalogdtos.h"
-#include "domain/value_objects/validationresult.h"
+#include "application/common/dto/catalogoptiondto.h"
+#include "domain/common/value_objects/validationresult.h"
 
 #include <QList>
 #include <QString>

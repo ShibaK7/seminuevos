@@ -1,6 +1,6 @@
 #include "presentation/presenters/vehiclewizardpresenter.h"
 
-#include "application/services/vehicleregistrationservice.h"
+#include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "presentation/presenters/ivehiclewizardview.h"
 #include "presentation/presenters/vehicleconditionspresenter.h"
 #include "presentation/presenters/vehicledetailspresenter.h"

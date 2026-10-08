@@ -3,7 +3,7 @@
 // cambio de filtro recargue, y que la ventana principal muestre el rol y
 // conecte la página con su presenter.
 
-#include "application/services/inventoryservice.h"
+#include "application/inventory/services/inventoryservice.h"
 #include "fakes.h"
 #include "presentation/presenters/inventorypresenter.h"
 #include "presentation/views/inventory/inventoryview.h"

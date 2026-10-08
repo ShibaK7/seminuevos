@@ -1,7 +1,7 @@
 // Pruebas de la regla de formatos del Paso 3. Es pura: recibe lo que el
 // adaptador averiguó del archivo (FileFacts), así que se prueba sin disco.
 
-#include "domain/rules/uploadformatpolicy.h"
+#include "domain/inventory/rules/uploadformatpolicy.h"
 
 #include <QtTest>
 

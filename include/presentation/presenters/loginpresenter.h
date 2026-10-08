@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_PRESENTERS_LOGINPRESENTER_H
 #define PRESENTATION_PRESENTERS_LOGINPRESENTER_H
 
-#include "application/dto/authdtos.h"
+#include "application/auth/dto/authdtos.h"
 
 #include <QObject>
 

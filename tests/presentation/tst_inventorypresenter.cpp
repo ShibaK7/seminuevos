@@ -2,7 +2,7 @@
 // hay", portadas leídas por el servicio, desplazamiento a la unidad nueva y
 // respuestas viejas descartadas.
 
-#include "application/services/inventoryservice.h"
+#include "application/inventory/services/inventoryservice.h"
 #include "fakes.h"
 #include "presentation/presenters/inventorypresenter.h"
 

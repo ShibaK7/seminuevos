@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_PRESENTERS_VEHICLEFILESPRESENTER_H
 #define PRESENTATION_PRESENTERS_VEHICLEFILESPRESENTER_H
 
-#include "application/dto/registrationdtos.h"
+#include "application/inventory/registration/dto/registrationdtos.h"
 #include "presentation/presenters/wizardsteppresenter.h"
 
 #include <QStringList>

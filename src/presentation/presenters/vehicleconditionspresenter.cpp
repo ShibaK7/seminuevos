@@ -1,6 +1,6 @@
 #include "presentation/presenters/vehicleconditionspresenter.h"
 
-#include "application/services/vehicleregistrationservice.h"
+#include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "presentation/presenters/ivehicleconditionsview.h"
 
 namespace presentation {

@@ -2,7 +2,7 @@
 // TaskRunner inmediato: se prueba la lógica de la pantalla sin abrir ventanas
 // ni hilos.
 
-#include "application/services/authenticationservice.h"
+#include "application/auth/services/authenticationservice.h"
 #include "fakes.h"
 #include "presentation/presenters/loginpresenter.h"
 

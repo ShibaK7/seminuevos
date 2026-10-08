@@ -1,6 +1,6 @@
 #include "presentation/presenters/loginpresenter.h"
 
-#include "application/services/authenticationservice.h"
+#include "application/auth/services/authenticationservice.h"
 #include "presentation/presenters/iloginview.h"
 #include "presentation/tasks/taskrunner.h"
 

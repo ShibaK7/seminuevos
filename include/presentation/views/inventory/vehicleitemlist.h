@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_VIEWS_INVENTORY_VEHICLEITEMLIST_H
 #define PRESENTATION_VIEWS_INVENTORY_VEHICLEITEMLIST_H
 
-#include "application/dto/inventorydtos.h"
+#include "application/inventory/dto/inventorydtos.h"
 
 #include <QWidget>
 

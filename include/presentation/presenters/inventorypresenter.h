@@ -1,7 +1,7 @@
 #ifndef PRESENTATION_PRESENTERS_INVENTORYPRESENTER_H
 #define PRESENTATION_PRESENTERS_INVENTORYPRESENTER_H
 
-#include "application/dto/inventorydtos.h"
+#include "application/inventory/dto/inventorydtos.h"
 
 #include <QObject>
 #include <QTimer>

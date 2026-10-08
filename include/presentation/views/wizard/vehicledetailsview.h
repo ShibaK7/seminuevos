@@ -1,8 +1,8 @@
 #ifndef PRESENTATION_VIEWS_WIZARD_VEHICLEDETAILSVIEW_H
 #define PRESENTATION_VIEWS_WIZARD_VEHICLEDETAILSVIEW_H
 
-#include "application/dto/catalogdtos.h"
-#include "application/dto/registrationdtos.h"
+#include "application/inventory/registration/dto/catalogdtos.h"
+#include "application/inventory/registration/dto/registrationdtos.h"
 #include "presentation/presenters/ivehicledetailsview.h"
 
 #include <QList>

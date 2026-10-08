@@ -1,8 +1,8 @@
 #ifndef PRESENTATION_PRESENTERS_IVEHICLEFILESVIEW_H
 #define PRESENTATION_PRESENTERS_IVEHICLEFILESVIEW_H
 
-#include "application/dto/registrationdtos.h"
-#include "application/dto/uploaddtos.h"
+#include "application/inventory/registration/dto/registrationdtos.h"
+#include "application/common/dto/uploaddtos.h"
 #include "presentation/presenters/istepview.h"
 
 #include <QByteArray>

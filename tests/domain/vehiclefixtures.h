@@ -5,9 +5,9 @@
 // pasan todas las reglas del dominio. Cada prueba parte de uno de ellos y
 // rompe UN dato, así lo que se comprueba es esa regla y no el resto.
 
-#include "domain/model/counterparty.h"
-#include "domain/model/vehiclebuilder.h"
-#include "domain/model/vehicleconditions.h"
+#include "domain/inventory/model/counterparty.h"
+#include "domain/inventory/model/vehiclebuilder.h"
+#include "domain/inventory/model/vehicleconditions.h"
 
 #include <QDate>
 

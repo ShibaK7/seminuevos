@@ -1,7 +1,7 @@
 #ifndef ADAPTERS_CONTRACT_PDFCONTRACTGENERATOR_H
 #define ADAPTERS_CONTRACT_PDFCONTRACTGENERATOR_H
 
-#include "application/ports/contractgenerator.h"
+#include "application/inventory/registration/ports/contractgenerator.h"
 
 // Adaptador del puerto ContractGenerator: genera el PDF del contrato a partir
 // de la plantilla HTML empaquetada como recurso, sustituyendo las marcas

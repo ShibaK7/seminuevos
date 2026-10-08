@@ -1,6 +1,6 @@
 #include "presentation/presenters/inventorypresenter.h"
 
-#include "application/services/inventoryservice.h"
+#include "application/inventory/services/inventoryservice.h"
 #include "presentation/presenters/iinventoryview.h"
 #include "presentation/tasks/taskrunner.h"
 

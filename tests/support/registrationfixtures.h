@@ -4,7 +4,7 @@
 // Una captura completa y válida del asistente, para las pruebas del servicio y
 // del presenter. Los ids coinciden con FakeReferenceDataReader.
 
-#include "application/dto/registrationdtos.h"
+#include "application/inventory/registration/dto/registrationdtos.h"
 
 #include <QDate>
 
