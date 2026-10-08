@@ -27,7 +27,7 @@ class VehicleFilesView;
 //
 // El marco (título, pila de páginas, aviso y botones) está en
 // src/ui/vehiclewizardview.ui, con las tres páginas como widgets promovidos.
-// El stepper todavía se crea aquí y se mete en el hueco stepperSlot del .ui.
+// El stepper también está en el .ui, promovido (ver docs/DESIGNER.md).
 //
 // Es una vista pasiva: no valida, no navega por su cuenta ni habla con el
 // servicio. Todo eso lo decide VehicleWizardPresenter; esta clase solo pinta
@@ -79,7 +79,6 @@ private:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
     Ui::VehicleWizardView *ui;
-    WizardStepper *m_stepper;
     // El presenter que llegó a bind(). QPointer y no puntero crudo: si alguien
     // lo borra antes que a la vista, queda nulo y el destructor no lo vuelve a
     // borrar.

@@ -22,23 +22,15 @@
     </widget>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="stepperSlot">
-     <property name="spacing">
-      <number>0</number>
+    <widget class="WizardStepper" name="stepper" native="true">
+     <property name="steps" stdset="0">
+      <stringlist notr="true">
+       <string>Detalles</string>
+       <string>Condición</string>
+       <string>Archivos</string>
+      </stringlist>
      </property>
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
-    </layout>
+    </widget>
    </item>
    <item>
     <widget class="QStackedWidget" name="stepStack">
@@ -139,6 +131,11 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>WizardStepper</class>
+   <extends>QWidget</extends>
+   <header>presentation/views/components/wizardstepper.h</header>
+  </customwidget>
   <customwidget>
    <class>VehicleDetailsView</class>
    <extends>QWidget</extends>

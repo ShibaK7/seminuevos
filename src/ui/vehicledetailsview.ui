@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1000</width>
+    <width>1401</width>
     <height>760</height>
    </rect>
   </property>
@@ -509,7 +509,7 @@
        </widget>
       </item>
       <item row="5" column="3">
-       <widget class="QWidget" name="invoiceFileWidget">
+       <widget class="QWidget" name="invoiceFileWidget" native="true">
         <layout class="QHBoxLayout" name="invoiceFileLayout" stretch="1,0,0">
          <property name="leftMargin">
           <number>0</number>

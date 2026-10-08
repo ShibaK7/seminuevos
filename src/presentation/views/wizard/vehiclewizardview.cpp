@@ -21,14 +21,6 @@
 
 namespace {
 
-// Título de cada paso, en el orden en que se muestran.
-const QStringList &stepTitles()
-{
-    static const QStringList titles{QStringLiteral("Detalles"), QStringLiteral("Condición"),
-                                    QStringLiteral("Archivos")};
-    return titles;
-}
-
 // El valor de la propiedad stepState que el stepper le pasa al QSS.
 QString stepStateName(presentation::StepVisual visual)
 {
@@ -53,22 +45,22 @@ VehicleWizardView::VehicleWizardView(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::VehicleWizardView)
 {
-    // El stepper se crea antes que el .ui para que sus pasos queden primero en
-    // el orden de tabulación, antes que los campos de las páginas: Qt encadena
-    // el foco en el orden en que nacen los widgets.
-    m_stepper = new WizardStepper(stepTitles(), this);
-    // Mismo margen izquierdo que el título, para que ambos queden alineados.
-    m_stepper->setContentsMargins(8, 0, 0, 0);
-
-    // El .ui arma el título, la pila con las tres páginas (VehicleDetailsView,
-    // VehicleConditionsView y VehicleFilesView, promovidas), el aviso de error
-    // y los botones. El texto y el ícono del botón primario los pone
-    // setPrimaryAction().
+    // El .ui arma el título, el stepper (promovido, con los títulos de los
+    // pasos en su propiedad `steps`), la pila con las tres páginas
+    // (VehicleDetailsView, VehicleConditionsView y VehicleFilesView,
+    // promovidas), el aviso de error y los botones. El texto y el ícono del
+    // botón primario los pone setPrimaryAction().
     ui->setupUi(this);
 
-    // El stepper recibe los títulos por constructor, así que Designer no lo
-    // puede crear: entra por el hueco que el .ui le deja bajo el título.
-    ui->stepperSlot->addWidget(m_stepper);
+    // Mismo margen izquierdo que el título, para que ambos queden alineados.
+    // Designer no expone los márgenes de contenido de un widget.
+    ui->stepper->setContentsMargins(8, 0, 0, 0);
+
+    // Los botones de los pasos van primero en el orden de tabulación, antes
+    // que los campos de las páginas, porque nacen antes: Qt encadena el foco
+    // en el orden de creación. Por eso `steps` va en el .ui con "Translatable"
+    // desmarcado. Si fuera traducible, uic lo asignaría al final de setupUi y
+    // los botones nacerían después de las páginas.
 
     // Alinea el título con el contenido de las tarjetas de abajo (que
     // tienen su propio margen interno además del margen del layout).
@@ -119,7 +111,7 @@ void VehicleWizardView::bind(presentation::VehicleWizardPresenter &presenter)
     VehicleWizardPresenter *p = &presenter;
     m_presenter = p;
 
-    connect(m_stepper, &WizardStepper::stepClicked, p, &VehicleWizardPresenter::onStepClicked);
+    connect(ui->stepper, &WizardStepper::stepClicked, p, &VehicleWizardPresenter::onStepClicked);
     connect(ui->primaryButton, &QPushButton::clicked, p, &VehicleWizardPresenter::onPrimaryAction);
     connect(ui->cancelButton, &QPushButton::clicked, p, &VehicleWizardPresenter::onCancel);
     connect(ui->printContractButton, &QPushButton::clicked, p,
@@ -155,7 +147,7 @@ void VehicleWizardView::showStepIndicators(const QList<presentation::StepIndicat
 {
     for (int step = 0; step < indicators.size(); ++step) {
         const presentation::StepIndicator &indicator = indicators.at(step);
-        m_stepper->setStepState(step, stepStateName(indicator.visual), indicator.complete,
+        ui->stepper->setStepState(step, stepStateName(indicator.visual), indicator.complete,
                                 indicator.hint);
     }
 }
@@ -198,7 +190,7 @@ void VehicleWizardView::setBusy(bool busy)
 {
     ui->primaryButton->setEnabled(!busy);
     ui->cancelButton->setEnabled(!busy);
-    m_stepper->setEnabled(!busy);
+    ui->stepper->setEnabled(!busy);
     // Las páginas también: lo que se editara mientras el hilo guarda no
     // llegaría a la base, pero sí se quedaría en pantalla como si se hubiera
     // guardado.
