@@ -3,6 +3,7 @@
 
 #include "application/dto/catalogdtos.h"
 #include "application/dto/registrationdtos.h"
+#include "application/dto/uploaddtos.h"
 #include "application/ports/contractgenerator.h"
 #include "application/ports/filestorage.h"
 #include "application/ports/referencedatareader.h"
@@ -38,6 +39,19 @@ public:
 
     ContractGenerator::Outcome generateContract(const domain::ContractData &contract,
                                                 const QString &outputPath) const;
+
+    // --- Archivos del Paso 3 y de la factura ---
+
+    // Formatos que admite cada entrada, para el diálogo y el texto de ayuda.
+    UploadFormatsDto uploadFormats(UploadKind kind) const;
+    // Revisa un archivo elegido contra la regla de formatos de su entrada.
+    // Abre el archivo (E/S ligera): solo lee su encabezado.
+    UploadCheckDto checkUpload(const QString &path, UploadKind kind) const;
+    // Los bytes de un archivo elegido, para su miniatura. Vacío si no se pudo leer.
+    QByteArray filePreview(const QString &path) const;
+    // Escribe en la carpeta temporal el formulario de solicitud de CFDI (de la
+    // autofactura), listo para abrirse en el navegador.
+    TemporaryFileDto prepareCfdiRequestForm() const;
 
 private:
     VehicleRepository &m_vehicles;

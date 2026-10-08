@@ -19,6 +19,10 @@ VehicleConditionsView::VehicleConditionsView(QWidget *parent)
     auto *layout = new QHBoxLayout(this);
     layout->addWidget(buildBasicSpecsPanel(), 0);
     layout->addWidget(buildChecklistPanel(), 1);
+
+    // Cualquier cambio se avisa; el presenter decide cuándo revalidar. Las
+    // filas del checklist se vigilan al crearlas (setChecklist).
+    formsupport::watchEdits(this, this, [this] { emit edited(); });
 }
 
 QWidget *VehicleConditionsView::buildBasicSpecsPanel()
@@ -123,7 +127,7 @@ QWidget *VehicleConditionsView::buildChecklistPanel()
     // ninguna fila tiene una clave fija que llevar.
     scrollArea->setProperty("field", QStringLiteral("inspection"));
 
-    // El contenedor se crea vacío y se puebla en setLookups(). OJO: el
+    // El contenedor se crea vacío y se puebla en setChecklist(). OJO: el
     // addStretch() final NO va aquí -- tiene que quedar después de las filas,
     // o el espaciador las empuja al fondo del área desplazable.
     m_checklistContent = new QWidget(scrollArea);
@@ -167,20 +171,22 @@ void VehicleConditionsView::markAllInGroup(const QString &category, bool checked
     }
 }
 
-void VehicleConditionsView::setLookups(const application::RegistrationLookupsDto &lookups)
+void VehicleConditionsView::setFuelTypes(const QList<application::CatalogOptionDto> &fuelTypes)
 {
-    formsupport::fillCombo(m_fuelTypeCombo, lookups.fuelTypes);
-
-    if (lookups.checklist.isEmpty()) {
-        showChecklistMessage(QStringLiteral(
-            "El catálogo de condiciones (vehicle_conditions_cat) está vacío o no se pudo "
-            "leer, así que el checklist no está disponible."));
-        return;
-    }
-    populateChecklist(lookups.checklist);
+    formsupport::fillCombo(m_fuelTypeCombo, fuelTypes);
 }
 
-void VehicleConditionsView::populateChecklist(const QList<application::ChecklistItemDto> &items)
+void VehicleConditionsView::showFieldErrors(const QList<domain::ValidationError> &errors)
+{
+    formsupport::showFieldErrors(this, errors);
+}
+
+bool VehicleConditionsView::focusField(const QString &field)
+{
+    return formsupport::focusField(this, field);
+}
+
+void VehicleConditionsView::setChecklist(const QList<application::ChecklistItemDto> &items)
 {
     const ConditionChecklistRow::ColumnWidths columns =
         ConditionChecklistRow::measureColumns(items);
@@ -221,6 +227,9 @@ void VehicleConditionsView::populateChecklist(const QList<application::Checklist
     separator->setFrameShape(QFrame::HLine);
     m_checklistLayout->addWidget(separator);
     m_checklistLayout->addStretch();
+
+    // Las filas nacen después del constructor, así que se vigilan aquí.
+    formsupport::watchEdits(m_checklistContent, this, [this] { emit edited(); });
 }
 
 application::VehicleConditionsDto VehicleConditionsView::conditions() const

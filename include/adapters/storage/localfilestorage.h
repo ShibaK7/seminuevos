@@ -24,6 +24,11 @@ public:
     // rota.
     QString absolutePath(const QString &relativePath) const override;
 
+    domain::FileFacts inspect(const QString &sourcePath) const override;
+    QByteArray read(const QString &sourcePath) const override;
+    application::TemporaryFileDto copyToTemporary(const QString &sourcePath,
+                                                  const QString &fileName) override;
+
 private:
     // El VIN se usa como nombre de carpeta: se limpia para que un "..\" o una
     // "/" no puedan escribir fuera del almacén.

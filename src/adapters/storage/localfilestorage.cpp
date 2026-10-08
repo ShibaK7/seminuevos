@@ -5,6 +5,9 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QImage>
+#include <QMimeDatabase>
+#include <QMimeType>
+#include <QStandardPaths>
 
 LocalFileStorage::LocalFileStorage(QString storageRoot)
     : m_storageRoot(std::move(storageRoot))
@@ -116,4 +119,77 @@ bool LocalFileStorage::remove(const QString &relativePath)
     if (relativePath.isEmpty() || QDir::isAbsolutePath(relativePath))
         return false; // solo se borra lo que está dentro del almacén
     return QFile::remove(QDir(m_storageRoot).filePath(relativePath));
+}
+
+domain::FileFacts LocalFileStorage::inspect(const QString &sourcePath) const
+{
+    domain::FileFacts facts;
+    const QFileInfo info(sourcePath);
+    facts.fileName = info.fileName();
+    facts.suffix = info.suffix();
+    facts.isReadableFile = info.exists() && info.isFile() && info.isReadable();
+    if (!facts.isReadableFile)
+        return facts;
+    facts.size = info.size();
+
+    // Se abre de verdad porque en Windows isReadable() solo confirma que el
+    // archivo existe (Qt no consulta los permisos de NTFS si no se le pide), y
+    // un archivo que otro programa tiene bloqueado también existe.
+    QFile file(sourcePath);
+    facts.opened = file.open(QIODevice::ReadOnly);
+    if (!facts.opened || facts.size == 0)
+        return facts;
+
+    // mimeTypeForData() solo ve los bytes, nunca el nombre, y eso es a
+    // propósito: lo que se quiere saber es qué hay dentro. Lee del archivo ya
+    // abierto, así que se revisa justo lo que se abrió.
+    const QMimeType content = QMimeDatabase().mimeTypeForData(&file);
+    facts.contentTypes << content.name() << content.aliases() << content.allAncestors();
+    return facts;
+}
+
+QByteArray LocalFileStorage::read(const QString &sourcePath) const
+{
+    QFile file(sourcePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return QByteArray();
+    return file.readAll();
+}
+
+application::TemporaryFileDto LocalFileStorage::copyToTemporary(const QString &sourcePath,
+                                                                const QString &fileName)
+{
+    application::TemporaryFileDto result;
+
+    QFile source(sourcePath);
+    if (!source.open(QIODevice::ReadOnly)) {
+        result.errorMessage = QStringLiteral("No se encontró el archivo:\n%1").arg(sourcePath);
+        return result;
+    }
+    const QByteArray content = source.readAll();
+
+    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    const QString targetPath = QDir(tempDir).filePath(QFileInfo(fileName).fileName());
+    QFile target(targetPath);
+    if (!target.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        result.errorMessage =
+            QStringLiteral("No se pudo crear el archivo temporal en:\n%1").arg(targetPath);
+        return result;
+    }
+
+    // Que el temporal quede completo es condición para seguir: quien lo pide
+    // lo abre y, si todo sale bien, da el paso por hecho. flush() se llama a
+    // mano porque un archivo de pocos KB se queda entero en el búfer de QFile:
+    // un error de disco no aparecería hasta vaciarlo, y close() no lo reporta.
+    const bool fullyWritten = target.write(content) == content.size() && target.flush();
+    target.close();
+    if (!fullyWritten) {
+        result.errorMessage =
+            QStringLiteral("No se pudo escribir por completo el archivo temporal en:\n%1").arg(targetPath);
+        return result;
+    }
+
+    result.ok = true;
+    result.path = targetPath;
+    return result;
 }

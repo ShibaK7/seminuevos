@@ -2,13 +2,11 @@
 #include "presentation/views/support/formsupport.h"
 
 #include <QComboBox>
+#include <QCompleter>
 #include <QDateEdit>
-#include <QDir>
+#include <QDesktopServices>
 #include <QDoubleSpinBox>
-#include <QFile>
 #include <QFileDialog>
-#include <QFileInfo>
-#include <QFormLayout>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -20,9 +18,6 @@
 #include <QTextEdit>
 #include <QUrl>
 #include <QVBoxLayout>
-#include <QCompleter>
-#include <QStandardPaths>
-#include <QDesktopServices>
 
 namespace {
 
@@ -40,11 +35,6 @@ domain::CatalogRef catalogRefFrom(const QComboBox *combo)
     return ref;
 }
 
-// Texto de la etiqueta de factura cuando no hay archivo. Constante porque se
-// escribe en dos sitios -- al armar la tarjeta y al descartar la factura
-// apartada cuando se genera la solicitud de CFDI -- y deben coincidir.
-const QString kNoInvoiceFileText = QStringLiteral("Sin archivo");
-
 } // namespace
 
 VehicleDetailsView::VehicleDetailsView(QWidget *parent)
@@ -60,35 +50,17 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     connect(m_acquisitionTypeCombo, &QComboBox::currentIndexChanged, this,
             &VehicleDetailsView::onAcquisitionTypeChanged);
     connect(m_invoiceTypeCombo, &QComboBox::currentIndexChanged, this,
-            &VehicleDetailsView::onInvoiceTypeChanged);
+            &VehicleDetailsView::invoiceTypeChanged);
     // Deja la vista coherente con la rama seleccionada por omisión.
     onAcquisitionTypeChanged();
-    // Llamada explícita aunque el repoblado de arriba ya haya emitido
-    // currentIndexChanged: así el estado inicial de los botones de factura no
-    // depende de que esa señal se emita ni del orden en que se conectó. Basta
-    // con refrescar los botones, sin pasar por onInvoiceTypeChanged(): al
-    // construir todavía no hay factura que apartar ni una apartada que
-    // recuperar.
-    refreshInvoiceFileControls();
+
+    // Cualquier cambio se avisa; el presenter decide cuándo revalidar.
+    formsupport::watchEdits(this, this, [this] { emit edited(); });
 }
 
 domain::AcquisitionType VehicleDetailsView::selectedAcquisitionType() const
 {
     return static_cast<domain::AcquisitionType>(m_acquisitionTypeCombo->currentData().toInt());
-}
-
-bool VehicleDetailsView::isAutofacturaSelected() const
-{
-    // onAcquisitionTypeChanged() vacía el combo antes de repoblarlo, y en ese
-    // instante currentData() es un QVariant inválido. Se revisa explícitamente
-    // en vez de confiar en que toInt() devuelva 0: hoy 0 es Facturado y el
-    // resultado saldría bien por casualidad, pero bastaría reordenar el enum
-    // para que un combo vacío contara como autofactura, y entonces el solo
-    // hecho de cambiar de rama apartaría la factura ya elegida, y recuperarla
-    // quedaría en manos de la señal siguiente.
-    const QVariant invoiceData = m_invoiceTypeCombo->currentData();
-    return invoiceData.isValid()
-           && static_cast<domain::InvoiceType>(invoiceData.toInt()) == domain::InvoiceType::Autofactura;
 }
 
 void VehicleDetailsView::onAcquisitionTypeChanged()
@@ -103,9 +75,7 @@ void VehicleDetailsView::onAcquisitionTypeChanged()
 
     // Repoblar el combo de factura NO es cosmético. Los CHECK de las dos
     // subtablas admiten conjuntos disjuntos, así que dejarlo con los valores
-    // de la otra rama haría que el INSERT violara la restricción -- y el
-    // error llegaría desde el hilo de guardado, con los archivos ya copiados
-    // a disco.
+    // de la otra rama haría que el INSERT violara la restricción.
     const QString previous = m_invoiceTypeCombo->currentText();
     m_invoiceTypeCombo->clear();
     for (domain::InvoiceType value : domain::invoiceTypesFor(type))
@@ -121,94 +91,41 @@ void VehicleDetailsView::onAcquisitionTypeChanged()
                                                : QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"));
 }
 
-void VehicleDetailsView::onInvoiceTypeChanged()
+void VehicleDetailsView::showInvoiceAttachment(const presentation::InvoiceAttachmentState &state)
 {
-    // Sin solicitud, entrar a Autofactura aparta la factura y salir de ella la
-    // devuelve. El índice -1 que deja onAcquisitionTypeChanged() mientras
-    // vacía el combo cuenta como salir, así que cambiar de rama también la
-    // recupera: al volver a Adquisición, ya en Facturado, sigue adjunta, igual
-    // que cualquier factura sobrevive a ir y volver por la consignación.
-    if (isAutofacturaSelected())
-        suspendInvoiceFileIfCfdiRequestPending();
-    else
-        restoreSuspendedInvoiceFile();
-    refreshInvoiceFileControls();
-}
-
-void VehicleDetailsView::suspendInvoiceFileIfCfdiRequestPending()
-{
-    // El tipo se revisa aquí aunque onInvoiceTypeChanged() solo llama a esta
-    // función con Autofactura elegida, para que sea segura desde cualquier
-    // sitio: con otro tipo no aparta nada, igual que
-    // restoreSuspendedInvoiceFile() no recupera nada con Autofactura elegida.
-    // Con Autofactura y sin solicitud, si hay archivo es porque el tipo ACABA
-    // de pasar a Autofactura; mientras siga en él, el botón bloqueado impide
-    // elegir otro. Con la solicitud ya generada no se aparta nada: cualquier
-    // factura adjunta se subió después de generarla, que es justo el orden
-    // que se pide.
-    if (!isAutofacturaSelected() || m_cfdiRequestGenerated || m_invoiceFilePath.isEmpty())
-        return;
-
-    // Se aparta, pero no en silencio: la etiqueta, que mostraba el nombre del
-    // archivo, pasa a decir que ya no está adjunto, para que nadie guarde
-    // creyendo que la factura sigue ahí. El aviso es corto a propósito: la
-    // etiqueta no parte el texto en renglones y comparte columna con los dos
-    // botones, así que uno largo ensancharía todo el paso y se cortaría en una
-    // ventana de tamaño normal. El porqué, y cómo recuperarla, van en el
-    // tooltip.
-    m_suspendedInvoiceFilePath = m_invoiceFilePath;
-    m_invoiceFilePath.clear();
-    m_invoiceFileLabel->setText(QStringLiteral("Factura retirada"));
-    m_invoiceFileLabel->setToolTip(QStringLiteral(
-        "La autofactura pide generar primero la solicitud de CFDI y subir la factura después. "
-        "Si regresas a Facturado, se recupera la que habías elegido."));
-}
-
-void VehicleDetailsView::restoreSuspendedInvoiceFile()
-{
-    // También revisa el tipo por su cuenta, igual que
-    // suspendInvoiceFileIfCfdiRequestPending(): con Autofactura elegida,
-    // recuperarla volvería a adjuntar una factura elegida antes de la
-    // solicitud, justo lo que apartarla evita. El índice -1 que deja
-    // onAcquisitionTypeChanged() al vaciar el combo no cuenta como
-    // Autofactura, así que cambiar de rama la sigue recuperando.
-    if (isAutofacturaSelected() || m_suspendedInvoiceFilePath.isEmpty())
-        return;
-
-    // Vuelve tal como estaba antes de apartarse: adjunta, con la etiqueta
-    // diciendo lo mismo que puso onBrowseInvoiceFile() al elegirla, y sin el
-    // tooltip, que solo explicaba por qué no estaba.
-    m_invoiceFilePath = m_suspendedInvoiceFilePath;
-    m_suspendedInvoiceFilePath.clear();
-    m_invoiceFileLabel->setText(QFileInfo(m_invoiceFilePath).fileName());
-    m_invoiceFileLabel->setToolTip(QString());
-}
-
-void VehicleDetailsView::refreshInvoiceFileControls()
-{
-    const bool isAutofactura = isAutofacturaSelected();
-
     // Ocultar el botón por su cuenta no choca con que la fila entera se oculte
     // en la consignación: un hijo ocultado explícitamente sigue oculto cuando
     // su padre se vuelve a mostrar, así que un mecanismo no deshace al otro.
-    m_cfdiRequestButton->setVisible(isAutofactura);
+    m_cfdiRequestButton->setVisible(state.cfdiButtonVisible);
+    m_invoiceUploadButton->setEnabled(state.uploadEnabled);
+    m_invoiceUploadButton->setToolTip(state.uploadToolTip);
+    m_invoiceFileLabel->setText(state.fileLabel);
+    m_invoiceFileLabel->setToolTip(state.fileToolTip);
+}
 
-    // Con cualquier otro tipo de factura la subida queda libre, como antes.
-    // Aquí solo se bloquea el botón; el archivo ya elegido no se toca. Al
-    // cambiar de tipo ese archivo se conserva, porque descartarlo en silencio
-    // dejaría al usuario guardando sin la factura que cree haber subido. La
-    // excepción es pasar a autofactura sin la solicitud: dejarlo adjunto ahí
-    // equivaldría a saltarse el paso que la autofactura exige, así que
-    // suspendInvoiceFileIfCfdiRequestPending() lo aparta, sin tirarlo, y la
-    // etiqueta lo avisa.
-    const bool uploadLocked = isAutofactura && !m_cfdiRequestGenerated;
-    m_invoiceUploadButton->setEnabled(!uploadLocked);
-    // Qt muestra el tooltip aun con el botón deshabilitado, así que ahí se
-    // explica el bloqueo. Se limpia al desbloquear para no dejar un aviso que
-    // ya no aplica.
-    m_invoiceUploadButton->setToolTip(uploadLocked
-                                          ? QStringLiteral("Primero genera la solicitud de CFDI.")
-                                          : QString());
+QString VehicleDetailsView::askInvoiceFile()
+{
+    return QFileDialog::getOpenFileName(this, QStringLiteral("Seleccionar factura"));
+}
+
+bool VehicleDetailsView::openDocument(const QString &path)
+{
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
+
+void VehicleDetailsView::showWarning(const QString &title, const QString &message)
+{
+    QMessageBox::warning(this, title, message);
+}
+
+void VehicleDetailsView::showFieldErrors(const QList<domain::ValidationError> &errors)
+{
+    formsupport::showFieldErrors(this, errors);
+}
+
+bool VehicleDetailsView::focusField(const QString &field)
+{
+    return formsupport::focusField(this, field);
 }
 
 QWidget *VehicleDetailsView::buildGeneralInfoCard()
@@ -422,21 +339,22 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     auto *invoiceFileWidget = new QWidget(card);
     auto *invoiceFileLayout = new QHBoxLayout(invoiceFileWidget);
     invoiceFileLayout->setContentsMargins(0, 0, 0, 0);
-    m_invoiceFileLabel = new QLabel(kNoInvoiceFileText, invoiceFileWidget);
+    m_invoiceFileLabel = new QLabel(QStringLiteral("Sin archivo"), invoiceFileWidget);
 
     // Solo aplica a la autofactura, y en ella hay que usarlo antes de poder
     // subir la factura. Ni la visibilidad ni el bloqueo se fijan aquí: los
-    // aplica refreshInvoiceFileControls() cada vez que cambia el tipo de
-    // factura o se genera la solicitud.
+    // decide el presenter (InvoiceAttachment) y llegan por
+    // showInvoiceAttachment().
     m_cfdiRequestButton = new QPushButton(QStringLiteral("Generar solicitud CFDI"), invoiceFileWidget);
     m_cfdiRequestButton->setObjectName(QStringLiteral("cfdiRequestButton"));
     m_cfdiRequestButton->setProperty("class", QStringLiteral("secondary"));
-    connect(m_cfdiRequestButton, &QPushButton::clicked, this, &VehicleDetailsView::generateCfdiRequest);
+    m_cfdiRequestButton->setVisible(false);
+    connect(m_cfdiRequestButton, &QPushButton::clicked, this, &VehicleDetailsView::cfdiRequestRequested);
 
     m_invoiceUploadButton = new QPushButton(QStringLiteral("Subir documento"), invoiceFileWidget);
     m_invoiceUploadButton->setObjectName(QStringLiteral("invoiceUploadButton"));
     m_invoiceUploadButton->setProperty("class", QStringLiteral("secondary"));
-    connect(m_invoiceUploadButton, &QPushButton::clicked, this, &VehicleDetailsView::onBrowseInvoiceFile);
+    connect(m_invoiceUploadButton, &QPushButton::clicked, this, &VehicleDetailsView::browseInvoiceRequested);
 
     // Cada widget se agrega una sola vez: un segundo addWidget() con el mismo
     // widget no lo duplica, lo MUEVE (Qt lo saca de su lugar anterior), y así
@@ -559,94 +477,6 @@ QWidget *VehicleDetailsView::buildOwnerAndAcquisitionCard()
     return card;
 }
 
-void VehicleDetailsView::onBrowseInvoiceFile()
-{
-    const QString path = QFileDialog::getOpenFileName(this, QStringLiteral("Seleccionar factura"));
-    if (path.isEmpty())
-        return;
-
-    m_invoiceFilePath = path;
-    m_invoiceFileLabel->setText(QFileInfo(path).fileName());
-    // El archivo nuevo deja sin efecto cualquier factura apartada, y su nombre
-    // sustituye al aviso, así que el tooltip que lo explicaba sobra. Hoy no
-    // puede haber una apartada al elegir archivo -- mientras la hay, la
-    // subida está bloqueada --, pero si eso cambiara, salir de Autofactura no
-    // debe reemplazar el archivo nuevo por el viejo.
-    m_suspendedInvoiceFilePath.clear();
-    m_invoiceFileLabel->setToolTip(QString());
-}
-
-void VehicleDetailsView::generateCfdiRequest() {
-    constexpr const char *kCfdiTemplateResourcePath =
-        ":/templates/request_issuance_cfdi.html";
-    QFile resourceFile(kCfdiTemplateResourcePath);
-    if (!resourceFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
-            tr("No se encontró el recurso:\n%1")
-                .arg(kCfdiTemplateResourcePath));
-        return;
-    }
-
-    const QByteArray htmlContent = resourceFile.readAll();
-    resourceFile.close();
-
-    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-    const QString tempFilePath = QDir(tempDir).filePath("request_issuance_cfdi.html");
-
-    QFile tempFile(tempFilePath);
-    if (!tempFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
-        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
-                            tr("No se pudo crear el archivo temporal en:\n%1")
-                                .arg(tempFilePath));
-        return;
-    }
-
-    // Que el temporal quede completo es condición para seguir: el éxito
-    // desbloquea la subida, y un temporal truncado la desbloquearía con una
-    // solicitud a medias. En modo Text, write() cuenta los bytes de
-    // htmlContent y no el \r que Windows agrega a cada salto, así que se
-    // compara contra size() tal cual. Y flush() se llama a mano porque una
-    // plantilla de pocos KB se queda entera en el búfer de QFile: un error de
-    // disco no aparecería hasta vaciarlo, y close() no lo reporta.
-    const bool fullyWritten =
-        tempFile.write(htmlContent) == htmlContent.size() && tempFile.flush();
-    tempFile.close();
-    if (!fullyWritten) {
-        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
-                            tr("No se pudo escribir por completo el archivo temporal en:\n%1")
-                                .arg(tempFilePath));
-        return;
-    }
-
-    const bool opened = QDesktopServices::openUrl(QUrl::fromLocalFile(tempFilePath));
-    if (!opened) {
-        QMessageBox::warning(this, tr("No se pudo abrir el documento"),
-                            tr("No se pudo abrir el navegador para mostrar:\n%1")
-                                .arg(tempFilePath));
-        return;
-    }
-
-    // Solo cuenta como generada cuando todo salió bien: se leyó la plantilla,
-    // el temporal se creó y se escribió completo, y openUrl() lo abrió. Cada
-    // falla anterior sale por su propio return sin tocar la bandera ni la
-    // factura apartada: ni se desbloquea la subida con una solicitud que el
-    // usuario nunca llegó a ver, ni se pierde una factura que todavía puede
-    // recuperar volviendo a Facturado.
-    m_cfdiRequestGenerated = true;
-
-    // Generada la solicitud, la factura apartada se descarta para siempre: en
-    // autofactura la factura se sube DESPUÉS de la solicitud, así que una
-    // elegida antes ya no cuenta, y la etiqueta vuelve a "Sin archivo", que
-    // ahora es exacto. Solo si había una apartada: generar la solicitud otra
-    // vez, con una factura subida después de la primera, no debe borrar de la
-    // etiqueta el nombre de esa factura, que sí vale.
-    if (!m_suspendedInvoiceFilePath.isEmpty()) {
-        m_suspendedInvoiceFilePath.clear();
-        m_invoiceFileLabel->setText(kNoInvoiceFileText);
-        m_invoiceFileLabel->setToolTip(QString());
-    }
-    refreshInvoiceFileControls();
-}
 
 void VehicleDetailsView::reloadSubtypes()
 {
@@ -727,7 +557,6 @@ application::VehicleDetailsDto VehicleDetailsView::details() const
         dto.invoiceType = static_cast<domain::InvoiceType>(m_invoiceTypeCombo->currentData().toInt());
     dto.invoiceNumber = m_invoiceNumberEdit->text();
     dto.invoiceIssuer = m_invoiceIssuerEdit->text();
-    dto.invoiceFilePath = m_invoiceFilePath;
     dto.maintenanceCost = m_maintenanceCostSpin->value();
     dto.observations = m_observationsEdit->toPlainText();
 

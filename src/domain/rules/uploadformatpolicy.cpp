@@ -1,12 +1,24 @@
-#include "vehiclewizard/uploadformatpolicy.h"
-
-#include <QFile>
-#include <QFileInfo>
-#include <QMimeDatabase>
-#include <QMimeType>
+#include "domain/rules/uploadformatpolicy.h"
 
 #include <algorithm>
 #include <utility>
+
+namespace domain {
+
+namespace {
+
+// La extensión de un nombre o una ruta, sin preguntarle nada al disco: lo que
+// sigue al último punto, siempre que ese punto esté en el nombre y no en una
+// carpeta ("C:/fotos.2024/auto" no tiene extensión).
+QString suffixOf(const QString &fileName)
+{
+    const qsizetype separator =
+        std::max(fileName.lastIndexOf(QLatin1Char('/')), fileName.lastIndexOf(QLatin1Char('\\')));
+    const qsizetype dot = fileName.lastIndexOf(QLatin1Char('.'));
+    return dot > separator ? fileName.mid(dot + 1) : QString();
+}
+
+} // namespace
 
 UploadFormatPolicy::UploadFormatPolicy(QString filterName, QList<FormatFamily> families)
     : m_filterName(std::move(filterName))
@@ -80,16 +92,13 @@ const UploadFormatPolicy::FormatFamily *UploadFormatPolicy::familyOf(const QStri
     return nullptr;
 }
 
-bool UploadFormatPolicy::hasAllowedSuffix(const QString &path) const
+bool UploadFormatPolicy::hasAllowedSuffix(const QString &fileName) const
 {
-    return familyOf(QFileInfo(path).suffix()) != nullptr;
+    return familyOf(suffixOf(fileName)) != nullptr;
 }
 
-bool UploadFormatPolicy::accepts(const QString &path, QString *reason) const
+bool UploadFormatPolicy::accepts(const FileFacts &file, QString *reason) const
 {
-    const QFileInfo info(path);
-    const QString fileName = info.fileName();
-
     // Todos los motivos cierran igual: decir qué SÍ se puede subir es lo que
     // deja corregir sin adivinar, sea cual sea el problema.
     const auto reject = [&](const QString &problem) {
@@ -98,51 +107,44 @@ bool UploadFormatPolicy::accepts(const QString &path, QString *reason) const
         return false;
     };
 
-    if (!info.exists() || !info.isFile() || !info.isReadable()) {
+    if (!file.isReadableFile) {
         return reject(QStringLiteral("No se pudo leer '%1': no existe, es una carpeta o no tienes "
                                      "permiso para abrirlo.")
-                          .arg(fileName));
+                          .arg(file.fileName));
     }
 
     // Va antes que el contenido para dar el motivo correcto: sin bytes que
     // leer, la detección no reconoce ningún formato, y el aviso terminaría
     // hablando de un archivo renombrado cuando lo que pasa es que no tiene
     // nada.
-    if (info.size() == 0)
-        return reject(QStringLiteral("'%1' está vacío (0 bytes).").arg(fileName));
+    if (file.size == 0)
+        return reject(QStringLiteral("'%1' está vacío (0 bytes).").arg(file.fileName));
 
-    const FormatFamily *family = familyOf(info.suffix());
+    const FormatFamily *family = familyOf(file.suffix);
     if (!family)
-        return reject(QStringLiteral("No se admite el formato de '%1'.").arg(fileName));
+        return reject(QStringLiteral("No se admite el formato de '%1'.").arg(file.fileName));
 
-    // Se abre aquí, antes de revisar el contenido, porque nada de lo de arriba
-    // garantiza que se pueda: en Windows isReadable() solo confirma que el
-    // archivo existe (Qt no consulta los permisos de NTFS si no se le pide), y
-    // un archivo que otro programa tiene bloqueado también existe. Si la
-    // apertura se dejara a la detección, su falla no se vería: devolvería
-    // application/octet-stream y el aviso hablaría de un archivo renombrado.
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
+    // Si no se pudo abrir, la detección de contenido no vio nada, y el aviso
+    // hablaría de un archivo renombrado cuando lo que pasa es otra cosa.
+    if (!file.opened) {
         return reject(QStringLiteral("No se pudo abrir '%1': puede estar abierto en otro programa o "
                                      "sin permiso de lectura.")
-                          .arg(fileName));
+                          .arg(file.fileName));
     }
 
-    // mimeTypeForData() solo ve los bytes, nunca el nombre, y eso es a
-    // propósito: lo que se quiere saber es qué hay dentro, y por nombre la
-    // respuesta sería la misma extensión que ya se revisó arriba. Lee del
-    // archivo ya abierto, así que se abre una sola vez y se revisa justo lo
-    // que se abrió. inherits() y no una comparación exacta, para no rechazar
-    // un subtipo que el sistema reconozca como variante del mismo formato.
-    const QMimeType content = QMimeDatabase().mimeTypeForData(&file);
+    // contentTypes trae el tipo detectado y aquellos de los que hereda, así
+    // que un subtipo que el sistema reconozca como variante del mismo formato
+    // también pasa.
     const bool contentMatches =
         std::any_of(family->mimeTypes.cbegin(), family->mimeTypes.cend(),
-                    [&content](const QString &mimeType) { return content.inherits(mimeType); });
+                    [&file](const QString &mimeType) { return file.contentTypes.contains(mimeType); });
     if (!contentMatches) {
         return reject(QStringLiteral("El contenido de '%1' no corresponde a su extensión: parece "
                                      "otro tipo de archivo renombrado.")
-                          .arg(fileName));
+                          .arg(file.fileName));
     }
 
     return true;
 }
+
+} // namespace domain

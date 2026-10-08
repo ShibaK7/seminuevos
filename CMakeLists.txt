@@ -68,15 +68,13 @@ seminuevos_layer(seminuevos_security
 
 # --- Ejecutable ---------------------------------------------------------------
 # Además de main.cpp y la raíz de composición (app/), compila lo que todavía no
-# es biblioteca: las vistas y la carpeta vieja que el plan todavía va a mover
-# (vehiclewizard, con UploadFormatPolicy). Se listan por carpeta para que una vista o un .ui nuevo
-# no obligue a tocar este archivo.
+# es biblioteca: las vistas (Qt Widgets). Se listan por carpeta para que una
+# vista o un .ui nuevo no obligue a tocar este archivo.
 set(TS_FILES desktop-win-car-dealership_es_MX.ts)
 
 set(SEMINUEVOS_EXE_DIRS
     presentation/views
     app
-    vehiclewizard
 )
 set(PROJECT_SOURCES main.cpp resources/Resources.qrc ${TS_FILES})
 foreach(dir IN LISTS SEMINUEVOS_EXE_DIRS)

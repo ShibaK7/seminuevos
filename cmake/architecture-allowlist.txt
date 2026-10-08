@@ -6,15 +6,6 @@
 # pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
 # falta, se borra.
 
-# --- Commit 12: el wizard pasa a presenters y las vistas dejan de tocar disco ---
-src/presentation/views/wizard/vehiclewizardview.cpp: incluye "application/services/vehicleregistrationservice.h"  # commit 12: lo usará su presenter
-src/presentation/views/wizard/vehiclefilesview.cpp: incluye "vehiclewizard/uploadformatpolicy.h"  # commit 12: regla pura en domain/rules
-src/presentation/views/wizard/vehiclefilesview.cpp: acceso a disco <QFileInfo>  # commit 12: formato y vista previa por el servicio
-src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QDir>  # commit 12: CFDI por el puerto FileStorage
-src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QFile>  # commit 12
-src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QFileInfo>  # commit 12
-src/presentation/views/wizard/vehicledetailsview.cpp: acceso a disco <QStandardPaths>  # commit 12
-
 # --- Commit 13: el inventario se carga por un presenter -----------------------
 src/presentation/views/inventory/vehicleitemlist.cpp: incluye "adapters/persistence/vehicleinventoryquery.h"  # commit 13: InventoryItemDto
 src/presentation/views/shell/mainwindow.cpp: incluye "app/appconfig.h"  # commit 13

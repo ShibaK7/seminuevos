@@ -2,6 +2,7 @@
 
 #include "domain/model/vehicle.h"
 #include "domain/model/vehiclebuilder.h"
+#include "domain/rules/uploadformatpolicy.h"
 #include "registrationmapping.h"
 
 #include <QStringList>
@@ -9,6 +10,12 @@
 namespace application {
 
 namespace {
+
+const domain::UploadFormatPolicy &policyFor(UploadKind kind)
+{
+    return kind == UploadKind::Image ? domain::UploadFormatPolicy::images()
+                                     : domain::UploadFormatPolicy::documents();
+}
 
 RegistrationResult rejected(const domain::ValidationResult &validation)
 {
@@ -192,6 +199,33 @@ ContractGenerator::Outcome VehicleRegistrationService::generateContract(
     const domain::ContractData &contract, const QString &outputPath) const
 {
     return m_contracts.generate(contract, outputPath);
+}
+
+UploadFormatsDto VehicleRegistrationService::uploadFormats(UploadKind kind) const
+{
+    const domain::UploadFormatPolicy &policy = policyFor(kind);
+    return {policy.dialogFilter(), policy.describeFormats(), policy.extensions()};
+}
+
+UploadCheckDto VehicleRegistrationService::checkUpload(const QString &path, UploadKind kind) const
+{
+    const domain::FileFacts facts = m_files.inspect(path);
+    UploadCheckDto check;
+    check.fileName = facts.fileName;
+    check.accepted = policyFor(kind).accepts(facts, &check.reason);
+    return check;
+}
+
+QByteArray VehicleRegistrationService::filePreview(const QString &path) const
+{
+    return m_files.read(path);
+}
+
+TemporaryFileDto VehicleRegistrationService::prepareCfdiRequestForm() const
+{
+    // La plantilla viaja dentro del ejecutable (resources.qrc).
+    return m_files.copyToTemporary(QStringLiteral(":/templates/request_issuance_cfdi.html"),
+                                   QStringLiteral("request_issuance_cfdi.html"));
 }
 
 } // namespace application

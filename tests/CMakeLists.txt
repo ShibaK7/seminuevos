@@ -64,6 +64,11 @@ seminuevos_add_test(tst_vehiclepolymorphism
     LIBS seminuevos_domain
 )
 
+seminuevos_add_test(tst_uploadformatpolicy
+    SOURCES domain/tst_uploadformatpolicy.cpp
+    LIBS seminuevos_domain
+)
+
 # --- Aplicación -----------------------------------------------------------------
 seminuevos_add_test(tst_authenticationservice
     SOURCES application/tst_authenticationservice.cpp support/fakes.h
@@ -71,7 +76,7 @@ seminuevos_add_test(tst_authenticationservice
 )
 
 seminuevos_add_test(tst_registrationservice
-    SOURCES application/tst_registrationservice.cpp support/fakes.h
+    SOURCES application/tst_registrationservice.cpp support/fakes.h support/registrationfixtures.h
     LIBS seminuevos_application
 )
 
@@ -91,6 +96,17 @@ seminuevos_add_test(tst_pooledtaskrunner
     LIBS seminuevos_presentation
 )
 
+seminuevos_add_test(tst_invoiceattachment
+    SOURCES presentation/tst_invoiceattachment.cpp
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_vehiclewizardpresenter
+    SOURCES presentation/tst_vehiclewizardpresenter.cpp support/fakes.h support/wizardfakes.h
+            support/registrationfixtures.h
+    LIBS seminuevos_presentation
+)
+
 # formsupport es apoyo de las vistas (Qt Widgets) y las vistas todavía no son
 # biblioteca: la prueba compila sus fuentes directamente.
 seminuevos_add_test(tst_formsupport
@@ -99,6 +115,21 @@ seminuevos_add_test(tst_formsupport
         "${PROJECT_SOURCE_DIR}/include/presentation/views/support/formsupport.h"
         "${PROJECT_SOURCE_DIR}/src/presentation/views/support/formsupport.cpp"
     LIBS seminuevos_domain Qt6::Widgets
+)
+
+# Humo del asistente con sus widgets reales. Igual que formsupport, compila las
+# fuentes de las vistas que usa mientras las vistas no sean biblioteca.
+file(GLOB SEMINUEVOS_WIZARD_VIEW_SOURCES CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/src/presentation/views/wizard/*.cpp"
+    "${PROJECT_SOURCE_DIR}/include/presentation/views/wizard/*.h"
+    "${PROJECT_SOURCE_DIR}/src/presentation/views/components/*.cpp"
+    "${PROJECT_SOURCE_DIR}/include/presentation/views/components/*.h"
+    "${PROJECT_SOURCE_DIR}/src/presentation/views/support/*.cpp"
+    "${PROJECT_SOURCE_DIR}/include/presentation/views/support/*.h"
+)
+seminuevos_add_test(tst_vehiclewizardview
+    SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h ${SEMINUEVOS_WIZARD_VIEW_SOURCES}
+    LIBS seminuevos_presentation Qt6::Widgets
 )
 
 # --- Integración con PostgreSQL (opcional) ---------------------------------------

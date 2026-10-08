@@ -132,6 +132,40 @@ public:
         return true;
     }
     QString absolutePath(const QString &relativePath) const override { return relativePath; }
+
+    // Lo que inspect() responde por ruta. Sin entrada, el archivo "existe",
+    // se abre y su contenido es PNG.
+    QMap<QString, domain::FileFacts> facts;
+    QString temporaryError; // si no está vacío, copyToTemporary() falla así
+    QStringList temporaryCopies;
+
+    domain::FileFacts inspect(const QString &sourcePath) const override
+    {
+        if (facts.contains(sourcePath))
+            return facts.value(sourcePath);
+        domain::FileFacts file;
+        file.fileName = sourcePath.section(QLatin1Char('/'), -1);
+        file.suffix = file.fileName.section(QLatin1Char('.'), -1);
+        file.isReadableFile = true;
+        file.size = 100;
+        file.opened = true;
+        file.contentTypes << QStringLiteral("image/png");
+        return file;
+    }
+    QByteArray read(const QString &sourcePath) const override { return sourcePath.toUtf8(); }
+    application::TemporaryFileDto copyToTemporary(const QString &sourcePath,
+                                                  const QString &fileName) override
+    {
+        application::TemporaryFileDto result;
+        if (!temporaryError.isEmpty()) {
+            result.errorMessage = temporaryError;
+            return result;
+        }
+        temporaryCopies << sourcePath;
+        result.ok = true;
+        result.path = QStringLiteral("/tmp/") + fileName;
+        return result;
+    }
 };
 
 class FakeReferenceDataReader final : public application::ReferenceDataReader

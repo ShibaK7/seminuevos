@@ -1,6 +1,6 @@
 #include "presentation/views/wizard/vehiclefilesview.h"
 #include "presentation/views/components/aspectratioimagelabel.h"
-#include "vehiclewizard/uploadformatpolicy.h"
+#include "presentation/views/support/formsupport.h"
 
 #include <algorithm>
 
@@ -10,7 +10,6 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QFileDialog>
-#include <QFileInfo>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -26,14 +25,6 @@
 
 namespace {
 
-// Cuántos rechazos de la galería se explican uno por uno. Soltar o elegir
-// muchos archivos a la vez -- un Ctrl+A en la carpeta de la cámara del
-// celular, por ejemplo -- puede traer decenas que no son fotos, como videos o
-// HEIC, y con un renglón por cada uno el aviso crecería hasta empujar la
-// galería fuera de la pantalla. Del tope en adelante solo se nombran, todos
-// en un mismo párrafo.
-constexpr int kMaxDetailedRejections = 3;
-
 // Saca de circulación un widget que acaba de salir de su layout. No se borra
 // en el acto porque quien pide la reconstrucción suele ser un botón que vive
 // DENTRO de ese widget (Reemplazar, quitar foto, marcar portada): destruir al
@@ -48,29 +39,9 @@ void retireWidget(QWidget *widget)
     widget->deleteLater();
 }
 
-// Texto del aviso de la galería para los archivos que no pasaron la
-// validación. Cada motivo ya nombra su archivo y los formatos permitidos (lo
-// redacta UploadFormatPolicy), así que aquí solo se encabeza y se acota.
-QString galleryRejectionMessage(const QStringList &reasons, const QStringList &fileNames)
-{
-    if (reasons.isEmpty())
-        return QString();
-
-    QStringList lines;
-    lines << (reasons.size() == 1
-                  ? QStringLiteral("No se agregó este archivo:")
-                  : QStringLiteral("No se agregaron estos %1 archivos:").arg(reasons.size()));
-    lines << reasons.mid(0, kMaxDetailedRejections);
-    if (reasons.size() > kMaxDetailedRejections) {
-        lines << QStringLiteral("Tampoco se agregaron: %1.")
-                     .arg(fileNames.mid(kMaxDetailedRejections).join(QStringLiteral(", ")));
-    }
-    return lines.join(QLatin1Char('\n'));
-}
-
 // Acepta un arrastre como copia, y solo así. Esta vista nunca se queda con
-// los archivos: anota sus rutas de origen y VehicleRegistrationWorker los
-// copia al confirmar el wizard. Por eso no sirve acceptProposedAction(): con
+// los archivos: anota sus rutas de origen y el servicio los copia al
+// registrar. Por eso no sirve acceptProposedAction(): con
 // Shift oprimido la acción propuesta es mover (la convención de Windows), y
 // un Move aceptado le dice al Explorador que el destino ya tiene su copia; el
 // Explorador termina entonces el movimiento borrando los originales --
@@ -161,8 +132,8 @@ QWidget *VehicleFilesView::buildGalleryPanel()
     connect(addButton, &QPushButton::clicked, this, [this]() {
         const QStringList paths = QFileDialog::getOpenFileNames(
             this, QStringLiteral("Seleccionar fotografías"), QString(),
-            UploadFormatPolicy::images().dialogFilter());
-        addImages(paths);
+            m_imageFormats.dialogFilter);
+        emit imagesChosen(paths);
     });
 
     auto *addButtonRow = new QHBoxLayout;
@@ -188,12 +159,11 @@ QWidget *VehicleFilesView::buildDocumentsPanel()
     // después de equivocarse. form-label es la letra chica y gris de la hoja
     // global; con la tipografía base se leería como un renglón más del
     // checklist.
-    auto *formatsHint = new QLabel(
-        QStringLiteral("Formatos permitidos: ") + UploadFormatPolicy::documents().describeFormats(),
-        card);
-    formatsHint->setObjectName(QStringLiteral("documentFormatsHint"));
-    formatsHint->setProperty("class", QStringLiteral("form-label"));
-    cardLayout->addWidget(formatsHint);
+    // El texto llega con setUploadFormats().
+    m_documentFormatsHint = new QLabel(card);
+    m_documentFormatsHint->setObjectName(QStringLiteral("documentFormatsHint"));
+    m_documentFormatsHint->setProperty("class", QStringLiteral("form-label"));
+    cardLayout->addWidget(m_documentFormatsHint);
 
     m_documentsErrorLabel = new QLabel(card);
     m_documentsErrorLabel->setObjectName(QStringLiteral("documentsErrorLabel"));
@@ -210,45 +180,52 @@ QWidget *VehicleFilesView::buildDocumentsPanel()
     return card;
 }
 
-void VehicleFilesView::addImages(const QStringList &paths)
+void VehicleFilesView::setUploadFormats(const application::UploadFormatsDto &images,
+                                        const application::UploadFormatsDto &documents)
 {
-    // Lista vacía = se canceló el diálogo. No es un intento de carga, así que
-    // tampoco borra el aviso del intento anterior.
-    if (paths.isEmpty())
-        return;
+    m_imageFormats = images;
+    m_documentFormats = documents;
+    // Los formatos se anuncian antes de abrir el diálogo, no solo en el error
+    // después de equivocarse. form-label es la letra chica y gris de la hoja
+    // global; con la tipografía base se leería como un renglón más del
+    // checklist.
+    m_documentFormatsHint->setText(QStringLiteral("Formatos permitidos: ") + documents.description);
+}
 
-    const UploadFormatPolicy &policy = UploadFormatPolicy::images();
-    QStringList reasons;
-    QStringList rejectedNames;
-    bool added = false;
-
-    for (const QString &path : paths) {
-        if (path.isEmpty())
-            continue;
-
-        // Las válidas se agregan aunque otras del mismo lote fallen: rechazar
-        // el lote entero por un archivo obligaría a volver a elegir todo.
-        QString reason;
-        if (!policy.accepts(path, &reason)) {
-            reasons << reason;
-            rejectedNames << QFileInfo(path).fileName();
-            continue;
-        }
-
-        domain::VehicleImage image;
-        image.path = path;
-        image.isPrimary = m_images.isEmpty(); // la primera foto agregada es portada por defecto
-        m_images << image;
-        added = true;
+void VehicleFilesView::addImages(const QList<presentation::ImagePreview> &images)
+{
+    for (const presentation::ImagePreview &preview : images) {
+        GalleryImage entry;
+        entry.image.path = preview.path;
+        // La primera foto agregada es portada por defecto.
+        entry.image.isPrimary = m_images.isEmpty();
+        entry.thumbnail.loadFromData(preview.bytes);
+        m_images << entry;
     }
-
-    // El aviso describe solo el intento más reciente: uno en el que todo pasó
-    // lo borra, y uno con rechazos lo reemplaza en vez de acumularse.
-    m_galleryErrorLabel->setText(galleryRejectionMessage(reasons, rejectedNames));
-    m_galleryErrorLabel->setVisible(!reasons.isEmpty());
-
-    if (added)
+    if (!images.isEmpty())
         rebuildGallery();
+}
+
+void VehicleFilesView::showGalleryMessage(const QString &message)
+{
+    m_galleryErrorLabel->setText(message);
+    m_galleryErrorLabel->setVisible(!message.isEmpty());
+}
+
+void VehicleFilesView::showDocumentsMessage(const QString &message)
+{
+    m_documentsErrorLabel->setText(message);
+    m_documentsErrorLabel->setVisible(!message.isEmpty());
+}
+
+void VehicleFilesView::showFieldErrors(const QList<domain::ValidationError> &errors)
+{
+    formsupport::showFieldErrors(this, errors);
+}
+
+bool VehicleFilesView::focusField(const QString &field)
+{
+    return formsupport::focusField(this, field);
 }
 
 void VehicleFilesView::rebuildGallery()
@@ -280,7 +257,7 @@ void VehicleFilesView::rebuildGallery()
     QHBoxLayout *rowLayout = nullptr;
 
     for (int i = 0; i < m_images.size(); ++i) {
-        const domain::VehicleImage &image = m_images.at(i);
+        const GalleryImage &entry = m_images.at(i);
 
         // Cada fila es su propio QHBoxLayout con un stretch antes de la
         // primera foto, entre fotos, y después de la última -- así el
@@ -305,7 +282,7 @@ void VehicleFilesView::rebuildGallery()
         cellLayout->setSpacing(10);
 
         auto *thumbnail = new AspectRatioImageLabel(cell);
-        thumbnail->setSourcePixmap(QPixmap(image.path));
+        thumbnail->setSourcePixmap(entry.thumbnail);
         thumbnail->setFixedSize(360, 280);
         cellLayout->addWidget(thumbnail);
 
@@ -315,17 +292,17 @@ void VehicleFilesView::rebuildGallery()
         connect(deleteButton, &QPushButton::clicked, this, [this, i]() {
             m_images.removeAt(i);
             if (!m_images.isEmpty() && std::none_of(m_images.cbegin(), m_images.cend(),
-                                                      [](const domain::VehicleImage &img) { return img.isPrimary; })) {
-                m_images.first().isPrimary = true;
+                                                      [](const GalleryImage &img) { return img.image.isPrimary; })) {
+                m_images.first().image.isPrimary = true;
             }
             rebuildGallery();
         });
 
-        auto *starButton = new QPushButton(image.isPrimary ? QStringLiteral("★") : QStringLiteral("☆"), cell);
+        auto *starButton = new QPushButton(entry.image.isPrimary ? QStringLiteral("★") : QStringLiteral("☆"), cell);
         starButton->setProperty("class", QStringLiteral("icon-flat"));
         connect(starButton, &QPushButton::clicked, this, [this, i]() {
             for (int j = 0; j < m_images.size(); ++j)
-                m_images[j].isPrimary = (j == i);
+                m_images[j].image.isPrimary = (j == i);
             rebuildGallery();
         });
 
@@ -407,14 +384,14 @@ void VehicleFilesView::rebuildDocuments()
 
             auto *replaceButton = new QPushButton(QStringLiteral("Reemplazar"), row);
             replaceButton->setProperty("class", QStringLiteral("secondary"));
-            connect(replaceButton, &QPushButton::clicked, this, [this, type]() { uploadDocument(type); });
+            connect(replaceButton, &QPushButton::clicked, this, [this, type]() { chooseDocument(type); });
             rowLayout->addWidget(replaceButton);
         } else {
             uploadButton = new QPushButton(QStringLiteral("Subir documento"), row);
             uploadButton->setObjectName(QStringLiteral("documentUploadButton"));
             uploadButton->setProperty("class", QStringLiteral("secondary"));
             uploadButton->setEnabled(checked);
-            connect(uploadButton, &QPushButton::clicked, this, [this, type]() { uploadDocument(type); });
+            connect(uploadButton, &QPushButton::clicked, this, [this, type]() { chooseDocument(type); });
             rowLayout->addWidget(uploadButton);
         }
 
@@ -470,29 +447,32 @@ bool VehicleFilesView::hasDocumentFile(const QString &type) const
     return !m_documents.value(type).path.isEmpty();
 }
 
-bool VehicleFilesView::uploadDocument(const QString &type)
+void VehicleFilesView::chooseDocument(const QString &type)
 {
-    const UploadFormatPolicy &policy = UploadFormatPolicy::documents();
     const QString path = QFileDialog::getOpenFileName(
-        this, QStringLiteral("Seleccionar %1").arg(type), QString(), policy.dialogFilter());
-    if (path.isEmpty())
-        return false; // se canceló: todo queda como estaba, aviso incluido
+        this, QStringLiteral("Seleccionar %1").arg(type), QString(), m_documentFormats.dialogFilter);
+    // Vacía si se canceló; el presenter lo ignora y todo queda como estaba.
+    emit documentChosen(type, path);
+}
 
-    QString reason;
-    if (!policy.accepts(path, &reason)) {
-        m_documentsErrorLabel->setText(reason);
-        m_documentsErrorLabel->setVisible(true);
-        return false;
-    }
-
+void VehicleFilesView::attachDocument(const QString &documentType, const QString &path)
+{
     // Solo tipo y ruta, no el documento completo: el número de póliza del
     // Seguro se puede capturar antes que el archivo, y reemplazar el struct
     // entero lo borraría.
-    m_documents[type].documentType = type;
-    m_documents[type].path = path;
-    m_documentsErrorLabel->setVisible(false);
+    m_documents[documentType].documentType = documentType;
+    m_documents[documentType].path = path;
     rebuildDocuments();
-    return true;
+}
+
+bool VehicleFilesView::isImageCandidate(const QString &path) const
+{
+    const qsizetype separator =
+        std::max(path.lastIndexOf(QLatin1Char('/')), path.lastIndexOf(QLatin1Char('\\')));
+    const qsizetype dot = path.lastIndexOf(QLatin1Char('.'));
+    if (dot <= separator)
+        return false;
+    return m_imageFormats.extensions.contains(path.mid(dot + 1), Qt::CaseInsensitive);
 }
 
 void VehicleFilesView::dragEnterEvent(QDragEnterEvent *event)
@@ -500,17 +480,18 @@ void VehicleFilesView::dragEnterEvent(QDragEnterEvent *event)
     // Solo se acepta el arrastre si trae al menos una foto candidata, para que
     // el cursor avise desde antes de soltar que un PDF o un video no entran a
     // la galería. Aquí basta la extensión: abrir cada archivo en pleno
-    // arrastre sería lento, y dropEvent() de todos modos pasa cada ruta por la
-    // validación completa de addImages().
+    // arrastre sería lento, y al soltar el presenter revisa cada ruta por
+    // completo.
     const QList<QUrl> urls = event->mimeData()->urls();
-    const bool hasCandidate = std::any_of(urls.cbegin(), urls.cend(), [](const QUrl &url) {
-        return url.isLocalFile() && UploadFormatPolicy::images().hasAllowedSuffix(url.toLocalFile());
+    const bool hasCandidate = std::any_of(urls.cbegin(), urls.cend(), [this](const QUrl &url) {
+        return url.isLocalFile() && isImageCandidate(url.toLocalFile());
     });
     if (hasCandidate)
         acceptAsCopy(event);
     else
         event->ignore();
 }
+
 
 void VehicleFilesView::dragMoveEvent(QDragMoveEvent *event)
 {
@@ -534,13 +515,14 @@ void VehicleFilesView::dropEvent(QDropEvent *event)
         if (url.isLocalFile())
             paths << url.toLocalFile();
     }
-    addImages(paths);
+    emit imagesChosen(paths);
 }
 
 application::VehicleFilesDto VehicleFilesView::files() const
 {
     application::VehicleFilesDto dto;
-    dto.images = m_images;
+    for (const GalleryImage &entry : m_images)
+        dto.images << entry.image;
     // Un tipo de documento marcado pero sin archivo no viaja.
     for (const domain::VehicleDocument &document : m_documents) {
         if (!document.path.isEmpty())

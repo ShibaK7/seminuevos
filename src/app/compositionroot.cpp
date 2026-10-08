@@ -10,8 +10,12 @@
 #include "application/services/authenticationservice.h"
 #include "application/services/vehicleregistrationservice.h"
 #include "presentation/presenters/loginpresenter.h"
+#include "presentation/presenters/vehiclewizardpresenter.h"
 #include "presentation/views/login/loginwindow.h"
 #include "presentation/views/shell/mainwindow.h"
+#include "presentation/views/wizard/vehicleconditionsview.h"
+#include "presentation/views/wizard/vehicledetailsview.h"
+#include "presentation/views/wizard/vehiclefilesview.h"
 #include "presentation/views/wizard/vehiclewizardview.h"
 
 #include <QApplication>
@@ -163,8 +167,16 @@ void CompositionRoot::showMain(const application::SessionDto &session)
         // El asistente se arma aquí porque solo la raíz tiene su servicio y el
         // TaskRunner; MainWindow solo decide cuándo abrirlo.
         mainWindow->setWizardFactory([this](QWidget *parent) {
-            return new VehicleWizardView(*m_registration, m_runner, m_settings.wizardFreeNavigation,
-                                         parent);
+            auto *view = new VehicleWizardView(parent);
+            // El presenter vive lo que vive la vista (es su hijo): si el
+            // asistente se cierra con un registro en curso, el resultado ya no
+            // se entrega.
+            auto *presenter = new presentation::VehicleWizardPresenter(
+                *view, view->detailsView(), view->conditionsView(), view->filesView(),
+                *m_registration, m_runner, m_settings.wizardFreeNavigation, view);
+            view->bind(*presenter);
+            presenter->start();
+            return view;
         });
         m_main = mainWindow;
 

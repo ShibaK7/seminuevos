@@ -1,9 +1,13 @@
-#ifndef VEHICLEWIZARD_UPLOADFORMATPOLICY_H
-#define VEHICLEWIZARD_UPLOADFORMATPOLICY_H
+#ifndef DOMAIN_RULES_UPLOADFORMATPOLICY_H
+#define DOMAIN_RULES_UPLOADFORMATPOLICY_H
+
+#include "domain/value_objects/filefacts.h"
 
 #include <QList>
 #include <QString>
 #include <QStringList>
+
+namespace domain {
 
 // Qué archivos admite cada entrada del Paso 3 y, si uno no pasa, por qué.
 // Es la única fuente de verdad de los formatos: el filtro del diálogo, el
@@ -13,9 +17,13 @@
 // necesitan la misma lista, tenerla en uno solo es lo que evita que el
 // diálogo ofrezca algo que la validación después rechaza.
 //
-// Objeto de valor sin widgets ni estado mutable. Las dos políticas que existen
-// son constantes de la aplicación -- documents() e images() --, y por eso el
-// constructor es privado: no hay una tercera combinación que una vista tenga
+// Es una regla pura: no abre archivos. Lo que hace falta saber del archivo
+// (si existe, su tamaño, qué hay dentro) lo averigua el adaptador de
+// almacenamiento y llega como FileFacts. Por eso se prueba sin disco.
+//
+// Objeto de valor sin estado mutable. Las dos políticas que existen son
+// constantes de la aplicación -- documents() e images() --, y por eso el
+// constructor es privado: no hay una tercera combinación que alguien tenga
 // motivo para armar por su cuenta.
 class UploadFormatPolicy
 {
@@ -24,38 +32,39 @@ public:
     // del papel cuando solo se tiene la copia física.
     static const UploadFormatPolicy &documents();
     // Galería: solo imágenes, porque cada archivo se dibuja como miniatura y,
-    // al confirmar el wizard, se recomprime a JPG (LocalFileStorage).
+    // al registrar, se recomprime a JPG (LocalFileStorage).
     static const UploadFormatPolicy &images();
 
     // Filtro para QFileDialog, p.ej. "Imágenes (*.png *.jpg *.jpeg)".
     QString dialogFilter() const;
     // Lista legible para avisos y errores, p.ej. "PDF, PNG, JPG y JPEG".
     QString describeFormats() const;
+    // Extensiones admitidas, en minúsculas y sin punto.
+    QStringList extensions() const;
 
-    // Revisión barata, solo por extensión y sin abrir el archivo. Sirve para
-    // decidir en dragEnterEvent si un arrastre merece aceptarse; NO basta para
-    // admitir un archivo, eso lo decide accepts().
-    bool hasAllowedSuffix(const QString &path) const;
+    // Revisión barata, solo por la extensión del nombre. Sirve para decidir
+    // si un arrastre merece aceptarse; NO basta para admitir un archivo, eso
+    // lo decide accepts().
+    bool hasAllowedSuffix(const QString &fileName) const;
 
     // Revisión completa, en este orden: (1) que sea un archivo normal, legible
     // y con contenido; (2) que su extensión esté permitida; (3) que de verdad
-    // se pueda abrir, cosa que QFileInfo no garantiza en Windows; (4) que lo
-    // que hay DENTRO corresponda a esa extensión.
+    // se haya podido abrir; (4) que lo que hay DENTRO corresponda a esa
+    // extensión.
     //
     // El contenido se revisa porque ni el filtro ni la extensión garantizan
     // nada. El diálogo nativo de Windows deja escribir cualquier nombre, o
     // "*.*", en la caja de nombre, y el arrastre ni siquiera pasa por un
-    // diálogo: el filtro por sí solo no restringe nada. Y la extensión importa
-    // más de lo que parece: "Ver" abre el archivo elegido con el programa
-    // asociado a su extensión, así que un PDF renombrado a .png se le
-    // entregaría al visor de imágenes y no abriría. En la galería es peor: la
-    // foto que no se puede decodificar no falla al elegirla sino al final,
-    // cuando VehicleRegistrationWorker intenta recomprimirla al confirmar el
-    // wizard, y eso aborta el registro completo.
+    // diálogo. Y la extensión importa más de lo que parece: "Ver" abre el
+    // archivo con el programa asociado a su extensión, así que un PDF
+    // renombrado a .png se le entregaría al visor de imágenes y no abriría. En
+    // la galería es peor: la foto que no se puede decodificar no falla al
+    // elegirla sino al registrar, cuando se recomprime, y eso aborta el
+    // registro completo.
     //
     // Si se rechaza y reason no es nulo, recibe un mensaje listo para la
     // pantalla que nombra el archivo y repite los formatos permitidos.
-    bool accepts(const QString &path, QString *reason = nullptr) const;
+    bool accepts(const FileFacts &file, QString *reason = nullptr) const;
 
 private:
     // Extensiones que nombran el mismo tipo de contenido, junto con los tipos
@@ -78,7 +87,6 @@ private:
 
     UploadFormatPolicy(QString filterName, QList<FormatFamily> families);
 
-    QStringList extensions() const;
     // La familia que reclama esa extensión, o nullptr si no está permitida.
     const FormatFamily *familyOf(const QString &suffix) const;
 
@@ -86,4 +94,6 @@ private:
     QList<FormatFamily> m_families;
 };
 
-#endif // VEHICLEWIZARD_UPLOADFORMATPOLICY_H
+} // namespace domain
+
+#endif // DOMAIN_RULES_UPLOADFORMATPOLICY_H

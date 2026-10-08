@@ -2,9 +2,12 @@
 #define PRESENTATION_VIEWS_WIZARD_VEHICLEFILESVIEW_H
 
 #include "application/dto/registrationdtos.h"
+#include "application/dto/uploaddtos.h"
+#include "presentation/presenters/ivehiclefilesview.h"
 
 #include <QList>
 #include <QMap>
+#include <QPixmap>
 #include <QSet>
 #include <QWidget>
 
@@ -14,19 +17,33 @@ class QVBoxLayout;
 // Paso 3 del wizard: galería de fotos (drag-and-drop + selector, con
 // marcar-portada/quitar) y documentos. Cada documento del checklist se marca
 // primero con su casilla, y solo entonces se habilita el botón para subir su
-// archivo; los que ya tienen archivo ofrecen Ver/Reemplazar. Qué formatos
-// admite cada panel lo decide UploadFormatPolicy, no esta vista.
-// Nada se copia a storage/ ni se guarda en BD desde aquí -- solo junta rutas
-// de origen en memoria; VehicleRegistrationWorker es quien copia los
-// archivos al confirmar el wizard completo.
-class VehicleFilesView : public QWidget
+// archivo; los que ya tienen archivo ofrecen Ver/Reemplazar.
+//
+// Vista pasiva (IVehicleFilesView): no abre ningún archivo. Avisa qué rutas
+// eligió el usuario (imagesChosen, documentChosen) y VehicleFilesPresenter
+// decide cuáles se admiten y le pasa las miniaturas ya leídas. Nada se copia
+// al almacén desde aquí: el servicio copia los archivos al registrar.
+class VehicleFilesView : public QWidget, public presentation::IVehicleFilesView
 {
     Q_OBJECT
 
 public:
     explicit VehicleFilesView(QWidget *parent = nullptr);
 
-    application::VehicleFilesDto files() const;
+    // --- IVehicleFilesView ---
+    application::VehicleFilesDto files() const override;
+    void setUploadFormats(const application::UploadFormatsDto &images,
+                          const application::UploadFormatsDto &documents) override;
+    void addImages(const QList<presentation::ImagePreview> &images) override;
+    void showGalleryMessage(const QString &message) override;
+    void attachDocument(const QString &documentType, const QString &path) override;
+    void showDocumentsMessage(const QString &message) override;
+    void showFieldErrors(const QList<domain::ValidationError> &errors) override;
+    bool focusField(const QString &field) override;
+
+signals:
+    void imagesChosen(const QStringList &paths);
+    void documentChosen(const QString &documentType, const QString &path);
 
 protected:
     // Los tres aceptan un arrastre solo como copia, nunca como Move: la vista
@@ -37,25 +54,33 @@ protected:
     void dropEvent(QDropEvent *event) override;
 
 private:
+    // Una foto de la galería con su miniatura ya decodificada.
+    struct GalleryImage
+    {
+        domain::VehicleImage image;
+        QPixmap thumbnail;
+    };
+
     QWidget *buildGalleryPanel();
     QWidget *buildDocumentsPanel();
-    // Única puerta de entrada de fotos, vengan del diálogo o de un arrastre:
-    // valida cada ruta y avisa en el panel cuáles no se agregaron.
-    void addImages(const QStringList &paths);
     void rebuildGallery();
     void rebuildDocuments();
     // Si ese tipo ya tiene archivo. Por la ruta y no por contains(): capturar
     // el número de póliza del Seguro crea su entrada aunque no tenga archivo.
     bool hasDocumentFile(const QString &type) const;
-    // Diálogo + validación + registro de un documento del tipo dado. Lo
-    // comparten el "Subir documento" y el "Reemplazar" de cada fila para que
-    // no exista un camino de carga que se salte la validación de formato.
-    // Devuelve true solo si el tipo quedó con un archivo nuevo: cancelar o
-    // elegir uno inválido no cambian lo que ya estaba cargado.
-    bool uploadDocument(const QString &type);
+    // Diálogo de un documento del tipo dado. Lo comparten el "Subir documento"
+    // y el "Reemplazar" de cada fila para que no exista un camino de carga que
+    // se salte la revisión de formato.
+    void chooseDocument(const QString &type);
+    // Revisión barata por extensión, para el cursor de un arrastre. La
+    // revisión de verdad la hace el presenter al soltar.
+    bool isImageCandidate(const QString &path) const;
 
-    QList<domain::VehicleImage> m_images;
+    QList<GalleryImage> m_images;
     QMap<QString, domain::VehicleDocument> m_documents; // key = documentType
+
+    application::UploadFormatsDto m_imageFormats;
+    application::UploadFormatsDto m_documentFormats;
 
     // Filas armadas a mano (QHBoxLayout por cada 2 fotos) en vez de
     // QGridLayout -- así el espacio sobrante se reparte como stretch antes/
@@ -64,6 +89,7 @@ private:
     QVBoxLayout *m_galleryLayout;
     QVBoxLayout *m_documentsLayout;
 
+    QLabel *m_documentFormatsHint = nullptr;
     QLabel *m_galleryErrorLabel = nullptr;
     QLabel *m_documentsErrorLabel = nullptr;
 
