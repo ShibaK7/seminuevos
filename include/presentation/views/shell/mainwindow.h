@@ -2,7 +2,6 @@
 #define PRESENTATION_VIEWS_SHELL_MAINWINDOW_H
 
 #include "application/dto/authdtos.h"
-#include "presentation/presenters/iinventoryview.h"
 
 #include <QMainWindow>
 #include <QPointer>
@@ -19,21 +18,17 @@ namespace presentation {
 class InventoryPresenter;
 }
 
+class InventoryView;
 class VehicleWizardView;
-class QFrame;
 
-// Ventana principal: barra lateral de módulos y, dentro del área de contenido,
-// una pila que alterna entre la rejilla de inventario y el asistente de
-// registro.
+// Ventana principal: la cáscara. Barra lateral de módulos, barra superior con
+// el rol y, dentro del área de contenido, una pila que alterna entre la página
+// del inventario (InventoryView, con su propio .ui) y el asistente de registro.
 //
-// El menú lateral, las pestañas, el botón "Agregar Vehículo" y el logo vienen
-// de mainwindow.ui como widgets promovidos (ver docs/DESIGNER.md). Esta clase
-// solo los conecta.
-//
-// La rejilla es una vista pasiva (IInventoryView): no lee la base ni el disco.
-// InventoryPresenter le pide los filtros, lee fuera del hilo de la interfaz y
-// le dice qué tarjetas pintar.
-class MainWindow : public QMainWindow, public presentation::IInventoryView
+// El menú lateral y el logo vienen de mainwindow.ui como widgets promovidos
+// (ver docs/DESIGNER.md). Esta clase solo los conecta y decide qué página se
+// ve; lo que pasa dentro de cada página es de esa página y de su presenter.
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
@@ -50,33 +45,16 @@ public:
     // Quién entró: la barra superior muestra su rol.
     void setSession(const application::SessionDto &session);
 
-    // Conecta los filtros con el presenter de la rejilla y le avisa cuando se
-    // registra una unidad.
-    void bindInventory(presentation::InventoryPresenter &presenter);
+    // La página del inventario, para que la raíz de composición le arme su
+    // presenter.
+    InventoryView &inventoryView();
 
-    // --- IInventoryView ---
-    application::InventoryFilterDto filter() const override;
-    void showVehicles(const QList<application::InventoryItemDto> &vehicles) override;
-    void showInventoryMessage(const QString &message) override;
-    void scrollToFolio(int folio) override;
+    // Conecta la página del inventario con su presenter, y a este con los
+    // registros que haga el asistente.
+    void bindInventory(presentation::InventoryPresenter &presenter);
 
 private:
     WizardFactory m_wizardFactory;
-
-    // --- Pestañas de contenido ---
-    // La línea gris bajo las pestañas es lo único de esa fila que no viene del
-    // .ui: el subrayado de la pestaña activa tiene que quedar encima de ella,
-    // y eso no se puede expresar con un layout.
-    void createNavDivider();
-
-    // Recoloca el divisor de las pestañas. Va por filtro de eventos porque no
-    // está en un layout: se superpone a la fila de pestañas.
-    bool eventFilter(QObject *watched, QEvent *event) override;
-    void layoutNavDivider();
-
-    // --- Inventario ---
-    void populateStatusFilter();
-    void applyDefaultDateRange();
 
     // --- Asistente ---
     // Hay a lo más un asistente. "Agregar Vehículo" retoma el que ya exista,
@@ -90,8 +68,6 @@ private:
     void showModulePending(const QString &moduleName);
 
     Ui::MainWindow *ui;
-
-    QFrame *m_navDivider = nullptr;
 
     // El asistente en curso, o nulo si no hay ninguno. Mientras no sea nulo,
     // openVehicleWizard() lo vuelve a mostrar en vez de crear otro: esto es

@@ -1,10 +1,12 @@
-// La ventana principal como vista del inventario: con widgets reales, el
-// presenter y puertos falsos. Comprueba que pinte una tarjeta por unidad, el
-// aviso cuando no hay, que un cambio de filtro recargue y que muestre el rol.
+// La página del inventario con widgets reales, el presenter y puertos falsos.
+// Comprueba que pinte una tarjeta por unidad, el aviso cuando no hay, que un
+// cambio de filtro recargue, y que la ventana principal muestre el rol y
+// conecte la página con su presenter.
 
 #include "application/services/inventoryservice.h"
 #include "fakes.h"
 #include "presentation/presenters/inventorypresenter.h"
+#include "presentation/views/inventory/inventoryview.h"
 #include "presentation/views/shell/mainwindow.h"
 
 #include <QComboBox>
@@ -47,9 +49,9 @@ private slots:
     {
         m_reader.items << vehicle(1) << vehicle(2) << vehicle(3);
         const application::InventoryService service(m_reader, m_files);
-        MainWindow window;
+        InventoryView window;
         auto *presenter = new presentation::InventoryPresenter(window, service, m_runner, &window);
-        window.bindInventory(*presenter);
+        window.bind(*presenter);
         presenter->reload();
 
         auto *list = window.findChild<QListWidget *>(QStringLiteral("vehicleList"));
@@ -61,9 +63,9 @@ private slots:
     void emptyInventoryShowsTheMessage()
     {
         const application::InventoryService service(m_reader, m_files);
-        MainWindow window;
+        InventoryView window;
         auto *presenter = new presentation::InventoryPresenter(window, service, m_runner, &window);
-        window.bindInventory(*presenter);
+        window.bind(*presenter);
         presenter->reload();
 
         auto *list = window.findChild<QListWidget *>(QStringLiteral("vehicleList"));
@@ -76,9 +78,9 @@ private slots:
     void changingTheStatusFilterReloads()
     {
         const application::InventoryService service(m_reader, m_files);
-        MainWindow window;
+        InventoryView window;
         auto *presenter = new presentation::InventoryPresenter(window, service, m_runner, &window);
-        window.bindInventory(*presenter);
+        window.bind(*presenter);
         presenter->reload();
         QCOMPARE(m_reader.filters.size(), 1);
         QVERIFY(!m_reader.filters.last().status.has_value());
@@ -88,6 +90,46 @@ private slots:
         status->setCurrentIndex(1);
         QCOMPARE(m_reader.filters.size(), 2);
         QVERIFY(m_reader.filters.last().status.has_value());
+    }
+
+    // La página vive en su propio .ui y la ventana la conecta: el presenter
+    // pinta en la página que está dentro de la ventana.
+    void mainWindowHostsTheInventoryPage()
+    {
+        m_reader.items << vehicle(5);
+        const application::InventoryService service(m_reader, m_files);
+        MainWindow window;
+        auto *presenter = new presentation::InventoryPresenter(window.inventoryView(), service,
+                                                               m_runner, &window);
+        window.bindInventory(*presenter);
+        presenter->reload();
+
+        auto *list = window.findChild<QListWidget *>(QStringLiteral("vehicleList"));
+        QVERIFY(list);
+        QCOMPARE(list->count(), 1);
+        QCOMPARE(window.inventoryView().objectName(), QStringLiteral("inventoryPage"));
+    }
+
+    // El orden de tabulación cruza los dos formularios: después de la lista
+    // viene el menú lateral, y después de él las pestañas.
+    void tabOrderCrossesBothForms()
+    {
+        MainWindow window;
+        auto *list = window.findChild<QListWidget *>(QStringLiteral("vehicleList"));
+        auto *inventoryItem = window.findChild<QWidget *>(QStringLiteral("inventoryItem"));
+        auto *reportItem = window.findChild<QWidget *>(QStringLiteral("reportItem"));
+        auto *acquisitionTab = window.findChild<QWidget *>(QStringLiteral("acquisitionTab"));
+        QVERIFY(list && inventoryItem && reportItem && acquisitionTab);
+        // El siguiente que de verdad recibe Tab (la cadena también pasa por
+        // widgets internos, como el viewport de la lista).
+        const auto nextTabStop = [](QWidget *from) {
+            QWidget *next = from->nextInFocusChain();
+            while (next != from && !(next->focusPolicy() & Qt::TabFocus))
+                next = next->nextInFocusChain();
+            return next;
+        };
+        QCOMPARE(nextTabStop(list), inventoryItem);
+        QCOMPARE(nextTabStop(reportItem), acquisitionTab);
     }
 
     void showsTheRoleOfTheSession()

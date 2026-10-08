@@ -13,6 +13,7 @@
 #include "presentation/presenters/inventorypresenter.h"
 #include "presentation/presenters/loginpresenter.h"
 #include "presentation/presenters/vehiclewizardpresenter.h"
+#include "presentation/views/inventory/inventoryview.h"
 #include "presentation/views/login/loginwindow.h"
 #include "presentation/views/shell/mainwindow.h"
 #include "presentation/views/wizard/vehicleconditionsview.h"
@@ -169,8 +170,8 @@ void CompositionRoot::showMain(const application::SessionDto &session)
         mainWindow->setSession(session);
 
         // La rejilla del inventario: su presenter vive lo que vive la ventana.
-        auto *inventory =
-            new presentation::InventoryPresenter(*mainWindow, *m_inventory, m_runner, mainWindow);
+        auto *inventory = new presentation::InventoryPresenter(
+            mainWindow->inventoryView(), *m_inventory, m_runner, mainWindow);
         mainWindow->bindInventory(*inventory);
         inventory->reload();
 
