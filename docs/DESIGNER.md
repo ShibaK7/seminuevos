@@ -49,3 +49,53 @@ Se agregan con el **+** del editor de propiedades, de tipo **String** (o **Strin
 3. Abre la vista previa con Ctrl+R.
 
 Ni así se ve el aspecto final de los promovidos, porque la vista previa también usa la clase base.
+
+## Asistente de registro
+
+Ya están en `.ui`:
+
+- `vehiclewizardview.ui`: el marco (título, pila con los tres pasos como
+  widgets promovidos, aviso de error y botones Cancelar / Imprimir Contrato /
+  primario).
+- `vehicledetailsview.ui` (Paso 1): las dos tarjetas con todos los campos.
+- `vehicleconditionsview.ui` (Paso 2): la tarjeta de especificaciones y el
+  contenedor del checklist.
+- `vehiclefilesview.ui` (Paso 3): las tarjetas de galería y documentos, sus
+  avisos, el área de scroll y el botón "+ Agregar fotografía".
+
+Siguen en código, y por qué:
+
+- **Filas del checklist** (Paso 2): salen del catálogo de la base, así que no
+  se conocen al diseñar. El `.ui` solo trae `checklistContent` vacío.
+- **Filas de fotos y de documentos** (Paso 3): se rehacen cada vez que se
+  agrega o quita un archivo, dentro de `galleryLayout` y `documentsLayout`.
+- **La sombra de las tarjetas** (`formsupport::applyFloatingShadow`):
+  Designer no puede declarar un `QGraphicsEffect`.
+- **El nombre `cardPanel` de las tarjetas**: el QSS las pinta por ese nombre,
+  pero un formulario no admite dos widgets con el mismo; en el `.ui` cada
+  tarjeta tiene nombre propio y el constructor la renombra.
+- **Los combos de valores cerrados** (Tipo Operación, Tipo Pago, Método Pago,
+  Tipo Factura, Transmisión, Cristales, A.C.): se llenan desde el dominio,
+  que es quien decide qué texto acepta la base. En el `.ui` van vacíos.
+  Cilindros e Interiores sí traen sus opciones en el `.ui`.
+- **El stepper**: recibe los títulos de los pasos por constructor; entra por
+  el hueco `stepperSlot` del marco.
+- **Fechas y topes que dependen de hoy** (fecha de la operación, año modelo).
+
+### La propiedad `field`
+
+Cada widget de captura lleva una propiedad dinámica `field` con la clave con
+la que el dominio reporta sus errores (`serialNumber`,
+`counterparty.fullName`, `conditions.transmission`...). Con ella el asistente
+encuentra el widget de cada error.
+
+Si a un widget se le quita `field`, o se le cambia la clave, el campo **deja
+de marcarse en rojo y de recibir el foco cuando falla**, y no truena nada que
+lo avise. Al copiar o crear un campo en Designer, revisa que la lleve con la
+clave correcta. La prueba `tst_vehiclewizardview` comprueba las claves del
+Paso 1.
+
+Los campos propios de cada rama (Adquisición / Consignación) ocupan filas
+completas de la rejilla: al ocultar una rama, sus filas colapsan enteras. Si
+se mueven, conserva eso; las listas de qué se oculta en cada rama están en el
+constructor de `VehicleDetailsView`.

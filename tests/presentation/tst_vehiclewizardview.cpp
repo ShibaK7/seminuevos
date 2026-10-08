@@ -155,6 +155,46 @@ private slots:
         QVERIFY(hint->text().contains(QStringLiteral("PDF")));
     }
 
+    // Cada campo del Paso 1 conserva en "field" la clave con la que el dominio
+    // reporta sus errores. Sin ella el campo deja de marcarse en rojo y de
+    // recibir el foco cuando falla, sin que nada truene.
+    void detailsFieldsKeepTheirKeys()
+    {
+        QWidget *page = &m_view->detailsView();
+        const QStringList keys{
+            QStringLiteral("folio"), QStringLiteral("dealDate"), QStringLiteral("vehicleType"),
+            QStringLiteral("subtype"), QStringLiteral("brand"), QStringLiteral("model"),
+            QStringLiteral("yearModel"), QStringLiteral("color"), QStringLiteral("mileage"),
+            QStringLiteral("motorNumber"), QStringLiteral("serialNumber"), QStringLiteral("repuve"),
+            QStringLiteral("plates"), QStringLiteral("platesHolder"), QStringLiteral("description"),
+            QStringLiteral("acquisitionType"), QStringLiteral("counterparty.fullName"),
+            QStringLiteral("counterparty.nationalId"), QStringLiteral("counterparty.streetAddress"),
+            QStringLiteral("counterparty.suburb"), QStringLiteral("counterparty.locality"),
+            QStringLiteral("counterparty.state"), QStringLiteral("counterparty.postalCode"),
+            QStringLiteral("invoiceType"), QStringLiteral("invoiceNumber"),
+            QStringLiteral("invoiceIssuer"), QStringLiteral("purchasePrice"),
+            QStringLiteral("paymentType"), QStringLiteral("paymentMethod"),
+            QStringLiteral("salePrice"), QStringLiteral("basePrice"),
+            QStringLiteral("commissionRate"), QStringLiteral("maintenanceCost"),
+            QStringLiteral("observations")};
+        for (const QString &key : keys)
+            QVERIFY2(fieldWidget<QWidget>(page, key), qPrintable(key));
+    }
+
+    // Cambiar de rama muestra los campos de una y oculta los de la otra.
+    void acquisitionTypeTogglesTheBranchFields()
+    {
+        QWidget *page = &m_view->detailsView();
+        QComboBox *type = fieldWidget<QComboBox>(page, QStringLiteral("acquisitionType"));
+        QWidget *purchase = fieldWidget<QWidget>(page, QStringLiteral("purchasePrice"));
+        QWidget *base = fieldWidget<QWidget>(page, QStringLiteral("basePrice"));
+        QVERIFY(type && type->count() == 2 && purchase && base);
+        for (int index : {0, 1, 0}) {
+            type->setCurrentIndex(index);
+            QVERIFY(purchase->isVisibleTo(page) != base->isVisibleTo(page));
+        }
+    }
+
     // Los combos del Paso 2 arrancan sin elegir, también los que se llenan
     // desde el dominio después del .ui: así el dominio reporta como faltante
     // lo que nadie eligió.
@@ -184,6 +224,7 @@ private slots:
                                                 Qt::FindDirectChildrenOnly)
                 .size();
         };
+        QCOMPARE(cards(&m_view->detailsView()), 2);
         QCOMPARE(cards(&m_view->conditionsView()), 2);
         QCOMPARE(cards(&m_view->filesView()), 2);
     }
