@@ -57,20 +57,32 @@ private:
     // .ui: el subrayado de la pestaña activa tiene que quedar encima de ella,
     // y eso no se puede expresar con un layout.
     void createNavDivider();
-    // Recoloca el divisor. Va por filtro de eventos porque no está en un
-    // layout: se superpone a la fila de pestañas.
+    // Recoloca el divisor (va por filtro de eventos porque no está en un
+    // layout: se superpone a la fila de pestañas) y reacomoda las tarjetas
+    // cuando la lista cambia de ancho.
     bool eventFilter(QObject *watched, QEvent *event) override;
     void layoutNavDivider();
 
     void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+
+    // Responsivo: si la página es más angosta que lo que piden los filtros y
+    // "Agregar Vehículo" en una sola fila, el botón sube a la fila de las
+    // pestañas (a la derecha), y regresa cuando vuelve a caber.
+    void placeAddVehicleButton();
+    void moveAddVehicleButton(bool toTabsRow);
 
     void populateStatusFilter();
     void applyDefaultDateRange();
 
     Ui::InventoryView *ui;
     QFrame *m_navDivider = nullptr;
-    // El tamaño del filtro de estado se fija una sola vez, al primer show.
+    // El tamaño de los filtros se fija una sola vez, al primer show.
     bool m_filterSized = false;
+    // Ancho de la barra de filtros con el botón en su fila; 0 hasta el primer
+    // show.
+    int m_oneRowFilterWidth = 0;
+    bool m_addButtonInTabsRow = false;
 };
 
 #endif // PRESENTATION_INVENTORY_INVENTORYVIEW_H

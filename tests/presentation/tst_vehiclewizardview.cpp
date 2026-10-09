@@ -20,6 +20,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QtTest>
@@ -161,6 +162,26 @@ private slots:
         }
         QCOMPARE(m_view->findChild<QLabel *>(QStringLiteral("errorLabel"))->text(),
                  QStringLiteral("Revisa los campos marcados"));
+    }
+
+    // Cada paso va en su propia área con scroll: el asistente no pide el alto
+    // del paso más grande, así que cabe en una laptop chica.
+    void everyStepScrolls()
+    {
+        const QList<QWidget *> pages{&m_view->detailsView(), &m_view->conditionsView(),
+                                     &m_view->filesView()};
+        for (QWidget *page : pages) {
+            QScrollArea *area = nullptr;
+            for (QWidget *widget = page->parentWidget(); widget && !area;
+                 widget = widget->parentWidget())
+                area = qobject_cast<QScrollArea *>(widget);
+            QVERIFY2(area, qPrintable(page->objectName()));
+            QCOMPARE(area->widget(), page);
+            QVERIFY(area->widgetResizable());
+        }
+        settleLayouts();
+        QVERIFY(stack()->minimumSizeHint().height()
+                < m_view->filesView().minimumSizeHint().height());
     }
 
     // Con errores, el Paso 1 crece un renglón por campo. Va dentro de un área

@@ -132,6 +132,66 @@ private slots:
         QCOMPARE(nextTabStop(reportItem), acquisitionTab);
     }
 
+    // Responsivo: en una ventana angosta, "Agregar Vehículo" sube a la fila de
+    // las pestañas para que los filtros quepan, y regresa cuando hay lugar.
+    // Cambiar de fila le cambia el padre, pero no su lugar al tabular.
+    void addVehicleButtonMovesUpWhenNarrow()
+    {
+        MainWindow window;
+        auto *button = window.findChild<QWidget *>(QStringLiteral("addVehicleButton"));
+        auto *filterBar = window.findChild<QWidget *>(QStringLiteral("filterBar"));
+        auto *navBar = window.findChild<QWidget *>(QStringLiteral("navBar"));
+        auto *consignmentTab = window.findChild<QWidget *>(QStringLiteral("consignmentTab"));
+        QVERIFY(button && filterBar && navBar && consignmentTab);
+        const auto nextTabStop = [](QWidget *from) {
+            QWidget *next = from->nextInFocusChain();
+            while (next != from && !(next->focusPolicy() & Qt::TabFocus))
+                next = next->nextInFocusChain();
+            return next;
+        };
+
+        window.resize(3000, 800);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QCOMPARE(button->parentWidget(), filterBar);
+        QCOMPARE(nextTabStop(consignmentTab), button);
+
+        // Lo más angosta que deja la ventana: ahí la fila completa ya no cabe.
+        window.resize(window.minimumSizeHint().width(), 800);
+        QCoreApplication::processEvents();
+        QCOMPARE(button->parentWidget(), navBar);
+        QVERIFY(button->isVisible());
+        QCOMPARE(nextTabStop(consignmentTab), button);
+
+        window.resize(3000, 800);
+        QCoreApplication::processEvents();
+        QCOMPARE(button->parentWidget(), filterBar);
+        QVERIFY(button->isVisible());
+        QCOMPARE(nextTabStop(consignmentTab), button);
+    }
+
+    // Las tarjetas ocupan el ancho de la lista también después de achicar la
+    // ventana: antes se quedaban del ancho anterior y se salían por la
+    // derecha.
+    void cardsFollowTheListWidth()
+    {
+        InventoryView page;
+        page.showVehicles({vehicle(1), vehicle(2)});
+        page.resize(1800, 600);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+
+        auto *list = page.findChild<QListWidget *>(QStringLiteral("vehicleList"));
+        QWidget *card = list->itemWidget(list->item(0));
+        QVERIFY(card);
+        page.resize(page.minimumSizeHint().width(), 600);
+        QCoreApplication::processEvents();
+        QVERIFY2(card->width() <= list->viewport()->width(),
+                 qPrintable(QStringLiteral("tarjeta de %1 px en una lista de %2 px")
+                                .arg(card->width())
+                                .arg(list->viewport()->width())));
+    }
+
     void showsTheRoleOfTheSession()
     {
         MainWindow window;

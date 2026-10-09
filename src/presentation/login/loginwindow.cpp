@@ -5,12 +5,38 @@
 
 #include <QStyle>
 #include <QPropertyAnimation>
+#include <QScreen>
+
+namespace {
+
+// Lo que se le deja a Windows alrededor de la ventana: la barra de título y
+// los bordes. Antes de mostrarla todavía no se sabe cuánto miden exactamente.
+const QSize kWindowFrame(16, 48);
+
+// El .ui la diseña de 700x600 y no la deja crecer más. En una pantalla donde
+// así no cabe (una laptop de 1024x600, o una de 1366x768 al 125 %) arranca
+// más chica, arriba y centrada: su contenido se acomoda solo.
+void fitToScreen(QWidget *window)
+{
+    const QScreen *screen = window->screen();
+    if (!screen)
+        return;
+    const QRect area = screen->availableGeometry();
+    const QSize room = area.size() - kWindowFrame;
+    if (window->width() <= room.width() && window->height() <= room.height())
+        return;
+    window->resize(window->size().boundedTo(room));
+    window->move(area.x() + (area.width() - window->width()) / 2, area.y());
+}
+
+} // namespace
 
 LoginWindow::LoginWindow(QWidget* parent)
     : QMainWindow(parent)
       , ui(new Ui::LoginWindow)
 {
     ui->setupUi(this);
+    fitToScreen(this);
     // Su hoja propia (resources/styles/login.qss): el login se muestra antes
     // que la hoja global, que pisaría su fondo.
     setStyleSheet(formsupport::styleSheetResource(QStringLiteral(":/styles/login.qss")));

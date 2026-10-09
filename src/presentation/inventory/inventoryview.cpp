@@ -5,6 +5,7 @@
 #include "presentation/common/components/navtabitem.h"
 #include "presentation/inventory/vehicleitemlist.h"
 
+#include <QBoxLayout>
 #include <QComboBox>
 #include <QDateEdit>
 #include <QEvent>
@@ -15,6 +16,7 @@
 #include <QPixmap>
 #include <QPixmapCache>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QSignalBlocker>
 
 namespace {
@@ -26,6 +28,11 @@ const char *kPlaceholderImage = ":/resources/images/images/background.png";
 // Ancho mínimo del filtro de estado. Manda sobre el `min-width` del QSS; en
 // el constructor se explica por qué.
 constexpr int kStatusFilterMinWidth = 200;
+
+// Ancho mínimo de cada filtro de fecha. El que calcula Qt reserva lugar para
+// la fecha más ancha posible (276 px con este QSS), y con los dos la página no
+// cabía en una laptop de 1366 px. Este alcanza para cualquier fecha real.
+constexpr int kDateFilterMinWidth = 170;
 
 // Alto del filtro de estado. Coincide a propósito con el kHeight de
 // OutlineButton, para que el combo y el botón "Agregar Vehículo" queden a la
@@ -73,6 +80,8 @@ InventoryView::InventoryView(QWidget *parent)
 
     ui->vehicleList->setSpacing(0);
     ui->vehicleList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    // Para que las tarjetas sigan al ancho de la lista (ver eventFilter()).
+    ui->vehicleList->viewport()->installEventFilter(this);
 
     // Sin esto, la regla QWidget#inventoryPage del QSS no pinta nada: Qt solo
     // dibuja el fondo declarado en la hoja de estilos cuando el widget es de
@@ -118,6 +127,50 @@ void InventoryView::showEvent(QShowEvent *event)
     // estiramiento, así que se ve igual en una pantalla grande que en una chica.
     ui->estado->setMinimumWidth(kStatusFilterMinWidth);
     ui->estado->setFixedHeight(kFilterControlHeight);
+    for (QDateEdit *date : {ui->fechaInicio, ui->fechaFin})
+        date->setMinimumWidth(kDateFilterMinWidth);
+
+    // Lo que piden los filtros con y sin "Agregar Vehículo" en su fila. La
+    // barra se declara del ancho sin el botón: si no, la página nunca podría
+    // ser más angosta que la fila completa, y el botón nunca tendría por qué
+    // subir. Se mide aquí por lo mismo que el filtro de estado: ya pulida la
+    // hoja de estilos.
+    m_oneRowFilterWidth = ui->filterBar->minimumSizeHint().width();
+    moveAddVehicleButton(true);
+    ui->filterBar->setMinimumWidth(ui->filterBar->minimumSizeHint().width());
+    moveAddVehicleButton(false);
+    placeAddVehicleButton();
+}
+
+void InventoryView::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    placeAddVehicleButton();
+}
+
+void InventoryView::placeAddVehicleButton()
+{
+    // Antes del primer show todavía no se sabe cuánto piden los filtros.
+    if (m_oneRowFilterWidth == 0)
+        return;
+    // El layout ya le dio a la barra su ancho nuevo antes de que llegue el
+    // resizeEvent de la página.
+    const bool toTabsRow = ui->filterBar->width() < m_oneRowFilterWidth;
+    if (toTabsRow != m_addButtonInTabsRow)
+        moveAddVehicleButton(toTabsRow);
+}
+
+void InventoryView::moveAddVehicleButton(bool toTabsRow)
+{
+    m_addButtonInTabsRow = toTabsRow;
+    QBoxLayout *from = toTabsRow ? ui->horizontalLayout_3 : ui->horizontalLayout_2;
+    QBoxLayout *to = toTabsRow ? ui->horizontalLayout_2 : ui->horizontalLayout_3;
+    from->removeWidget(ui->addVehicleButton);
+    to->addWidget(ui->addVehicleButton);
+    // Cambiar de fila le cambia el padre (navBar o filterBar), y Qt lo manda
+    // al final de la cadena de foco. Vuelve a donde lo puso MainWindow: justo
+    // después de las pestañas (trailingFocusWidgets()).
+    QWidget::setTabOrder(ui->consignmentTab, ui->addVehicleButton);
 }
 
 void InventoryView::bind(presentation::InventoryPresenter &presenter)
@@ -165,6 +218,17 @@ bool InventoryView::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::Resize && watched == ui->navBar)
         layoutNavDivider();
+
+    // Una lista vertical calcula el ancho de sus renglones al acomodarlos y
+    // no lo vuelve a calcular si solo cambia el ancho (ni con resizeMode =
+    // Adjust, que solo reacciona al alto). Sin esto, al achicar la ventana o
+    // al aparecer la barra vertical, las tarjetas se quedaban del ancho de
+    // antes y se salían por la derecha.
+    if (event->type() == QEvent::Resize && watched == ui->vehicleList->viewport()) {
+        const auto *resize = static_cast<QResizeEvent *>(event);
+        if (resize->size().width() != resize->oldSize().width())
+            ui->vehicleList->doItemsLayout();
+    }
     return QWidget::eventFilter(watched, event);
 }
 
@@ -260,7 +324,9 @@ void InventoryView::showVehicles(const QList<application::InventoryItemDto> &veh
 
         auto *item = new QListWidgetItem(ui->vehicleList);
         // Ancho cero: el renglón ocupa el ancho del viewport. Darle el de la
-        // tarjeta produciría una barra horizontal de más.
+        // tarjeta produciría una barra horizontal de más. Que lo siga
+        // ocupando cuando el viewport cambia de ancho lo resuelve
+        // eventFilter().
         item->setSizeHint(QSize(0, card->sizeHint().height()));
         item->setData(Qt::UserRole, vehicle.folio);
         ui->vehicleList->setItemWidget(item, card);

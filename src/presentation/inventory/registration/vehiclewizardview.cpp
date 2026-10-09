@@ -51,12 +51,13 @@ VehicleWizardView::VehicleWizardView(QWidget *parent)
     // promovidas), el aviso de error y los botones. El texto y el ícono del
     // botón primario los pone setPrimaryAction().
     //
-    // El Paso 1 va dentro de un área con scroll (detailsScrollArea, sin marco
-    // y con widgetResizable). Es el único que puede crecer más que la
-    // pantalla: cada campo con error suma un renglón con su mensaje. Sin el
-    // scroll, el asistente pediría más alto del que hay y Qt recortaría lo de
-    // abajo, botones incluidos. Los pasos 2 y 3 no lo necesitan: su checklist
-    // y su galería ya traen su propio scroll.
+    // Cada paso va dentro de su propia área con scroll (detailsScrollArea,
+    // conditionsScrollArea y filesScrollArea, sin marco y con
+    // widgetResizable). Sin ellas, el asistente pediría el alto del paso más
+    // grande, y en una laptop chica (1366x768, o 1080p al 150 %) no cabe: Qt
+    // recortaría lo de abajo, botones incluidos. Con ellas, si el paso cabe se
+    // ve igual que sin scroll, y si no, aparece la barra. El Paso 1, además,
+    // crece un renglón por cada campo con error.
     ui->setupUi(this);
 
     // Mismo margen izquierdo que el título, para que ambos queden alineados.

@@ -55,8 +55,42 @@
        </property>
       </widget>
      </widget>
-     <widget class="VehicleConditionsView" name="conditionsPage"/>
-     <widget class="VehicleFilesView" name="filesPage"/>
+     <widget class="QScrollArea" name="conditionsScrollArea">
+      <property name="frameShape">
+       <enum>QFrame::Shape::NoFrame</enum>
+      </property>
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <widget class="VehicleConditionsView" name="conditionsPage">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>100</width>
+         <height>30</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QScrollArea" name="filesScrollArea">
+      <property name="frameShape">
+       <enum>QFrame::Shape::NoFrame</enum>
+      </property>
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <widget class="VehicleFilesView" name="filesPage">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>100</width>
+         <height>30</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
     </widget>
    </item>
    <item>
