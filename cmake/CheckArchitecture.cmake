@@ -26,8 +26,8 @@
 # nueva hace fallar la prueba; una entrada del allowlist que ya no hace falta
 # solo avisa, para que se borre.
 #
-# Las carpetas que aún no tienen capa (db/, vehiclewizard/, components/, ...)
-# no se revisan: la mudanza a carpetas hexagonales las ubica.
+# app/ (la raíz de composición) no es una capa y no se revisa: es la única
+# carpeta que puede ver todas.
 
 # En modo script (-P) CMake arranca con las políticas viejas, en las que
 # while(TRUE) no evalúa TRUE como booleano. Fijar la versión las actualiza.

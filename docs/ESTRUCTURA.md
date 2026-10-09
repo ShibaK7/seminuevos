@@ -115,7 +115,7 @@ seminuevos/
 │   │       │   ├── wizardsteppresenter, istepview.h   Base abstracta de un paso
 │   │       │   └── steps/
 │   │       │       ├── details/     Paso 1: vehicledetailsview (.ui/.h/.cpp), vehicledetailspresenter,
-│   │       │       │                ivehicledetailsview.h  (vehículo, contraparte, factura)
+│   │       │       │                ivehicledetailsview.h  (vehículo, contraparte y factura; en medio, la sección de la rama)
 │   │       │       ├── conditions/  Paso 2: vehicleconditionsview (.ui/.h/.cpp), conditionchecklistrow,
 │   │       │       │                vehicleconditionspresenter, ivehicleconditionsview.h
 │   │       │       └── files/       Paso 3: vehiclefilesview (.ui/.h/.cpp), vehiclefilespresenter,
@@ -150,6 +150,6 @@ seminuevos/
 
 **Regla de dependencias, en una línea:** `presentation → application → domain ← adapters`, y `app/` arma todo. Las vistas nunca tocan `adapters/`, SQL ni el disco.
 
-**Dónde va cada cosa en el front:** cambiar cómo se ve una pantalla (mover un campo, un texto, un botón) es su `.ui` en Designer; los colores y tamaños, el `.qss` de `resources/styles/`; conectar un botón o un componente nuevo, la vista (`.h/.cpp`); qué pasa cuando el usuario hace algo, el presenter.
+**Dónde va cada cosa en el front:** cambiar cómo se ve una pantalla (mover un campo, un texto, un botón) es su `.ui` en Designer; los colores y tamaños, el `.qss` de `resources/styles/`; conectar un botón o un componente nuevo, la vista (`.h/.cpp`); qué pasa cuando el usuario hace algo, el presenter. Lo que solo existe en una rama del asistente va en la carpeta de esa rama (`inventory/acquisition/` o `inventory/consignment/`), como una sección con su propio `.ui` que el paso promueve en el suyo.
 
 **Módulos:** cada menú de la app (Inventario, Comercial, Finanzas, Reportes) es un módulo con su carpeta dentro de cada capa. Comercial, Finanzas y Reportes nacen con su primera pantalla. Lo de `common/` no depende de ningún módulo; un módulo puede usar `common/` y el dominio de otro módulo (las ventas, por ejemplo, van a usar `Vehicle`).
