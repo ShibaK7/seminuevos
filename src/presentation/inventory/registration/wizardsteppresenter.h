@@ -33,7 +33,10 @@ public:
     domain::ValidationResult validate() const;
 
     // Marca en la vista los campos de este paso que fallan y limpia los demás.
-    void showErrors(const domain::ValidationResult &result);
+    // Devuelve los errores de result que no quedaron a la vista bajo ningún
+    // campo: los de otros pasos y los de este que no tienen campo en
+    // pantalla.
+    domain::ValidationResult showErrors(const domain::ValidationResult &result);
     // Le da el foco al primer error de este paso que tenga un campo en
     // pantalla. Devuelve si encontró uno.
     bool focusFirstError(const domain::ValidationResult &result);

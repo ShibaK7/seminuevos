@@ -53,7 +53,8 @@ public:
     // Mensaje visible en el panel del checklist. Sin esto, un fallo de la
     // consulta dejaba media pantalla en blanco sin explicación.
     void showChecklistMessage(const QString &message) override;
-    void showFieldErrors(const QList<domain::ValidationError> &errors) override;
+    QList<domain::ValidationError>
+    showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
 
 signals:

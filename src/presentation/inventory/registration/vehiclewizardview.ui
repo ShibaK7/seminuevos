@@ -37,7 +37,24 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="VehicleDetailsView" name="detailsPage"/>
+     <widget class="QScrollArea" name="detailsScrollArea">
+      <property name="frameShape">
+       <enum>QFrame::Shape::NoFrame</enum>
+      </property>
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <widget class="VehicleDetailsView" name="detailsPage">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>100</width>
+         <height>30</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
      <widget class="VehicleConditionsView" name="conditionsPage"/>
      <widget class="VehicleFilesView" name="filesPage"/>
     </widget>

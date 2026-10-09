@@ -47,6 +47,15 @@ QPushButton *buttonWithText(QWidget *root, const QString &text)
     return nullptr;
 }
 
+// Los layouts se recalculan con eventos encolados, uno por nivel de
+// anidación (la sección de una rama está dentro de la tarjeta, y esta dentro
+// del paso).
+void settleLayouts()
+{
+    for (int i = 0; i < 5; ++i)
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::LayoutRequest);
+}
+
 } // namespace
 
 class TstVehicleWizardView : public QObject
@@ -126,6 +135,44 @@ private slots:
         QCOMPARE(stack()->currentIndex(), 0);
         QLineEdit *vin = fieldWidget<QLineEdit>(&m_view->detailsView(), QStringLiteral("serialNumber"));
         QVERIFY(vin->property("hasError").toBool());
+    }
+
+    // El mensaje de cada campo aparece justo debajo de él, también en la
+    // sección de la rama, y el aviso de abajo ya no los repite.
+    void errorMessagesAppearUnderTheirFields()
+    {
+        buttonWithText(m_view.get(), QStringLiteral("Siguiente"))->click();
+        settleLayouts();
+
+        QWidget *page = &m_view->detailsView();
+        for (const QString &field : {QStringLiteral("serialNumber"), QStringLiteral("purchasePrice")}) {
+            QWidget *widget = fieldWidget<QWidget>(page, field);
+            auto *message = page->findChild<QLabel *>(widget->objectName() + QStringLiteral("Error"));
+            QVERIFY2(message, qPrintable(field));
+            QVERIFY2(message->isVisible(), qPrintable(field));
+            QVERIFY2(!message->text().isEmpty(), qPrintable(field));
+
+            const QPoint fieldAt = widget->mapTo(page, QPoint(0, 0));
+            const QPoint messageAt = message->mapTo(page, QPoint(0, 0));
+            QCOMPARE(messageAt.x(), fieldAt.x());
+            // Debajo, sin encimarse y sin quedar lejos.
+            const int gap = messageAt.y() - (fieldAt.y() + widget->height());
+            QVERIFY2(gap >= 0 && gap <= 12, qPrintable(QStringLiteral("%1: %2 px").arg(field).arg(gap)));
+        }
+        QCOMPARE(m_view->findChild<QLabel *>(QStringLiteral("errorLabel"))->text(),
+                 QStringLiteral("Revisa los campos marcados"));
+    }
+
+    // Con errores, el Paso 1 crece un renglón por campo. Va dentro de un área
+    // con scroll para que el asistente no pida más alto del que tiene la
+    // pantalla: la pila de pasos pide lo mismo con errores que sin ellos.
+    void fieldErrorsDoNotGrowTheWizard()
+    {
+        settleLayouts();
+        const int before = stack()->minimumSizeHint().height();
+        buttonWithText(m_view.get(), QStringLiteral("Siguiente"))->click();
+        settleLayouts();
+        QCOMPARE(stack()->minimumSizeHint().height(), before);
     }
 
     void completeDetailsAdvanceToConditions()

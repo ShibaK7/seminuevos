@@ -23,13 +23,21 @@ public:
     QList<domain::ValidationError> markedErrors;
     int showErrorsCalls = 0;
     QStringList focusRequests;
-    // Campos que la vista "no tiene" en pantalla: focusField() responde false.
+    // Campos que la vista "no tiene" en pantalla: focusField() responde false
+    // y showFieldErrors() devuelve sus errores como no mostrados.
     QStringList hiddenFields;
 
-    void showFieldErrors(const QList<domain::ValidationError> &errors) override
+    QList<domain::ValidationError>
+    showFieldErrors(const QList<domain::ValidationError> &errors) override
     {
         ++showErrorsCalls;
         markedErrors = errors;
+        QList<domain::ValidationError> unshown;
+        for (const domain::ValidationError &error : errors) {
+            if (hiddenFields.contains(error.field))
+                unshown << error;
+        }
+        return unshown;
     }
     bool focusField(const QString &field) override
     {

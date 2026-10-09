@@ -167,9 +167,10 @@ void VehicleFilesView::showDocumentsMessage(const QString &message)
     ui->documentsErrorLabel->setVisible(!message.isEmpty());
 }
 
-void VehicleFilesView::showFieldErrors(const QList<domain::ValidationError> &errors)
+QList<domain::ValidationError>
+VehicleFilesView::showFieldErrors(const QList<domain::ValidationError> &errors)
 {
-    formsupport::showFieldErrors(this, errors);
+    return formsupport::showFieldErrors(this, errors);
 }
 
 bool VehicleFilesView::focusField(const QString &field)

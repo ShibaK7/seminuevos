@@ -303,6 +303,17 @@ QLabel[class="error-text"] {
     color: #D90429;
 }
 
+/* Mensaje bajo un campo con error. Las etiquetas las crea
+   formsupport::addFieldErrorLabels() y solo se ven mientras el campo tiene
+   error. El margen de abajo las aleja del renglón siguiente más que de su
+   campo, para que se lean como parte del campo de arriba. */
+QLabel[class="field-error"] {
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #D90429;
+    margin-bottom: 4px;
+}
+
 /* Navigation: sidebar */
 QPushButton[class="menu-bar"] {
     background-color: transparent;

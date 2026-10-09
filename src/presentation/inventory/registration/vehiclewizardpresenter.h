@@ -97,13 +97,16 @@ private:
     void onRegistrationSucceeded(int folio);
     void advanceTo(int target);
     // Lleva al usuario al paso `step`, que no pasó la validación, lo explica
-    // en el aviso con todos sus mensajes y le da el foco al primer campo que
-    // falla. Solo para intentos explícitos (avanzar o guardar).
+    // en el aviso y le da el foco al primer campo que falla. Solo para
+    // intentos explícitos (avanzar o guardar).
     void showInvalidStep(int step, const domain::ValidationResult &result);
     // Marca en el paso `step` los campos que fallaron y limpia los demás. Solo
     // con pasos ya intentados: antes de eso no se pinta nada en rojo.
-    void markStepFields(int step, const domain::ValidationResult &result);
-    void showValidationErrors(const QString &title, const domain::ValidationResult &result);
+    // Devuelve los errores que no quedaron a la vista bajo ningún campo.
+    domain::ValidationResult markStepFields(int step, const domain::ValidationResult &result);
+    // El aviso bajo las páginas: el título y, si hay, los errores que no se
+    // ven bajo ningún campo (unshown, lo que devuelve markStepFields()).
+    void showValidationErrors(const QString &title, const domain::ValidationResult &unshown);
     void showCurrentStep();
     void refreshStepper();
     void refreshPrimaryAction();

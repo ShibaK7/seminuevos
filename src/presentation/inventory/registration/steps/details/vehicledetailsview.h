@@ -42,7 +42,8 @@ public:
     application::VehicleDetailsDto details() const override;
     void setLookups(const application::RegistrationLookupsDto &lookups) override;
     presentation::IAcquisitionTermsView &acquisitionTerms() override;
-    void showFieldErrors(const QList<domain::ValidationError> &errors) override;
+    QList<domain::ValidationError>
+    showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
 
 signals:

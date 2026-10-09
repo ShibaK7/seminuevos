@@ -16,8 +16,12 @@ class IStepView
 public:
     virtual ~IStepView() = default;
 
-    // Marca los campos con error y limpia los demás. Lista vacía = limpiar.
-    virtual void showFieldErrors(const QList<domain::ValidationError> &errors) = 0;
+    // Marca los campos con error, con sus mensajes debajo, y limpia los
+    // demás. Lista vacía = limpiar. Devuelve los errores que no se ven en
+    // ningún campo del paso (la UMA, por ejemplo, no se captura en pantalla),
+    // para que el asistente los diga en su aviso.
+    virtual QList<domain::ValidationError>
+    showFieldErrors(const QList<domain::ValidationError> &errors) = 0;
 
     // Le da el foco al campo con esa clave. Devuelve false si no hay un widget
     // visible para ella (la UMA, por ejemplo, no se captura en pantalla).

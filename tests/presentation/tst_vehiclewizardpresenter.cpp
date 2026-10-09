@@ -100,6 +100,30 @@ private slots:
         QVERIFY(!m_wizard.indicators.at(0).complete);
     }
 
+    // Cada mensaje se ve bajo su campo, así que el aviso no los repite: solo
+    // pide revisar los campos marcados.
+    void noticeDoesNotRepeatTheMessagesUnderTheFields()
+    {
+        startPresenter();
+        m_presenter->onPrimaryAction();
+        QCOMPARE(m_wizard.message, QStringLiteral("Revisa los campos marcados"));
+    }
+
+    // Un error cuyo campo no está en pantalla no tendría dónde verse: ese sí
+    // va en el aviso, y solo ese.
+    void noticeListsTheErrorsWithoutAFieldOnScreen()
+    {
+        startPresenter();
+        m_details.hiddenFields << QStringLiteral("serialNumber");
+        m_presenter->onPrimaryAction();
+        QVERIFY2(m_wizard.message.startsWith(QStringLiteral("Revisa los campos marcados:\n• ")),
+                 qPrintable(m_wizard.message));
+        QVERIFY2(m_wizard.message.contains(QStringLiteral("Captura el número de serie (VIN).")),
+                 qPrintable(m_wizard.message));
+        QVERIFY2(!m_wizard.message.contains(QStringLiteral("Captura el modelo.")),
+                 qPrintable(m_wizard.message));
+    }
+
     void nextWithValidDetailsAdvancesWithCheckmark()
     {
         captureValidSteps();

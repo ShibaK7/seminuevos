@@ -55,6 +55,25 @@ void watchEdits(QWidget *root, QObject *context, std::function<void()> onEdit);
 //     widget y de todo lo que lleva adentro. Con la validación en vivo, eso
 //     pasaría en cada tecla.
 
+// Le pone a cada campo de root que lleva "field" una etiqueta oculta justo
+// debajo, donde showFieldErrors() escribe sus mensajes. Se llama una vez, en
+// el constructor de la vista y después de setupUi(): así ningún .ui declara
+// una etiqueta por campo, y un campo nuevo con "field" recibe la suya solo.
+//
+// Cómo hace lugar depende del layout que contiene al campo:
+//   - QGridLayout: abre un renglón de errores debajo de cada renglón (el
+//     renglón r pasa a ser el 2r y sus errores van en el 2r + 1), y la
+//     etiqueta ocupa las mismas columnas que su campo;
+//   - QFormLayout: inserta una fila debajo, en la columna de los campos;
+//   - QVBoxLayout: la inserta justo después del campo.
+// Un renglón cuyos widgets están todos ocultos no ocupa lugar ni suma
+// espaciado, así que sin errores el formulario se ve igual que en Designer.
+// Un campo en otro layout se queda sin etiqueta: sus mensajes van en su
+// tooltip.
+//
+// El QSS pinta las etiquetas con la clase "field-error".
+void addFieldErrorLabels(QWidget *root);
+
 // Marca los campos de root que tienen error y limpia los demás. Recorre los
 // descendientes de root que llevan "field" (no vacío); un widget tiene error
 // si algún error trae exactamente su clave. La comparación es exacta:
@@ -64,19 +83,28 @@ void watchEdits(QWidget *root, QObject *context, std::function<void()> onEdit);
 // validación en vivo esto corre cada vez que el usuario deja de teclear, y
 // repasar la hoja completa en todos los campos del paso se nota.
 //
-// El tooltip de un campo con error muestra sus mensajes. El tooltip que el
-// campo tenía antes se guarda una sola vez en la propiedad "originalToolTip"
-// y vuelve en cuanto el campo deja de tener error.
+// Los mensajes de un campo van en su etiqueta de error, uno por renglón, y la
+// etiqueta se oculta cuando el campo deja de tener error. Un campo sin
+// etiqueta los muestra en su tooltip: el que tenía antes se guarda una sola
+// vez en la propiedad "originalToolTip" y vuelve en cuanto deja de tener
+// error.
+//
+// Devuelve los errores que no se ven en ningún campo de root: los que no
+// tienen un widget con su clave, o cuyo widget está oculto dentro de root
+// (como los de la otra rama de operación). Quien la llama decide dónde
+// mostrarlos.
 //
 // Una lista vacía limpia todo, igual que clearFieldErrors().
-void showFieldErrors(QWidget *root, const QList<domain::ValidationError> &errors);
+QList<domain::ValidationError> showFieldErrors(QWidget *root,
+                                               const QList<domain::ValidationError> &errors);
 
 // Quita las marcas de error de todos los campos de root.
 void clearFieldErrors(QWidget *root);
 
 // Le da el foco al primer widget de root con esa clave en "field", con
 // Qt::OtherFocusReason. Se salta los que no pueden recibirlo: deshabilitados
-// u ocultos dentro de root, como los campos de la otra rama de operación.
+// u ocultos dentro de root, como los campos de la otra rama de operación. Si
+// el campo está dentro de un área con scroll, la desplaza hasta él.
 //
 // Devuelve si encontró a cuál dárselo. Así quien la llama puede probar con el
 // siguiente error cuando uno no tiene widget en pantalla (la UMA, por
@@ -100,8 +128,9 @@ QString styleSheetResource(const QString &resourcePath);
 // como si fueran una sola. Toma, por columna, el mayor ancho preferido de los
 // widgets que ocupan una sola columna (también los de una sección oculta, así
 // cambiar de sección no mueve las columnas) y lo pone como ancho mínimo en
-// todas. Hay que llamarla ya pulida la hoja de estilos: el ancho de una
-// etiqueta depende de su fuente.
+// todas. Las etiquetas de error de addFieldErrorLabels() no cuentan: su ancho
+// depende del mensaje del momento. Hay que llamarla ya pulida la hoja de
+// estilos: el ancho de una etiqueta depende de su fuente.
 void alignGridColumns(const QList<QGridLayout *> &grids);
 
 // Etiqueta con el asterisco rojo de "obligatorio".

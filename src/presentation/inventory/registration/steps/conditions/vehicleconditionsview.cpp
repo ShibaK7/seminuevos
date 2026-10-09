@@ -75,6 +75,10 @@ VehicleConditionsView::VehicleConditionsView(QWidget *parent)
     // showChecklistMessage().
     ui->checklistMessageLabel->setVisible(false);
 
+    // Bajo cada campo, el lugar de sus mensajes de error. Sin errores no
+    // ocupa espacio.
+    formsupport::addFieldErrorLabels(this);
+
     // Cualquier cambio se avisa; el presenter decide cuándo revalidar. Las
     // filas del checklist se vigilan al crearlas (setChecklist).
     formsupport::watchEdits(this, this, [this] { emit edited(); });
@@ -122,9 +126,10 @@ void VehicleConditionsView::setFuelTypes(const QList<application::CatalogOptionD
     formsupport::fillCombo(ui->fuelTypeCombo, fuelTypes);
 }
 
-void VehicleConditionsView::showFieldErrors(const QList<domain::ValidationError> &errors)
+QList<domain::ValidationError>
+VehicleConditionsView::showFieldErrors(const QList<domain::ValidationError> &errors)
 {
-    formsupport::showFieldErrors(this, errors);
+    return formsupport::showFieldErrors(this, errors);
 }
 
 bool VehicleConditionsView::focusField(const QString &field)

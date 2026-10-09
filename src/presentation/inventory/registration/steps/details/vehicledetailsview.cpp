@@ -109,6 +109,10 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     for (qsizetype i = 0; i + 1 < focusChain.size(); ++i)
         QWidget::setTabOrder(focusChain.at(i), focusChain.at(i + 1));
 
+    // Bajo cada campo, el lugar de sus mensajes de error (también los de las
+    // secciones). Sin errores no ocupa espacio.
+    formsupport::addFieldErrorLabels(this);
+
     connect(ui->vehicleTypeCombo, &QComboBox::currentIndexChanged, this, &VehicleDetailsView::reloadSubtypes);
     connect(ui->acquisitionTypeCombo, &QComboBox::currentIndexChanged, this,
             &VehicleDetailsView::onAcquisitionTypeChanged);
@@ -180,9 +184,10 @@ void VehicleDetailsView::showEvent(QShowEvent *event)
                                    ui->consignmentSection->grid()});
 }
 
-void VehicleDetailsView::showFieldErrors(const QList<domain::ValidationError> &errors)
+QList<domain::ValidationError>
+VehicleDetailsView::showFieldErrors(const QList<domain::ValidationError> &errors)
 {
-    formsupport::showFieldErrors(this, errors);
+    return formsupport::showFieldErrors(this, errors);
 }
 
 bool VehicleDetailsView::focusField(const QString &field)

@@ -48,7 +48,8 @@ public:
     void showGalleryMessage(const QString &message) override;
     void attachDocument(const QString &documentType, const QString &path) override;
     void showDocumentsMessage(const QString &message) override;
-    void showFieldErrors(const QList<domain::ValidationError> &errors) override;
+    QList<domain::ValidationError>
+    showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
 
 signals:

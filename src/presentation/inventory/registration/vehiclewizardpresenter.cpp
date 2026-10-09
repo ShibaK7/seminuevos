@@ -323,9 +323,11 @@ void VehicleWizardPresenter::showInvalidStep(int step, const domain::ValidationR
     if (!alreadyVisible)
         m_nav.moveTo(step);
     showCurrentStep();
+    // Quien llama ya marcó los campos; marcarlos otra vez no cambia nada y
+    // dice qué errores no quedaron a la vista, que son los que lleva el aviso.
     showValidationErrors(alreadyVisible ? QStringLiteral("Revisa los campos marcados")
                                         : blockedHint(step),
-                         result);
+                         markStepFields(step, result));
 
     // Solo aquí se mueve el foco, porque el usuario acaba de pedir avanzar o
     // guardar; la revalidación en vivo nunca lo toca, ya que a media captura lo
@@ -333,9 +335,10 @@ void VehicleWizardPresenter::showInvalidStep(int step, const domain::ValidationR
     m_steps[step]->focusFirstError(result);
 }
 
-void VehicleWizardPresenter::markStepFields(int step, const domain::ValidationResult &result)
+domain::ValidationResult VehicleWizardPresenter::markStepFields(int step,
+                                                                const domain::ValidationResult &result)
 {
-    m_steps[step]->showErrors(result);
+    return m_steps[step]->showErrors(result);
 }
 
 void VehicleWizardPresenter::onStepEdited(int step)
@@ -365,14 +368,14 @@ void VehicleWizardPresenter::revalidateEditedSteps()
 
         // Los campos se marcan y se limpian mientras el usuario corrige, pero
         // el foco se queda donde está.
-        markStepFields(step, result);
+        const domain::ValidationResult unshown = markStepFields(step, result);
 
         // El aviso habla del paso que se ve.
         if (step == m_nav.current()) {
             if (result.isValid())
                 m_wizard.showMessage(QString());
             else
-                showValidationErrors(QStringLiteral("Revisa los campos marcados"), result);
+                showValidationErrors(QStringLiteral("Revisa los campos marcados"), unshown);
         }
     }
     // La palomita y los bloqueos siguen a la validez: un paso que deja de ser
@@ -381,12 +384,19 @@ void VehicleWizardPresenter::revalidateEditedSteps()
 }
 
 void VehicleWizardPresenter::showValidationErrors(const QString &title,
-                                                  const domain::ValidationResult &result)
+                                                  const domain::ValidationResult &unshown)
 {
-    // Todos los mensajes y no solo el primero: quien captura prefiere ver de
-    // una vez todo lo que le falta, en vez de descubrirlo de uno en uno.
+    // Cada mensaje ya se ve bajo su campo, así que el aviso no los repite:
+    // solo pide revisar los campos marcados. Lista los que no tienen campo en
+    // pantalla (la UMA, o uno de otro paso), que si no, no se verían en
+    // ningún lado. Todos y no solo el primero: quien captura prefiere ver de
+    // una vez todo lo que le falta.
+    if (unshown.isValid()) {
+        m_wizard.showMessage(title);
+        return;
+    }
     m_wizard.showMessage(title + QStringLiteral(":\n• ")
-                         + result.joinedMessages(QStringLiteral("\n• ")));
+                         + unshown.joinedMessages(QStringLiteral("\n• ")));
 }
 
 void VehicleWizardPresenter::showCurrentStep()
