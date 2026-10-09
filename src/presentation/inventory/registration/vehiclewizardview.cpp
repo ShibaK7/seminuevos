@@ -126,9 +126,9 @@ void VehicleWizardView::bind(presentation::VehicleWizardPresenter &presenter)
     connect(ui->detailsPage, &VehicleDetailsView::invoiceTypeChanged, p,
             [p] { p->details().onInvoiceTypeChanged(); });
     connect(ui->detailsPage, &VehicleDetailsView::browseInvoiceRequested, p,
-            [p] { p->details().onBrowseInvoice(); });
+            [p] { p->details().acquisitionTerms().onBrowseInvoice(); });
     connect(ui->detailsPage, &VehicleDetailsView::cfdiRequestRequested, p,
-            [p] { p->details().onCfdiRequest(); });
+            [p] { p->details().acquisitionTerms().onCfdiRequest(); });
     connect(ui->filesPage, &VehicleFilesView::imagesChosen, p,
             [p](const QStringList &paths) { p->files().onImagesChosen(paths); });
     connect(ui->filesPage, &VehicleFilesView::documentChosen, p,

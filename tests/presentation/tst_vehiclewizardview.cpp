@@ -195,6 +195,67 @@ private slots:
         }
     }
 
+    // La fila del archivo de factura es de la sección de Adquisición: en
+    // Consignación no se ve.
+    void invoiceFileRowBelongsToAcquisition()
+    {
+        QWidget *page = &m_view->detailsView();
+        QComboBox *type = fieldWidget<QComboBox>(page, QStringLiteral("acquisitionType"));
+        auto *upload = page->findChild<QPushButton *>(QStringLiteral("invoiceUploadButton"));
+        QVERIFY(type && upload);
+        type->setCurrentIndex(0); // Adquisición
+        QVERIFY(upload->isVisibleTo(page));
+        type->setCurrentIndex(1); // Consignación
+        QVERIFY(!upload->isVisibleTo(page));
+    }
+
+    // Las secciones de cada rama tienen su propia rejilla, pero sus columnas
+    // caen exactamente donde las de la tarjeta.
+    void branchSectionsAlignWithTheCard()
+    {
+        QWidget *page = &m_view->detailsView();
+        QComboBox *type = fieldWidget<QComboBox>(page, QStringLiteral("acquisitionType"));
+        const auto x = [page](const QString &field) {
+            QWidget *widget = fieldWidget<QWidget>(page, field);
+            return widget ? widget->mapTo(page, QPoint(0, 0)).x() : -1;
+        };
+
+        type->setCurrentIndex(0); // Adquisición
+        QCoreApplication::processEvents();
+        QCOMPARE(x(QStringLiteral("purchasePrice")), x(QStringLiteral("counterparty.fullName")));
+        QCOMPARE(x(QStringLiteral("paymentType")), x(QStringLiteral("counterparty.nationalId")));
+
+        type->setCurrentIndex(1); // Consignación
+        QCoreApplication::processEvents();
+        QCOMPARE(x(QStringLiteral("basePrice")), x(QStringLiteral("counterparty.fullName")));
+        QCOMPARE(x(QStringLiteral("commissionRate")), x(QStringLiteral("counterparty.nationalId")));
+    }
+
+    // El orden de tabulación cruza tres formularios: después de "Expidió
+    // Factura" vienen los campos de las secciones y luego los comunes del
+    // final.
+    void tabOrderRunsThroughTheBranchSections()
+    {
+        QWidget *page = &m_view->detailsView();
+        // El siguiente que recibe Tab, sin contar los widgets internos de Qt
+        // (el QLineEdit que lleva dentro cada spinbox, por ejemplo).
+        const auto nextTabStop = [](QWidget *from) {
+            QWidget *next = from->nextInFocusChain();
+            while (next != from
+                   && (!(next->focusPolicy() & Qt::TabFocus)
+                       || next->objectName().startsWith(QStringLiteral("qt_"))))
+                next = next->nextInFocusChain();
+            return next;
+        };
+        const auto named = [page](const char *name) {
+            return page->findChild<QWidget *>(QString::fromLatin1(name));
+        };
+        QCOMPARE(nextTabStop(named("invoiceIssuerEdit")), named("cfdiRequestButton"));
+        QCOMPARE(nextTabStop(named("salePriceSpin")), named("basePriceSpin"));
+        QCOMPARE(nextTabStop(named("commissionRateSpin")), named("maintenanceCostSpin"));
+        QCOMPARE(nextTabStop(named("maintenanceCostSpin")), named("observationsEdit"));
+    }
+
     // Los combos del Paso 2 arrancan sin elegir, también los que se llenan
     // desde el dominio después del .ui: así el dominio reporta como faltante
     // lo que nadie eligió.

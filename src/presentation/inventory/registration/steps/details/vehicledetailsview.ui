@@ -347,7 +347,7 @@
    </item>
    <item>
     <widget class="QFrame" name="ownerAndAcquisitionCard">
-     <layout class="QGridLayout" name="ownerAndAcquisitionGrid">
+     <layout class="QGridLayout" name="ownerAndAcquisitionGrid" columnstretch="0,1,0,1">
       <property name="leftMargin">
        <number>16</number>
       </property>
@@ -537,61 +537,6 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="2">
-       <widget class="QLabel" name="invoiceFileRowLabel">
-        <property name="text">
-         <string>Factura:</string>
-        </property>
-        <property name="buddy">
-         <cstring>invoiceUploadButton</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="3">
-       <widget class="QWidget" name="invoiceFileWidget" native="true">
-        <layout class="QHBoxLayout" name="invoiceFileLayout" stretch="1,0,0">
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="invoiceFileLabel">
-           <property name="text">
-            <string>Sin archivo</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="cfdiRequestButton">
-           <property name="text">
-            <string>Generar solicitud CFDI</string>
-           </property>
-           <property name="class" stdset="0">
-            <string notr="true">secondary</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="invoiceUploadButton">
-           <property name="text">
-            <string>Subir documento</string>
-           </property>
-           <property name="class" stdset="0">
-            <string notr="true">secondary</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
       <item row="6" column="0">
        <widget class="QLabel" name="invoiceNumberLabel">
         <property name="text">
@@ -632,142 +577,13 @@
         </property>
        </widget>
       </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="purchasePriceLabel">
-        <property name="text">
-         <string>Precio Compra:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
-        </property>
-        <property name="buddy">
-         <cstring>purchasePriceSpin</cstring>
-        </property>
-       </widget>
+      <item row="7" column="0" colspan="4">
+       <widget class="AcquisitionTermsSection" name="acquisitionSection" native="true"/>
       </item>
-      <item row="7" column="1">
-       <widget class="QDoubleSpinBox" name="purchasePriceSpin">
-        <property name="prefix">
-         <string>$ </string>
-        </property>
-        <property name="decimals">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <double>99999999.000000000000000</double>
-        </property>
-        <property name="field" stdset="0">
-         <string notr="true">purchasePrice</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="2">
-       <widget class="QLabel" name="paymentTypeLabel">
-        <property name="text">
-         <string>Tipo Pago:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
-        </property>
-        <property name="buddy">
-         <cstring>paymentTypeCombo</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="3">
-       <widget class="QComboBox" name="paymentTypeCombo">
-        <property name="field" stdset="0">
-         <string notr="true">paymentType</string>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="0">
-       <widget class="QLabel" name="paymentMethodLabel">
-        <property name="text">
-         <string>Método Pago:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
-        </property>
-        <property name="buddy">
-         <cstring>paymentMethodCombo</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="1">
-       <widget class="QComboBox" name="paymentMethodCombo">
-        <property name="field" stdset="0">
-         <string notr="true">paymentMethod</string>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="2">
-       <widget class="QLabel" name="salePriceLabel">
-        <property name="text">
-         <string>Precio Venta:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
-        </property>
-        <property name="buddy">
-         <cstring>salePriceSpin</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="3">
-       <widget class="QDoubleSpinBox" name="salePriceSpin">
-        <property name="prefix">
-         <string>$ </string>
-        </property>
-        <property name="maximum">
-         <double>99999999.000000000000000</double>
-        </property>
-        <property name="field" stdset="0">
-         <string notr="true">salePrice</string>
-        </property>
-       </widget>
+      <item row="8" column="0" colspan="4">
+       <widget class="ConsignmentTermsSection" name="consignmentSection" native="true"/>
       </item>
       <item row="9" column="0">
-       <widget class="QLabel" name="basePriceLabel">
-        <property name="text">
-         <string>Precio Base (dueño):  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
-        </property>
-        <property name="buddy">
-         <cstring>basePriceSpin</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="9" column="1">
-       <widget class="QDoubleSpinBox" name="basePriceSpin">
-        <property name="prefix">
-         <string>$ </string>
-        </property>
-        <property name="decimals">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <double>99999999.000000000000000</double>
-        </property>
-        <property name="field" stdset="0">
-         <string notr="true">basePrice</string>
-        </property>
-       </widget>
-      </item>
-      <item row="9" column="2">
-       <widget class="QLabel" name="commissionRateLabel">
-        <property name="text">
-         <string>Comisión:</string>
-        </property>
-        <property name="buddy">
-         <cstring>commissionRateSpin</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="9" column="3">
-       <widget class="QDoubleSpinBox" name="commissionRateSpin">
-        <property name="suffix">
-         <string> %</string>
-        </property>
-        <property name="decimals">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <double>100.000000000000000</double>
-        </property>
-        <property name="field" stdset="0">
-         <string notr="true">commissionRate</string>
-        </property>
-       </widget>
-      </item>
-      <item row="10" column="0">
        <widget class="QLabel" name="maintenanceCostLabel">
         <property name="text">
          <string>Mantenimientos:</string>
@@ -777,7 +593,7 @@
         </property>
        </widget>
       </item>
-      <item row="10" column="1">
+      <item row="9" column="1">
        <widget class="QDoubleSpinBox" name="maintenanceCostSpin">
         <property name="prefix">
          <string>$ </string>
@@ -790,7 +606,7 @@
         </property>
        </widget>
       </item>
-      <item row="11" column="0">
+      <item row="10" column="0">
        <widget class="QLabel" name="observationsLabel">
         <property name="text">
          <string>Observaciones:</string>
@@ -800,7 +616,7 @@
         </property>
        </widget>
       </item>
-      <item row="11" column="1" colspan="3">
+      <item row="10" column="1" colspan="3">
        <widget class="QTextEdit" name="observationsEdit">
         <property name="maximumSize">
          <size>
@@ -818,6 +634,20 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AcquisitionTermsSection</class>
+   <extends>QWidget</extends>
+   <header>presentation/inventory/acquisition/acquisitiontermssection.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ConsignmentTermsSection</class>
+   <extends>QWidget</extends>
+   <header>presentation/inventory/consignment/consignmenttermssection.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>folioEdit</tabstop>
   <tabstop>dateEdit</tabstop>
@@ -843,16 +673,8 @@
   <tabstop>ownerStateEdit</tabstop>
   <tabstop>ownerPostalCodeEdit</tabstop>
   <tabstop>invoiceTypeCombo</tabstop>
-  <tabstop>cfdiRequestButton</tabstop>
-  <tabstop>invoiceUploadButton</tabstop>
   <tabstop>invoiceNumberEdit</tabstop>
   <tabstop>invoiceIssuerEdit</tabstop>
-  <tabstop>purchasePriceSpin</tabstop>
-  <tabstop>paymentTypeCombo</tabstop>
-  <tabstop>paymentMethodCombo</tabstop>
-  <tabstop>salePriceSpin</tabstop>
-  <tabstop>basePriceSpin</tabstop>
-  <tabstop>commissionRateSpin</tabstop>
   <tabstop>maintenanceCostSpin</tabstop>
   <tabstop>observationsEdit</tabstop>
  </tabstops>

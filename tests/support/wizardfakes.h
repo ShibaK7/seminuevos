@@ -48,19 +48,16 @@ public:
     }
 };
 
-class FakeDetailsView final : public FakeStepView<presentation::IVehicleDetailsView>
+// La sección de Adquisición del Paso 1: la fila de la factura.
+class FakeAcquisitionTermsView final : public presentation::IAcquisitionTermsView
 {
 public:
-    application::VehicleDetailsDto captured;
-    application::RegistrationLookupsDto lookups;
     presentation::InvoiceAttachmentState attachment;
     QString nextInvoiceFile;
     bool openSucceeds = true;
     QStringList opened;
     QStringList warnings;
 
-    application::VehicleDetailsDto details() const override { return captured; }
-    void setLookups(const application::RegistrationLookupsDto &value) override { lookups = value; }
     void showInvoiceAttachment(const presentation::InvoiceAttachmentState &state) override
     {
         attachment = state;
@@ -72,6 +69,18 @@ public:
         return openSucceeds;
     }
     void showWarning(const QString &, const QString &message) override { warnings << message; }
+};
+
+class FakeDetailsView final : public FakeStepView<presentation::IVehicleDetailsView>
+{
+public:
+    application::VehicleDetailsDto captured;
+    application::RegistrationLookupsDto lookups;
+    FakeAcquisitionTermsView acquisition;
+
+    application::VehicleDetailsDto details() const override { return captured; }
+    void setLookups(const application::RegistrationLookupsDto &value) override { lookups = value; }
+    presentation::IAcquisitionTermsView &acquisitionTerms() override { return acquisition; }
 };
 
 class FakeConditionsView final : public FakeStepView<presentation::IVehicleConditionsView>

@@ -306,16 +306,16 @@ private slots:
     {
         m_details.captured.invoiceType = domain::InvoiceType::Autofactura;
         startPresenter();
-        QVERIFY(m_details.attachment.cfdiButtonVisible);
-        QVERIFY(!m_details.attachment.uploadEnabled);
+        QVERIFY(m_details.acquisition.attachment.cfdiButtonVisible);
+        QVERIFY(!m_details.acquisition.attachment.uploadEnabled);
 
-        m_presenter->details().onCfdiRequest();
-        QCOMPARE(m_details.opened.size(), 1);
-        QVERIFY(m_details.attachment.uploadEnabled);
+        m_presenter->details().acquisitionTerms().onCfdiRequest();
+        QCOMPARE(m_details.acquisition.opened.size(), 1);
+        QVERIFY(m_details.acquisition.attachment.uploadEnabled);
 
-        m_details.nextInvoiceFile = QStringLiteral("C:/facturas/f1.pdf");
-        m_presenter->details().onBrowseInvoice();
-        QCOMPARE(m_details.attachment.fileLabel, QStringLiteral("f1.pdf"));
+        m_details.acquisition.nextInvoiceFile = QStringLiteral("C:/facturas/f1.pdf");
+        m_presenter->details().acquisitionTerms().onBrowseInvoice();
+        QCOMPARE(m_details.acquisition.attachment.fileLabel, QStringLiteral("f1.pdf"));
         QCOMPARE(m_presenter->details().dto().invoiceFilePath, QStringLiteral("C:/facturas/f1.pdf"));
     }
 
@@ -324,9 +324,9 @@ private slots:
         m_details.captured.invoiceType = domain::InvoiceType::Autofactura;
         m_files.temporaryError = QStringLiteral("disco lleno");
         startPresenter();
-        m_presenter->details().onCfdiRequest();
-        QVERIFY(!m_details.attachment.uploadEnabled);
-        QCOMPARE(m_details.warnings, QStringList{QStringLiteral("disco lleno")});
+        m_presenter->details().acquisitionTerms().onCfdiRequest();
+        QVERIFY(!m_details.acquisition.attachment.uploadEnabled);
+        QCOMPARE(m_details.acquisition.warnings, QStringList{QStringLiteral("disco lleno")});
     }
 };
 

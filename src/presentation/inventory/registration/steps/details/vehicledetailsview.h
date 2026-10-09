@@ -16,8 +16,10 @@ QT_END_NAMESPACE
 
 // Paso 1 del wizard: datos generales del vehículo + contraparte + condiciones
 // de la operación. Cubre las dos ramas -- Adquisición (la agencia compra) y
-// Consignación (la agencia vende por cuenta del dueño y cobra comisión) --
-// mostrando los campos de una u otra según el selector de tipo.
+// Consignación (la agencia vende por cuenta del dueño y cobra comisión). Lo
+// que cambia entre ramas vive en su sección (inventory/acquisition/ e
+// inventory/consignment/), promovida dentro de este formulario: el selector de
+// tipo muestra una y oculta la otra.
 //
 // Vista pasiva (IVehicleDetailsView): entrega lo capturado como
 // VehicleDetailsDto y pinta lo que VehicleDetailsPresenter decide. Cuáles
@@ -39,10 +41,7 @@ public:
     // --- IVehicleDetailsView ---
     application::VehicleDetailsDto details() const override;
     void setLookups(const application::RegistrationLookupsDto &lookups) override;
-    void showInvoiceAttachment(const presentation::InvoiceAttachmentState &state) override;
-    QString askInvoiceFile() override;
-    bool openDocument(const QString &path) override;
-    void showWarning(const QString &title, const QString &message) override;
+    presentation::IAcquisitionTermsView &acquisitionTerms() override;
     void showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
 
@@ -50,8 +49,15 @@ signals:
     // Cambió cualquier campo.
     void edited();
     void invoiceTypeChanged();
+    // Los botones de la factura, que viven en la sección de Adquisición. Se
+    // reenvían aquí para que el asistente no tenga que conocer la sección.
     void browseInvoiceRequested();
     void cfdiRequestRequested();
+
+protected:
+    // Alinea las columnas de las secciones con las de la tarjeta, la primera
+    // vez que se muestra (ya pulida la hoja de estilos).
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void reloadSubtypes();
@@ -63,13 +69,7 @@ private:
 
     Ui::VehicleDetailsView *ui;
 
-    // Etiquetas y campos que se muestran u ocultan según la rama. Se guardan
-    // en listas y no como miembros sueltos porque hay que esconder también
-    // las etiquetas: dejar una etiqueta huérfana junto a un campo invisible
-    // es peor que no ocultar nada. Se arman en el constructor con los widgets
-    // del .ui.
-    QList<QWidget *> m_acquisitionOnlyWidgets;
-    QList<QWidget *> m_consignmentOnlyWidgets;
+    bool m_columnsAligned = false;
 
     // Todos los subtipos con su tipo padre; reloadSubtypes() filtra.
     QList<application::CatalogOptionDto> m_subtypes;

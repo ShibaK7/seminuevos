@@ -3,7 +3,7 @@
 
 #include "application/inventory/registration/dto/catalogdtos.h"
 #include "application/inventory/registration/dto/registrationdtos.h"
-#include "presentation/inventory/acquisition/invoiceattachment.h"
+#include "presentation/inventory/acquisition/acquisitiontermspresenter.h"
 #include "presentation/inventory/registration/wizardsteppresenter.h"
 
 #include <optional>
@@ -16,9 +16,10 @@ namespace presentation {
 
 class IVehicleDetailsView;
 
-// Paso 1: datos del vehículo, contraparte y operación. Además de validar, es
-// dueño de la factura adjunta y de la regla de la autofactura
-// (InvoiceAttachment): la vista solo pinta lo que este presenter decide.
+// Paso 1: datos del vehículo, contraparte y operación. Valida el paso y
+// compone al presenter de la sección de Adquisición, que es dueño de la
+// factura adjunta y de la regla de la autofactura: este solo le avisa cuando
+// cambia el tipo de factura.
 class VehicleDetailsPresenter final : public WizardStepPresenter
 {
 public:
@@ -38,19 +39,19 @@ public:
     application::VehicleDetailsDto dto() const;
 
     void onInvoiceTypeChanged();
-    void onBrowseInvoice();
-    void onCfdiRequest();
+
+    // La sección de Adquisición: la vista le conecta los botones de la factura.
+    AcquisitionTermsPresenter &acquisitionTerms();
 
 protected:
     domain::ValidationResult collectErrors() const override;
 
 private:
     bool isAutofacturaSelected() const;
-    void refreshInvoiceAttachment();
 
     IVehicleDetailsView &m_view;
     const application::VehicleRegistrationService &m_service;
-    InvoiceAttachment m_attachment;
+    AcquisitionTermsPresenter m_acquisitionTerms;
     // UMA vigente, leída con los catálogos. Sin ella no se valida el tope de
     // efectivo y el pago en efectivo se rechaza.
     std::optional<double> m_umaDailyValue;

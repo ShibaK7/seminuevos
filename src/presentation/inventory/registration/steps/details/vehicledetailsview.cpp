@@ -2,21 +2,19 @@
 #include "ui_vehicledetailsview.h"
 
 #include "presentation/common/forms/formsupport.h"
+#include "presentation/inventory/acquisition/acquisitiontermssection.h"
+#include "presentation/inventory/consignment/consignmenttermssection.h"
 
 #include <QComboBox>
 #include <QCompleter>
 #include <QDateEdit>
-#include <QDesktopServices>
 #include <QDoubleSpinBox>
-#include <QFileDialog>
 #include <QFrame>
+#include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
-#include <QPushButton>
 #include <QSpinBox>
 #include <QTextEdit>
-#include <QUrl>
 
 namespace {
 
@@ -63,20 +61,12 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     // al guardar, el usuario no lo captura.
     //
     // En la segunda tarjeta, el tipo de operación va primero porque condiciona
-    // todo lo demás: qué campos de precio se piden y qué valores admite el
-    // combo de factura. Los campos propios de cada rama ocupan FILAS
-    // COMPLETAS, no medias filas compartidas con campos comunes: así, al
-    // ocultar una rama, sus filas colapsan enteras en vez de dejar huecos a un
-    // lado. Si se mueven en Designer, hay que conservar eso.
-    //
-    // El archivo de factura solo existe en la compra: el esquema pone
-    // invoice_file_path únicamente en vehicle_acquisitions. Va envuelto en un
-    // widget (invoiceFileWidget) porque un QHBoxLayout suelto no se puede
-    // ocultar de una pieza. Sus botones no llevan "field": abren un diálogo en
-    // vez de capturar un dato, y el tooltip del de subir explica cuándo está
-    // bloqueado, algo que el tooltip de un error taparía. El de CFDI va antes
-    // que el de subir porque en autofactura hay que usarlo primero: leída de
-    // izquierda a derecha, la fila repite la secuencia que se exige.
+    // todo lo demás: qué sección de la rama se ve y qué valores admite el
+    // combo de factura. Cada rama es una sección promovida que ocupa una fila
+    // completa de la rejilla (acquisitionSection y consignmentSection): al
+    // ocultar una, su fila colapsa entera en vez de dejar huecos a un lado.
+    // Las tres rejillas (la de la tarjeta y las de las dos secciones) estiran
+    // igual sus columnas (0,1,0,1) para poder alinearse; ver showEvent().
     ui->setupUi(this);
 
     // Las tarjetas se llaman cardPanel en tiempo de ejecución porque así las
@@ -103,39 +93,21 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     // dependen de la rama y los conjuntos son disjuntos.
     for (domain::AcquisitionType value : domain::allAcquisitionTypes())
         ui->acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    for (domain::PaymentType value : domain::allPaymentTypes())
-        ui->paymentTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
-    for (domain::PaymentMethod value : domain::allPaymentMethods())
-        ui->paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
-    // Solo aplica a la autofactura, y en ella hay que usarlo antes de poder
-    // subir la factura. Arranca oculto; ni la visibilidad ni el bloqueo se
-    // deciden aquí: los decide el presenter (InvoiceAttachment) y llegan por
-    // showInvoiceAttachment().
-    ui->cfdiRequestButton->setVisible(false);
-    connect(ui->cfdiRequestButton, &QPushButton::clicked, this, &VehicleDetailsView::cfdiRequestRequested);
-    connect(ui->invoiceUploadButton, &QPushButton::clicked, this, &VehicleDetailsView::browseInvoiceRequested);
+    // Los botones de la factura viven en la sección de Adquisición.
+    connect(ui->acquisitionSection, &AcquisitionTermsSection::browseInvoiceRequested, this,
+            &VehicleDetailsView::browseInvoiceRequested);
+    connect(ui->acquisitionSection, &AcquisitionTermsSection::cfdiRequestRequested, this,
+            &VehicleDetailsView::cfdiRequestRequested);
 
-    // --- Solo Adquisición ---
-    // Las reglas de los precios y del tope de pago en efectivo no van aquí:
-    // son del dominio (AcquiredVehicle), que conoce la UMA vigente y reporta
-    // cada error con la clave del campo que lo provoca, y el asistente marca
-    // ese campo. Una revisión propia en esta vista repetía el tope con otro
-    // criterio, se pintaba en rojo desde que se abría el paso y movía el foco
-    // por su cuenta.
-    m_acquisitionOnlyWidgets << ui->invoiceFileRowLabel << ui->invoiceFileWidget
-                             << ui->purchasePriceLabel << ui->purchasePriceSpin
-                             << ui->paymentTypeLabel << ui->paymentTypeCombo
-                             << ui->paymentMethodLabel << ui->paymentMethodCombo
-                             << ui->salePriceLabel << ui->salePriceSpin;
-
-    // --- Solo Consignación ---
-    // No hay precio de venta que capturar: sale de base + comisión, igual que
-    // la columna generada de vehicle_consignments. El precio base es
-    // obligatorio en consignación: es lo que se le entrega al propietario y lo
-    // que imprime el contrato.
-    m_consignmentOnlyWidgets << ui->basePriceLabel << ui->basePriceSpin
-                             << ui->commissionRateLabel << ui->commissionRateSpin;
+    // El orden de tabulación cruza tres formularios, así que el .ui de este
+    // paso solo lo declara hasta "Expidió Factura" y el resto se encadena
+    // aquí: los campos de las dos secciones y después los comunes del final.
+    QList<QWidget *> focusChain{ui->invoiceIssuerEdit};
+    focusChain << ui->acquisitionSection->focusOrder() << ui->consignmentSection->focusOrder();
+    focusChain << ui->maintenanceCostSpin << ui->observationsEdit;
+    for (qsizetype i = 0; i + 1 < focusChain.size(); ++i)
+        QWidget::setTabOrder(focusChain.at(i), focusChain.at(i + 1));
 
     connect(ui->vehicleTypeCombo, &QComboBox::currentIndexChanged, this, &VehicleDetailsView::reloadSubtypes);
     connect(ui->acquisitionTypeCombo, &QComboBox::currentIndexChanged, this,
@@ -164,10 +136,8 @@ void VehicleDetailsView::onAcquisitionTypeChanged()
     const domain::AcquisitionType type = selectedAcquisitionType();
     const bool isAcquisition = type == domain::AcquisitionType::Adquisicion;
 
-    for (QWidget *widget : std::as_const(m_acquisitionOnlyWidgets))
-        widget->setVisible(isAcquisition);
-    for (QWidget *widget : std::as_const(m_consignmentOnlyWidgets))
-        widget->setVisible(!isAcquisition);
+    ui->acquisitionSection->setVisible(isAcquisition);
+    ui->consignmentSection->setVisible(!isAcquisition);
 
     // Repoblar el combo de factura NO es cosmético. Los CHECK de las dos
     // subtablas admiten conjuntos disjuntos, así que dejarlo con los valores
@@ -188,31 +158,26 @@ void VehicleDetailsView::onAcquisitionTypeChanged()
                                                  : QStringLiteral("Propietario: <span style='color: #D90429; font-weight: bold;'>*</span>"));
 }
 
-void VehicleDetailsView::showInvoiceAttachment(const presentation::InvoiceAttachmentState &state)
+presentation::IAcquisitionTermsView &VehicleDetailsView::acquisitionTerms()
 {
-    // Ocultar el botón por su cuenta no choca con que la fila entera se oculte
-    // en la consignación: un hijo ocultado explícitamente sigue oculto cuando
-    // su padre se vuelve a mostrar, así que un mecanismo no deshace al otro.
-    ui->cfdiRequestButton->setVisible(state.cfdiButtonVisible);
-    ui->invoiceUploadButton->setEnabled(state.uploadEnabled);
-    ui->invoiceUploadButton->setToolTip(state.uploadToolTip);
-    ui->invoiceFileLabel->setText(state.fileLabel);
-    ui->invoiceFileLabel->setToolTip(state.fileToolTip);
+    return *ui->acquisitionSection;
 }
 
-QString VehicleDetailsView::askInvoiceFile()
+void VehicleDetailsView::showEvent(QShowEvent *event)
 {
-    return QFileDialog::getOpenFileName(this, QStringLiteral("Seleccionar factura"));
-}
+    QWidget::showEvent(event);
+    if (m_columnsAligned)
+        return;
+    m_columnsAligned = true;
 
-bool VehicleDetailsView::openDocument(const QString &path)
-{
-    return QDesktopServices::openUrl(QUrl::fromLocalFile(path));
-}
-
-void VehicleDetailsView::showWarning(const QString &title, const QString &message)
-{
-    QMessageBox::warning(this, title, message);
+    // Las secciones de cada rama tienen su propia rejilla, y sin esto sus
+    // columnas tomarían el ancho de sus etiquetas, no el de las de la tarjeta.
+    // Va aquí y no en el constructor porque el ancho de una etiqueta depende
+    // de la hoja de estilos, y al mostrarse por primera vez el paso ya se
+    // pulió.
+    formsupport::alignGridColumns({ui->ownerAndAcquisitionGrid,
+                                   ui->acquisitionSection->grid(),
+                                   ui->consignmentSection->grid()});
 }
 
 void VehicleDetailsView::showFieldErrors(const QList<domain::ValidationError> &errors)
@@ -309,12 +274,7 @@ application::VehicleDetailsDto VehicleDetailsView::details() const
 
     // Los datos de las dos ramas viajan siempre: el servicio usa los de la
     // rama elegida.
-    dto.purchasePrice = ui->purchasePriceSpin->value();
-    dto.salePrice = ui->salePriceSpin->value();
-    dto.paymentType = static_cast<domain::PaymentType>(ui->paymentTypeCombo->currentData().toInt());
-    dto.paymentMethod =
-        static_cast<domain::PaymentMethod>(ui->paymentMethodCombo->currentData().toInt());
-    dto.basePrice = ui->basePriceSpin->value();
-    dto.commissionRate = ui->commissionRateSpin->value();
+    ui->acquisitionSection->fill(dto);
+    ui->consignmentSection->fill(dto);
     return dto;
 }

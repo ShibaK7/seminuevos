@@ -7,6 +7,7 @@
 #include <QComboBox>
 #include <QDateEdit>
 #include <QDoubleSpinBox>
+#include <QGridLayout>
 #include <QHash>
 #include <QLineEdit>
 #include <QPlainTextEdit>
@@ -18,6 +19,8 @@
 #include <QTextEdit>
 #include <QVariant>
 #include <QWidget>
+
+#include <algorithm>
 
 namespace formsupport {
 namespace {
@@ -189,6 +192,34 @@ QString styleSheetResource(const QString &resourcePath)
         resource.isValid() ? QString::fromUtf8(resource.uncompressedData()) : QString();
     cache.insert(resourcePath, sheet);
     return sheet;
+}
+
+void alignGridColumns(const QList<QGridLayout *> &grids)
+{
+    int columns = 0;
+    for (const QGridLayout *grid : grids)
+        columns = std::max(columns, grid->columnCount());
+
+    QList<int> widths(columns, 0);
+    for (QGridLayout *grid : grids) {
+        for (int i = 0; i < grid->count(); ++i) {
+            int row = 0, column = 0, rowSpan = 0, columnSpan = 0;
+            grid->getItemPosition(i, &row, &column, &rowSpan, &columnSpan);
+            if (columnSpan != 1)
+                continue;
+            // Del widget y no del renglón del layout: un renglón de un widget
+            // oculto mide cero, y la sección que no se ve también cuenta.
+            QLayoutItem *item = grid->itemAt(i);
+            const int width = item->widget() ? item->widget()->sizeHint().width()
+                                             : item->sizeHint().width();
+            widths[column] = std::max(widths[column], width);
+        }
+    }
+
+    for (QGridLayout *grid : grids) {
+        for (int column = 0; column < columns; ++column)
+            grid->setColumnMinimumWidth(column, widths.at(column));
+    }
 }
 
 QLabel *requiredLabel(const QString &text, QWidget *parent)

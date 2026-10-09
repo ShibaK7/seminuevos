@@ -16,6 +16,7 @@ class QWidget;
 // pertenecen a ninguna pantalla: viven aquí para que cada vista no las
 // reescriba a su manera.
 class QComboBox;
+class QGridLayout;
 class QLabel;
 
 namespace formsupport {
@@ -93,6 +94,15 @@ void applyFloatingShadow(QWidget *widget, int xOffset = 0, int yOffset = 5, int 
 // (":/styles/login.qss"). Vacía si el recurso no existe. Se guarda en caché:
 // la tarjeta del inventario la pide una vez por unidad.
 QString styleSheetResource(const QString &resourcePath);
+
+// Iguala el ancho de cada columna entre varias rejillas, para que las de un
+// formulario partido en secciones (cada una con su propio .ui) se alineen
+// como si fueran una sola. Toma, por columna, el mayor ancho preferido de los
+// widgets que ocupan una sola columna (también los de una sección oculta, así
+// cambiar de sección no mueve las columnas) y lo pone como ancho mínimo en
+// todas. Hay que llamarla ya pulida la hoja de estilos: el ancho de una
+// etiqueta depende de su fuente.
+void alignGridColumns(const QList<QGridLayout *> &grids);
 
 // Etiqueta con el asterisco rojo de "obligatorio".
 QLabel *requiredLabel(const QString &text, QWidget *parent = nullptr);
