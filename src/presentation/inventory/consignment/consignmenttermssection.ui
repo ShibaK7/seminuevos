@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ConsignmentTermsSection</class>
+ <widget class="QWidget" name="ConsignmentTermsSection">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>499</width>
+    <height>26</height>
+   </rect>
+  </property>
+  <layout class="QGridLayout" name="consignmentTermsGrid" columnstretch="0,1,0,1">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <property name="horizontalSpacing">
+    <number>25</number>
+   </property>
+   <property name="verticalSpacing">
+    <number>8</number>
+   </property>
+   <item row="0" column="0">
+    <widget class="QLabel" name="basePriceLabel">
+     <property name="text">
+      <string>Precio Base (dueño):  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+     </property>
+     <property name="buddy">
+      <cstring>basePriceSpin</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QDoubleSpinBox" name="basePriceSpin">
+     <property name="prefix">
+      <string>$ </string>
+     </property>
+     <property name="decimals">
+      <number>2</number>
+     </property>
+     <property name="maximum">
+      <double>99999999.000000000000000</double>
+     </property>
+     <property name="field" stdset="0">
+      <string notr="true">basePrice</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QLabel" name="commissionRateLabel">
+     <property name="text">
+      <string>Comisión:</string>
+     </property>
+     <property name="buddy">
+      <cstring>commissionRateSpin</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QDoubleSpinBox" name="commissionRateSpin">
+     <property name="suffix">
+      <string> %</string>
+     </property>
+     <property name="decimals">
+      <number>2</number>
+     </property>
+     <property name="maximum">
+      <double>100.000000000000000</double>
+     </property>
+     <property name="field" stdset="0">
+      <string notr="true">commissionRate</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>basePriceSpin</tabstop>
+  <tabstop>commissionRateSpin</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,131 @@
+/* Hoja de estilos de la tarjeta del inventario (VehicleItemList).
+   La aplica la tarjeta sobre sí misma, igual que cuando vivía embebida en
+   vehicleitemlist.ui: así sus reglas ganan sobre las genéricas de la hoja
+   global, como antes. */
+
+/* ---------- Tarjeta del vehículo (el QWidget dentro de la lista) ---------- */
+
+/* La raíz va transparente: el hueco entre tarjetas lo pinta la lista, y si
+   aquí hubiera color se leería como una banda pegada al borde de la tarjeta
+   en vez de como separación. */
+QWidget#VehicleItemList {
+    background: transparent;
+    min-height: 150px;
+    max-height: 150px;
+}
+
+/* La tarjeta propiamente dicha. */
+QFrame#frame {
+    background-color: #FFFFFF;
+    border: 1px solid #E6E8EC;
+    border-radius: 12px;
+}
+
+/* Los contenedores internos vienen del Designer con frameShape=StyledPanel,
+   que dibuja un recuadro nativo. Antes quedaban tapados por una regla
+   universal (QWidget#VehicleItemList *) que le ponía fondo y radio a TODOS
+   los descendientes -- y que de paso era lo que pintaba la tarjeta entera de
+   azul grisáceo. Al quitarla hay que apagar esos recuadros a mano, o
+   aparecen cinco cajas anidadas dentro de la tarjeta. */
+QFrame#leftFrame, QFrame#rightFrame, QFrame#frame_2,
+QFrame#detailLine, QFrame#frame_5 {
+    background: transparent;
+    border: none;
+}
+
+/* Caja de la foto. El gris claro y el borde punteado son lo que se ve cuando
+   la unidad no tiene foto: el hueco parece intencional y no un error de
+   carga. Con foto, el pixmap lo cubre. */
+QLabel#vehicleImage {
+    background-color: #F7F8FA;
+    border: 1px dashed #D7DBE2;
+    border-radius: 8px;
+}
+
+/* Separadores "|" de la línea de specs. */
+QFrame[class="lineSpecial"] {
+    border-left: 1px solid #E1E4EA;
+    min-height: 13px;
+    max-height: 13px;
+}
+
+/* Modelo del auto */
+QLabel#vehicleTitle {
+    color: #111827;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+/* Línea de specs: 2016 | Negro | 190,000 | Automático | Motor */
+QLabel[class="detailLine"] {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+/* "Agregado el: ..." */
+QLabel[class="dateIncomingLabel"] {
+    color: #9AA1AC;
+    font-size: 12px;
+}
+
+/* Precio */
+QLabel#priceLabel {
+    color: #111827;
+    font-size: 21px;
+    font-weight: 800;
+}
+
+/* Insignia de estado. El color lo decide la propiedad dinamica "status",
+   que fija VehicleItemList::setStatus() en tiempo de ejecucion. El gris de
+   aqui es el de respaldo: se ve cuando el estado guardado no corresponde a
+   ninguno de los tres del dominio, y sirve para notar el dato raro en vez de
+   disfrazarlo de disponible. */
+/* Pastilla de color suave y texto oscuro, en vez de relleno saturado con
+   texto blanco: con tres tarjetas en pantalla, tres insignias sólidas eran lo
+   primero que saltaba a la vista, por encima del modelo y del precio. */
+QLabel#statusBadge {
+    border-radius: 9px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4B5563;
+    background-color: #EDEFF2;
+}
+
+QLabel#statusBadge[status="available"] {
+    background-color: #DCF5E4;
+    color: #17703C;
+}
+
+QLabel#statusBadge[status="reserved"] {
+    background-color: #FDF0D5;
+    color: #8A5A00;
+}
+
+QLabel#statusBadge[status="sold"] {
+    background-color: #FBE1E1;
+    color: #A32020;
+}
+
+/* "Detalles": botón de contorno, no primario. En una lista de veinte
+   unidades había veinte botones azules gritando lo mismo; la acción
+   destacada de la pantalla es "Agregar Vehículo", y esto es
+   navegación repetida. */
+QPushButton#detailsButton {
+    background-color: #FFFFFF;
+    color: #374151;
+    border: 1px solid #D7DBE2;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 18px;
+}
+
+QPushButton#detailsButton:hover {
+    background-color: #F4F6F9;
+    border-color: #ADB5BD;
+}
+
+QPushButton#detailsButton:pressed {
+    background-color: #E9ECF1;
+}

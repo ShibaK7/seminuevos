@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solicitud de expedici&oacute;n de CFDI</title>
+<style>
+  :root {
+  --line-color: #000000;   /* o el color que quieras */
+  --font-main: "Segoe UI", Arial, sans-serif;
+  }
+  body { font-family: var(--font-main); color: var(--text-color); max-width: 1000px; margin: 0 auto; padding: 30px 50px; line-height: 1.5; font-size: 12px; }
+  h1 { text-align: center; font-size: 16pt; margin-bottom: 18px; }
+  p.parrafo { text-align: justify; margin: 14px 0; }
+  input.fill-input { border: none; border-bottom: 1px solid var(--line-color); background: transparent; font-family: var(--font-main); font-size: 12px; padding: 2px 4px; outline: none; }
+  input { margin-top:0.5%; }
+  * { box-sizing: border-box; }
+  .fecha { margin-bottom: 10px; }
+  .fill-line.long { min-width: 30%; }
+  .fill-line.medium { min-width: 20%; width:100%; max-width:500px; }
+  .fill-line.short { min-width: 15%; width:100%; max-width:150px; }
+  .fill-line.xshort { min-width: 10%; }
+  .checklist { margin: 1% 0 1.5% 0; list-style: none; padding-left: 0; }
+  .checklist input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 3px; }
+  .signature-section { margin-top: 1%; }
+  .signature-block { margin-top: 50px; text-align: center; }
+  .signature-line { display: block; border-bottom: 1px solid var(--line-color); width: 350px; margin: 0 auto 6px auto; }
+  .signature-caption { font-size: 15px; }
+  .intro-actividad { margin-top: 25px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+  <h1>Anexo 1. Modelo de escrito libre<br>Solicitud de expedici&oacute;n de CFDI</h1>
+  <p class="fecha">
+    Fecha: <input type="text" class="fill-input" style="width:150px;">
+  </p>
+
+  <p class="parrafo">
+    Por este medio quien suscribe: <input type="text" class="fill-input" style="width:100%; max-width:500px;">,<br>
+    con RFC: <input type="text" class="fill-input" style="width:150px;">,
+    domicilio fiscal ubicado en el c&oacute;digo postal: <input type="text" class="fill-input" style="width:500px;">,<br>
+    me encuentro inscrito en el r&eacute;gimen fiscal: <input type="text" class="fill-input" style="margin-top:4px;">
+    y manifiesto expresamente mi conformidad para que el adquirente de mis productos o
+    servicios con denominaci&oacuten social: <br><input type="text" class="fill-input" style="width:100%; max-width:500px; margin-top:4px;">,<br>
+    y RFC: <input type="text" class="fill-input" style="width:150px;">,
+    realice la emisi&oacuten de los comprobantes fiscales de acuerdo a lo dispuesto en la
+    Secci&oacuten 2.7.3 de la Resoluci&oacuten Miscel&aacute;nea Fiscal (RMF) vigente.
+  </p>
+
+  <p class="parrafo intro-actividad">
+    Adicionalmente, se informa que cuento con la actividad preponderante de:
+  </p>
+
+  <ul class="checklist">
+    <li>
+      <input type="checkbox" id="opt1">
+      <label for="opt1">Venta de productos del sector primario de acuerdo con la regla 2.7.3.1 de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt2">
+      <label for="opt2">Por el otorgamiento del uso o goce temporal de inmuebles de acuerdo con la regla 2.7.3.2. de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt3">
+      <label for="opt3">Venta de productos del sector minero de acuerdo con la regla 2.7.3.3. de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt4">
+      <label for="opt4">Venta de veh&iacute;culos usados de acuerdo con la regla 2.7.3.4. de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt5">
+      <label for="opt5">Recolecci&oacute;n de desperdicios y materiales de la industria del reciclaje de acuerdo con la regla 2.7.3.5. de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt6">
+      <label for="opt6">Venta de bienes, uso o goce temporal de bienes inmuebles, afectaci&oacute;n de terrenos, bienes o derechos incluyendo derechos reales, ejidales o comunales de acuerdo a la regla 2.7.3.6 de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt7">
+      <label for="opt7">Pago de servidumbres de paso, de acuerdo a la regla 2.7.3.7 de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt8">
+      <label for="opt8">Venta de obras de artes pl&aacute;sticas y antig&uuml;edades de acuerdo con la regla 2.7.3.8. de la RMF vigente.</label>
+    </li>
+    <li>
+      <input type="checkbox" id="opt9">
+      <label for="opt9">Venta de artesan&iacute;as de acuerdo con la regla 2.7.3.9. de la RMF vigente.</label>
+    </li>
+  </ul>
+
+  <p class="parrafo">
+    Para la emisi&oacute;n de los CFDI por las operaciones de venta de bienes o prestaci&oacute;n de servicios
+    que celebremos entre ambas partes, al amparo de lo dispuesto por la regla <input type="text" class="fill-input" style="width:150px;">.
+  </p>
+
+  <div class="signature-section">
+    <p class="parrafo">
+      Nombre completo de quien suscribe: <input type="text" class="fill-input" style="width:100%; max-width:500px; margin-top:4px;">
+    </p>
+
+    <p class="parrafo">
+      tipo identificaci&oacute;n oficial vigente con la que se acredita: <input type="text" class="fill-input" style="width:150px;">,
+      con folio: <input type="text" class="fill-input" style="width:220px;">.
+    </p>
+  </div>
+
+  <div class="signature-block">
+    <div class="signature-line"></div>
+    <div class="signature-caption">Firma</div>
+  </div>
+</body>
+</html>

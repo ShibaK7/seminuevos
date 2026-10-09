@@ -1,0 +1,8 @@
+# Violaciones de la arquitectura que existen A PROPÓSITO, cada una con el
+# commit del plan que la quita. Formato: el texto exacto que imprime la prueba
+# `architecture`, y después de "#" la razón.
+#
+# Este archivo solo se encoge: una violación nueva no se agrega aquí para que
+# pase la prueba, se corrige. Si la prueba avisa que una entrada ya no hace
+# falta, se borra.
+

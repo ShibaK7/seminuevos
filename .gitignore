@@ -66,6 +66,12 @@ Makefile
 build/
 build-*/
 
+# Fotos/documentos de vehículos guardados por LocalFileStorageManager
+# (storage/vehicles/{vin}/...) -- contenido generado, no se versiona.
+# La barra inicial ancla el patrón a la raíz: sin ella también ignoraba
+# src/storage/ e include/storage/, que sí son código fuente.
+/storage/
+
 # Config local de Qt Creator (rutas/kit de cada máquina, no se comparte)
 .qtcreator/*.user
 .qtcreator/*.user.*

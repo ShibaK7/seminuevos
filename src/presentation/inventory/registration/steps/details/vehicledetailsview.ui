@@ -1,0 +1,683 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VehicleDetailsView</class>
+ <widget class="QWidget" name="VehicleDetailsView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1401</width>
+    <height>760</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="detailsLayout">
+   <item>
+    <widget class="QFrame" name="generalInfoCard">
+     <layout class="QGridLayout" name="generalInfoGrid">
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <property name="horizontalSpacing">
+       <number>25</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>8</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="folioLabel">
+        <property name="text">
+         <string>Folio:</string>
+        </property>
+        <property name="buddy">
+         <cstring>folioEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="folioEdit">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="placeholderText">
+         <string>(auto)</string>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">folio</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="dateLabel">
+        <property name="text">
+         <string>Fecha:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>dateEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QDateEdit" name="dateEdit">
+        <property name="minimumDate">
+         <date>
+          <year>2000</year>
+          <month>1</month>
+          <day>1</day>
+         </date>
+        </property>
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">dealDate</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="vehicleTypeLabel">
+        <property name="text">
+         <string>Tipo Vehículo:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>vehicleTypeCombo</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="vehicleTypeCombo">
+        <property name="field" stdset="0">
+         <string notr="true">vehicleType</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="subtypeLabel">
+        <property name="text">
+         <string>Subtipo:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>subtypeCombo</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QComboBox" name="subtypeCombo">
+        <property name="field" stdset="0">
+         <string notr="true">subtype</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="brandLabel">
+        <property name="text">
+         <string>Marca:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>brandCombo</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QComboBox" name="brandCombo">
+        <property name="field" stdset="0">
+         <string notr="true">brand</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QLabel" name="modelLabel">
+        <property name="text">
+         <string>Modelo:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>modelEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QLineEdit" name="modelEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="placeholderText">
+         <string>p.ej. Kicks Advance TM</string>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">model</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="yearModelLabel">
+        <property name="text">
+         <string>Año Modelo:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>yearModelSpin</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QSpinBox" name="yearModelSpin">
+        <property name="field" stdset="0">
+         <string notr="true">yearModel</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QLabel" name="colorLabel">
+        <property name="text">
+         <string>Color:</string>
+        </property>
+        <property name="buddy">
+         <cstring>colorEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="3">
+       <widget class="QLineEdit" name="colorEdit">
+        <property name="maxLength">
+         <number>30</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">color</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="mileageLabel">
+        <property name="text">
+         <string>Kilometraje:</string>
+        </property>
+        <property name="buddy">
+         <cstring>mileageSpin</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QSpinBox" name="mileageSpin">
+        <property name="suffix">
+         <string> km</string>
+        </property>
+        <property name="maximum">
+         <number>2000000</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">mileage</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QLabel" name="motorNumberLabel">
+        <property name="text">
+         <string>No. Motor:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>motorNumberEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="3">
+       <widget class="QLineEdit" name="motorNumberEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">motorNumber</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="serialNumberLabel">
+        <property name="text">
+         <string>No. Serie (VIN):  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>serialNumberEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QLineEdit" name="serialNumberEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="placeholderText">
+         <string>VIN</string>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">serialNumber</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="2">
+       <widget class="QLabel" name="repuveLabel">
+        <property name="text">
+         <string>REPUVE:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>repuveEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="3">
+       <widget class="QLineEdit" name="repuveEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">repuve</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="platesLabel">
+        <property name="text">
+         <string>Placas:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>platesEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLineEdit" name="platesEdit">
+        <property name="maxLength">
+         <number>20</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">plates</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="2">
+       <widget class="QLabel" name="platesHolderLabel">
+        <property name="text">
+         <string>Titular Placas:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>platesHolderEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="3">
+       <widget class="QLineEdit" name="platesHolderEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">platesHolder</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0">
+       <widget class="QLabel" name="descriptionLabel">
+        <property name="text">
+         <string>Descripción:</string>
+        </property>
+        <property name="buddy">
+         <cstring>descriptionEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="1" colspan="3">
+       <widget class="QTextEdit" name="descriptionEdit">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>60</height>
+         </size>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">description</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="ownerAndAcquisitionCard">
+     <layout class="QGridLayout" name="ownerAndAcquisitionGrid" columnstretch="0,1,0,1">
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <property name="horizontalSpacing">
+       <number>25</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>8</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="acquisitionTypeLabel">
+        <property name="text">
+         <string>Tipo Operación:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>acquisitionTypeCombo</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="acquisitionTypeCombo">
+        <property name="field" stdset="0">
+         <string notr="true">acquisitionType</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="counterpartyLabel">
+        <property name="text">
+         <string>Propietario: &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>ownerNameEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="ownerNameEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">counterparty.fullName</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="ownerIdLabel">
+        <property name="text">
+         <string>Identificación:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>ownerIdEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLineEdit" name="ownerIdEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">counterparty.nationalId</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="ownerAddressLabel">
+        <property name="text">
+         <string>Domicilio:</string>
+        </property>
+        <property name="buddy">
+         <cstring>ownerAddressEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="ownerAddressEdit">
+        <property name="field" stdset="0">
+         <string notr="true">counterparty.streetAddress</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QLabel" name="ownerSuburbLabel">
+        <property name="text">
+         <string>Colonia:</string>
+        </property>
+        <property name="buddy">
+         <cstring>ownerSuburbEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QLineEdit" name="ownerSuburbEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">counterparty.suburb</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="ownerLocalityLabel">
+        <property name="text">
+         <string>Localidad:</string>
+        </property>
+        <property name="buddy">
+         <cstring>ownerLocalityEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLineEdit" name="ownerLocalityEdit">
+        <property name="maxLength">
+         <number>100</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">counterparty.locality</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QLabel" name="ownerStateLabel">
+        <property name="text">
+         <string>Estado:</string>
+        </property>
+        <property name="buddy">
+         <cstring>ownerStateEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="3">
+       <widget class="QLineEdit" name="ownerStateEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">counterparty.state</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="ownerPostalCodeLabel">
+        <property name="text">
+         <string>Código Postal:</string>
+        </property>
+        <property name="buddy">
+         <cstring>ownerPostalCodeEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLineEdit" name="ownerPostalCodeEdit">
+        <property name="maxLength">
+         <number>5</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">counterparty.postalCode</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="invoiceTypeLabel">
+        <property name="text">
+         <string>Tipo Factura:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>invoiceTypeCombo</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QComboBox" name="invoiceTypeCombo">
+        <property name="field" stdset="0">
+         <string notr="true">invoiceType</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="invoiceNumberLabel">
+        <property name="text">
+         <string>No. Factura:  &lt;span style='color: #D90429; font-weight: bold;'&gt;*&lt;/span&gt;</string>
+        </property>
+        <property name="buddy">
+         <cstring>invoiceNumberEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLineEdit" name="invoiceNumberEdit">
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">invoiceNumber</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="2">
+       <widget class="QLabel" name="invoiceIssuerLabel">
+        <property name="text">
+         <string>Expidió Factura:</string>
+        </property>
+        <property name="buddy">
+         <cstring>invoiceIssuerEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="3">
+       <widget class="QLineEdit" name="invoiceIssuerEdit">
+        <property name="maxLength">
+         <number>150</number>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">invoiceIssuer</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0" colspan="4">
+       <widget class="AcquisitionTermsSection" name="acquisitionSection" native="true"/>
+      </item>
+      <item row="8" column="0" colspan="4">
+       <widget class="ConsignmentTermsSection" name="consignmentSection" native="true"/>
+      </item>
+      <item row="9" column="0">
+       <widget class="QLabel" name="maintenanceCostLabel">
+        <property name="text">
+         <string>Mantenimientos:</string>
+        </property>
+        <property name="buddy">
+         <cstring>maintenanceCostSpin</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="1">
+       <widget class="QDoubleSpinBox" name="maintenanceCostSpin">
+        <property name="prefix">
+         <string>$ </string>
+        </property>
+        <property name="maximum">
+         <double>9999999.000000000000000</double>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">maintenanceCost</string>
+        </property>
+       </widget>
+      </item>
+      <item row="10" column="0">
+       <widget class="QLabel" name="observationsLabel">
+        <property name="text">
+         <string>Observaciones:</string>
+        </property>
+        <property name="buddy">
+         <cstring>observationsEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="10" column="1" colspan="3">
+       <widget class="QTextEdit" name="observationsEdit">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>60</height>
+         </size>
+        </property>
+        <property name="field" stdset="0">
+         <string notr="true">observations</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AcquisitionTermsSection</class>
+   <extends>QWidget</extends>
+   <header>presentation/inventory/acquisition/acquisitiontermssection.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ConsignmentTermsSection</class>
+   <extends>QWidget</extends>
+   <header>presentation/inventory/consignment/consignmenttermssection.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>folioEdit</tabstop>
+  <tabstop>dateEdit</tabstop>
+  <tabstop>vehicleTypeCombo</tabstop>
+  <tabstop>subtypeCombo</tabstop>
+  <tabstop>brandCombo</tabstop>
+  <tabstop>modelEdit</tabstop>
+  <tabstop>yearModelSpin</tabstop>
+  <tabstop>colorEdit</tabstop>
+  <tabstop>mileageSpin</tabstop>
+  <tabstop>motorNumberEdit</tabstop>
+  <tabstop>serialNumberEdit</tabstop>
+  <tabstop>repuveEdit</tabstop>
+  <tabstop>platesEdit</tabstop>
+  <tabstop>platesHolderEdit</tabstop>
+  <tabstop>descriptionEdit</tabstop>
+  <tabstop>acquisitionTypeCombo</tabstop>
+  <tabstop>ownerNameEdit</tabstop>
+  <tabstop>ownerIdEdit</tabstop>
+  <tabstop>ownerAddressEdit</tabstop>
+  <tabstop>ownerSuburbEdit</tabstop>
+  <tabstop>ownerLocalityEdit</tabstop>
+  <tabstop>ownerStateEdit</tabstop>
+  <tabstop>ownerPostalCodeEdit</tabstop>
+  <tabstop>invoiceTypeCombo</tabstop>
+  <tabstop>invoiceNumberEdit</tabstop>
+  <tabstop>invoiceIssuerEdit</tabstop>
+  <tabstop>maintenanceCostSpin</tabstop>
+  <tabstop>observationsEdit</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
