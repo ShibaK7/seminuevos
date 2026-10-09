@@ -4,7 +4,7 @@
 
 #include "application/auth/services/authenticationservice.h"
 #include "fakes.h"
-#include "presentation/presenters/loginpresenter.h"
+#include "presentation/login/loginpresenter.h"
 
 #include <QSignalSpy>
 #include <QtTest>

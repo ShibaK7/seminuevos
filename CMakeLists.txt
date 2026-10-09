@@ -33,28 +33,30 @@ seminuevos_layer(seminuevos_application
     NO_MOC
 )
 
-# Presentación sin widgets: presenters, navegación y tareas. Solo QtCore, para
-# poder probarla sin GUI.
+# Front (src/presentation): cada pantalla tiene en su carpeta su .ui, su vista
+# y su presenter, y aun así se reparte en dos bibliotecas por nombre de archivo
+# (la regla está en cmake/SeminuevosFront.cmake):
+#   - seminuevos_presentation: la lógica de pantalla (presenters, interfaces de
+#     vista, navegación, tareas). Solo QtCore, para probarla sin GUI; un
+#     QWidget ahí no compila.
+#   - seminuevos_views: los widgets y sus formularios. Ven la lógica, los DTO y
+#     los value objects, pero no enlazan ningún adaptador ni Qt Sql; la prueba
+#     `architecture` revisa además que no toquen el disco.
+# Cada .ui está junto al .cpp que lo incluye, así que uic lo encuentra solo.
+include(cmake/SeminuevosFront.cmake)
+seminuevos_front_files("${CMAKE_CURRENT_SOURCE_DIR}" SEMINUEVOS_FRONT_LOGIC SEMINUEVOS_FRONT_VIEWS)
+
 seminuevos_layer(seminuevos_presentation
-    DIRS presentation/navigation presentation/presenters presentation/tasks
+    FILES ${SEMINUEVOS_FRONT_LOGIC}
     DEPENDS seminuevos_application
+    SOURCE_HEADERS
 )
 
-# Vistas: los widgets (presentation/views) y sus formularios de Designer
-# (src/ui). Ven los presenters, los DTO y los value objects, pero no enlazan
-# ningún adaptador ni Qt Sql: no pueden tocar la base, y la prueba
-# `architecture` revisa que tampoco toquen el disco.
 seminuevos_layer(seminuevos_views
-    DIRS presentation/views
+    FILES ${SEMINUEVOS_FRONT_VIEWS}
     DEPENDS seminuevos_presentation
     QT Widgets
-)
-file(GLOB SEMINUEVOS_FORMS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.ui")
-target_sources(seminuevos_views PRIVATE ${SEMINUEVOS_FORMS})
-# Los .ui viven en src/ui; con esta ruta, "#include "ui_x.h"" encuentra el
-# formulario sin rutas relativas.
-set_target_properties(seminuevos_views PROPERTIES
-    AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/src/ui"
+    SOURCE_HEADERS
 )
 
 # Adaptadores de salida: cada uno en su biblioteca, con solo el módulo de Qt

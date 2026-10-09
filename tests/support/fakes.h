@@ -14,9 +14,9 @@
 #include "application/auth/ports/userdirectory.h"
 #include "application/inventory/registration/ports/vehiclerepository.h"
 #include "domain/inventory/model/vehicle.h"
-#include "presentation/presenters/iinventoryview.h"
-#include "presentation/presenters/iloginview.h"
-#include "presentation/tasks/taskrunner.h"
+#include "presentation/inventory/iinventoryview.h"
+#include "presentation/login/iloginview.h"
+#include "presentation/common/tasks/taskrunner.h"
 
 #include <QMap>
 #include <QStringList>

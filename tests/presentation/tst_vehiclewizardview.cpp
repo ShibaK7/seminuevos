@@ -5,13 +5,13 @@
 
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "fakes.h"
-#include "presentation/presenters/vehiclefilespresenter.h"
-#include "presentation/presenters/vehiclewizardpresenter.h"
-#include "presentation/views/components/aspectratioimagelabel.h"
-#include "presentation/views/wizard/vehicleconditionsview.h"
-#include "presentation/views/wizard/vehicledetailsview.h"
-#include "presentation/views/wizard/vehiclefilesview.h"
-#include "presentation/views/wizard/vehiclewizardview.h"
+#include "presentation/inventory/registration/steps/files/vehiclefilespresenter.h"
+#include "presentation/inventory/registration/vehiclewizardpresenter.h"
+#include "presentation/common/components/aspectratioimagelabel.h"
+#include "presentation/inventory/registration/steps/conditions/vehicleconditionsview.h"
+#include "presentation/inventory/registration/steps/details/vehicledetailsview.h"
+#include "presentation/inventory/registration/steps/files/vehiclefilesview.h"
+#include "presentation/inventory/registration/vehiclewizardview.h"
 
 #include <QAbstractSpinBox>
 #include <QComboBox>

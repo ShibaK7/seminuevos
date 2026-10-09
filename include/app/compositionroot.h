@@ -6,7 +6,7 @@
 #include "adapters/security/pbkdf2passwordhasher.h"
 #include "app/appsettings.h"
 #include "application/auth/dto/authdtos.h"
-#include "presentation/tasks/pooledtaskrunner.h"
+#include "presentation/common/tasks/pooledtaskrunner.h"
 
 #include <QObject>
 #include <QPointer>

@@ -1,7 +1,7 @@
 // Pruebas del TaskRunner real: el trabajo corre fuera del hilo principal, la
 // entrega vuelve al hilo principal, y un contexto ya destruido no recibe nada.
 
-#include "presentation/tasks/pooledtaskrunner.h"
+#include "presentation/common/tasks/pooledtaskrunner.h"
 
 #include <QAtomicInt>
 #include <QThread>

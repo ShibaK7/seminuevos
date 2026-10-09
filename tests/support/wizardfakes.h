@@ -5,10 +5,10 @@
 // que los widgets reales y anotan lo que el presenter les pidió, así que la
 // navegación, la validación y el registro se prueban sin ventanas.
 
-#include "presentation/presenters/ivehicleconditionsview.h"
-#include "presentation/presenters/ivehicledetailsview.h"
-#include "presentation/presenters/ivehiclefilesview.h"
-#include "presentation/presenters/ivehiclewizardview.h"
+#include "presentation/inventory/registration/steps/conditions/ivehicleconditionsview.h"
+#include "presentation/inventory/registration/steps/details/ivehicledetailsview.h"
+#include "presentation/inventory/registration/steps/files/ivehiclefilesview.h"
+#include "presentation/inventory/registration/ivehiclewizardview.h"
 
 #include <QStringList>
 

@@ -4,9 +4,9 @@
 
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "fakes.h"
-#include "presentation/presenters/vehicledetailspresenter.h"
-#include "presentation/presenters/vehiclefilespresenter.h"
-#include "presentation/presenters/vehiclewizardpresenter.h"
+#include "presentation/inventory/registration/steps/details/vehicledetailspresenter.h"
+#include "presentation/inventory/registration/steps/files/vehiclefilespresenter.h"
+#include "presentation/inventory/registration/vehiclewizardpresenter.h"
 #include "registrationfixtures.h"
 #include "wizardfakes.h"
 

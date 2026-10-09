@@ -5,9 +5,9 @@
 
 #include "application/inventory/services/inventoryservice.h"
 #include "fakes.h"
-#include "presentation/presenters/inventorypresenter.h"
-#include "presentation/views/inventory/inventoryview.h"
-#include "presentation/views/shell/mainwindow.h"
+#include "presentation/inventory/inventorypresenter.h"
+#include "presentation/inventory/inventoryview.h"
+#include "presentation/shell/mainwindow.h"
 
 #include <QComboBox>
 #include <QLabel>

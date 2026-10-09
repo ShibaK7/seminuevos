@@ -1,4 +1,4 @@
-#include "presentation/navigation/wizardnavigator.h"
+#include "presentation/common/navigation/wizardnavigator.h"
 
 #include <QObject>
 #include <QTest>

@@ -1,7 +1,7 @@
 // Pruebas de la regla de la autofactura: la factura se sube DESPUÉS de
 // generar la solicitud de CFDI, sin perder en silencio la que ya se eligió.
 
-#include "presentation/presenters/invoiceattachment.h"
+#include "presentation/inventory/acquisition/invoiceattachment.h"
 
 #include <QtTest>
 

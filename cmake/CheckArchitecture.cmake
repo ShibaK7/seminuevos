@@ -33,6 +33,9 @@
 # while(TRUE) no evalúa TRUE como booleano. Fijar la versión las actualiza.
 cmake_minimum_required(VERSION 3.22)
 
+# La regla que reparte el front entre lógica y vistas, la misma que usa el build.
+include("${CMAKE_CURRENT_LIST_DIR}/SeminuevosFront.cmake")
+
 if(NOT ROOT)
     message(FATAL_ERROR "Uso: cmake -DROOT=<raíz del repo> -P CheckArchitecture.cmake")
 endif()
@@ -157,10 +160,14 @@ function(layer_of relpath outvar)
         set(layer "application")
     elseif(relpath MATCHES "^(include|src)/adapters/([^/]+)/")
         set(layer "adapters/${CMAKE_MATCH_2}")
-    elseif(relpath MATCHES "^(include|src)/presentation/views/")
-        set(layer "views")
     elseif(relpath MATCHES "^(include|src)/presentation/")
-        set(layer "presentation")
+        # Lógica de pantalla o vista, según el nombre del archivo.
+        seminuevos_is_front_logic("${ROOT}/${relpath}" is_logic)
+        if(is_logic)
+            set(layer "presentation")
+        else()
+            set(layer "views")
+        endif()
     endif()
     set(${outvar} "${layer}" PARENT_SCOPE)
 endfunction()
@@ -174,7 +181,7 @@ function(allowed_project_includes layer outvar)
     elseif(layer MATCHES "^adapters/(.+)$")
         set(rx "^(domain/|application/(.+/)?(ports|dto)/|adapters/${CMAKE_MATCH_1}/)")
     elseif(layer STREQUAL "presentation")
-        set(rx "^(application/(.+/)?(services|dto)/|domain/(.+/)?value_objects/|presentation/(presenters|navigation|tasks)/)")
+        set(rx "^(application/(.+/)?(services|dto)/|domain/(.+/)?value_objects/|presentation/)")
     elseif(layer STREQUAL "views")
         set(rx "^(presentation/|application/(.+/)?dto/|domain/(.+/)?value_objects/)")
     endif()
@@ -251,6 +258,13 @@ foreach(path IN LISTS code_files)
             elseif(inc MATCHES "/")
                 if(NOT inc MATCHES "${allowed_rx}")
                     list(APPEND violations "${rel}: incluye \"${inc}\"")
+                elseif(layer STREQUAL "presentation" AND inc MATCHES "^presentation/")
+                    # La lógica de pantalla no ve widgets: solo otros
+                    # presenters, interfaces, navegación y tareas.
+                    seminuevos_is_front_logic("${ROOT}/src/${inc}" inc_is_logic)
+                    if(NOT inc_is_logic)
+                        list(APPEND violations "${rel}: la lógica de pantalla incluye una vista \"${inc}\"")
+                    endif()
                 elseif(rel MATCHES "^(include|src)/[^/]+/common/" AND inc MATCHES "^(domain|application|adapters|presentation)/[^/]+/"
                        AND NOT inc MATCHES "^[^/]+/common/")
                     # Lo común no depende de un módulo: si lo hiciera, el
@@ -304,7 +318,7 @@ foreach(path IN LISTS code_files)
 endforeach()
 
 # --- Archivos .ui -------------------------------------------------------------
-file(GLOB ui_files "${ROOT}/ui/*.ui" "${ROOT}/src/ui/*.ui")
+file(GLOB_RECURSE ui_files "${ROOT}/src/presentation/*.ui")
 foreach(path IN LISTS ui_files)
     file(RELATIVE_PATH rel "${ROOT}" "${path}")
     file(READ "${path}" content)

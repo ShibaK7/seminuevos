@@ -18,9 +18,11 @@ function(seminuevos_add_test name)
     endif()
 
     add_executable(${name} ${ARG_SOURCES})
-    # tests/support: dobles de prueba de los puertos y las vistas.
+    # tests/support: dobles de prueba de los puertos y las vistas. src/ es la
+    # raíz de los headers del front, que viven junto a su .cpp.
     target_include_directories(${name} PRIVATE
         "${PROJECT_SOURCE_DIR}/include"
+        "${PROJECT_SOURCE_DIR}/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/support"
     )
     target_link_libraries(${name} PRIVATE ${ARG_LIBS} Qt6::Core Qt6::Test)

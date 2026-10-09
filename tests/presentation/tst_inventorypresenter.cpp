@@ -4,7 +4,7 @@
 
 #include "application/inventory/services/inventoryservice.h"
 #include "fakes.h"
-#include "presentation/presenters/inventorypresenter.h"
+#include "presentation/inventory/inventorypresenter.h"
 
 #include <QtTest>
 
