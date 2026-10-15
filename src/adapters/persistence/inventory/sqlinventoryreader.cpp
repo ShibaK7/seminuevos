@@ -91,6 +91,11 @@ QList<application::InventoryItemDto> SqlInventoryReader::search(
         clauses << QStringLiteral("v.status = :status");
         binds.insert(QStringLiteral(":status"), domain::toDbString(*filter.status));
     }
+    if (filter.acquisitionType) {
+        clauses << QStringLiteral("v.acquisition_type = :acquisition_type");
+        binds.insert(QStringLiteral(":acquisition_type"),
+                     domain::toDbString(*filter.acquisitionType));
+    }
     // added_date es DATE, no TIMESTAMP, así que el rango es inclusivo en los dos
     // extremos y no hay que sumarle un día a la cota superior.
     if (filter.addedFrom.isValid()) {
