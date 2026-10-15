@@ -100,6 +100,9 @@
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="whatsThis">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
            <property name="text">
             <string/>
            </property>
@@ -195,8 +198,17 @@
             </item>
             <item>
              <widget class="QLabel" name="priceLabel">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt; font-weight:700;&quot;&gt;Precio&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Precio</string>
+              </property>
+              <property name="margin">
+               <number>0</number>
               </property>
              </widget>
             </item>
@@ -359,6 +371,12 @@
               <property name="text">
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Agregado el:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
+              <property name="margin">
+               <number>0</number>
+              </property>
+              <property name="indent">
+               <number>-1</number>
+              </property>
               <property name="class" stdset="0">
                <string>dateIncomingLabel</string>
               </property>
@@ -392,9 +410,6 @@
               <property name="text">
                <string>Detalles</string>
               </property>
-              <property name="class" stdset="0">
-               <string>primary</string>
-              </property>
              </widget>
             </item>
            </layout>
@@ -412,7 +427,7 @@
   <customwidget>
    <class>AspectRatioImageLabel</class>
    <extends>QLabel</extends>
-   <header>presentation/common/components/aspectratioimagelabel.h</header>
+   <header>../src/presentation/common/components/aspectratioimagelabel.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
