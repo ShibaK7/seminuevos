@@ -1,7 +1,7 @@
 // La página del inventario con widgets reales, el presenter y puertos falsos.
 // Comprueba que pinte una tarjeta por unidad, el aviso cuando no hay, que un
-// cambio de filtro recargue, y que la ventana principal muestre el rol y
-// conecte la página con su presenter.
+// cambio de filtro recargue, que las pestañas filtren por rama, y que la
+// ventana principal muestre el rol y conecte la página con su presenter.
 
 #include "application/inventory/services/inventoryservice.h"
 #include "fakes.h"
@@ -9,6 +9,7 @@
 #include "presentation/inventory/inventoryview.h"
 #include "presentation/shell/mainwindow.h"
 
+#include <QAbstractButton>
 #include <QComboBox>
 #include <QLabel>
 #include <QListWidget>
@@ -90,6 +91,36 @@ private slots:
         status->setCurrentIndex(1);
         QCOMPARE(m_reader.filters.size(), 2);
         QVERIFY(m_reader.filters.last().status.has_value());
+    }
+
+    void switchingTheTabFiltersByBranch()
+    {
+        const application::InventoryService service(m_reader, m_files);
+        InventoryView window;
+        auto *presenter = new presentation::InventoryPresenter(window, service, m_runner, &window);
+        window.bind(*presenter);
+        presenter->reload();
+        QCOMPARE(m_reader.filters.size(), 1);
+        QCOMPARE(m_reader.filters.last().acquisitionType,
+                 std::optional(domain::AcquisitionType::Adquisicion));
+
+        auto *acquisitionTab = window.findChild<QAbstractButton *>(QStringLiteral("acquisitionTab"));
+        auto *consignmentTab = window.findChild<QAbstractButton *>(QStringLiteral("consignmentTab"));
+        QVERIFY(acquisitionTab && consignmentTab);
+
+        consignmentTab->click();
+        QCOMPARE(m_reader.filters.size(), 2);
+        QCOMPARE(m_reader.filters.last().acquisitionType,
+                 std::optional(domain::AcquisitionType::Consignacion));
+
+        // Volver a la pestaña ya marcada no lee de más.
+        consignmentTab->click();
+        QCOMPARE(m_reader.filters.size(), 2);
+
+        acquisitionTab->click();
+        QCOMPARE(m_reader.filters.size(), 3);
+        QCOMPARE(m_reader.filters.last().acquisitionType,
+                 std::optional(domain::AcquisitionType::Adquisicion));
     }
 
     // La página vive en su propio .ui y la ventana la conecta: el presenter
