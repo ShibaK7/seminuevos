@@ -293,10 +293,28 @@ private slots:
         QCOMPARE(m_vehicles.updatedExpected.vehicleVersion, QStringLiteral("1001"));
     }
 
+    // Cualquiera de sus siete datos cuenta: corregir solo la identificación,
+    // el estado o el CP no puede guardarse como "sin tocar".
+    void editedCounterpartyCarriesItsVersion_data()
+    {
+        QTest::addColumn<int>("field");
+        QTest::newRow("nombre") << 0;
+        QTest::newRow("identificación") << 1;
+        QTest::newRow("calle") << 2;
+        QTest::newRow("colonia") << 3;
+        QTest::newRow("localidad") << 4;
+        QTest::newRow("estado") << 5;
+        QTest::newRow("código postal") << 6;
+    }
+
     void editedCounterpartyCarriesItsVersion()
     {
+        QFETCH(int, field);
         application::VehicleUpdateDto update = editedRecord();
-        update.details.counterparty.locality = QStringLiteral("Pátzcuaro");
+        application::CounterpartyDto &c = update.details.counterparty;
+        QString *const fields[] = {&c.fullName, &c.nationalId, &c.streetAddress, &c.suburb,
+                                   &c.locality, &c.state, &c.postalCode};
+        *fields[field] = field == 6 ? QStringLiteral("58000") : QStringLiteral("Corregido");
         QCOMPARE(service().update(update, UserRole::Admin).status, UpdateStatus::Saved);
         QVERIFY(m_vehicles.updatedExpected.counterpartyEdited);
         QCOMPARE(m_vehicles.updatedExpected.counterpartyVersion, QStringLiteral("2001"));
