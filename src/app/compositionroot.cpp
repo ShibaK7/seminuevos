@@ -145,7 +145,8 @@ bool CompositionRoot::start()
     m_inventoryReader = std::make_unique<SqlInventoryReader>(pool);
     m_inventory = std::make_unique<application::InventoryService>(*m_inventoryReader, *m_files);
     m_recordReader = std::make_unique<SqlVehicleRecordReader>(pool);
-    m_records = std::make_unique<application::VehicleRecordService>(*m_recordReader, *m_files);
+    m_records = std::make_unique<application::VehicleRecordService>(
+        *m_recordReader, *m_vehicles, *m_files, *m_referenceData);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));

@@ -80,7 +80,8 @@ private slots:
             m_vehicles, m_files, m_reference, m_contracts);
         m_recordReader.records.insert(
             5, fixtures::storedRecord(5, domain::AcquisitionType::Adquisicion));
-        m_records = std::make_unique<application::VehicleRecordService>(m_recordReader, m_files);
+        m_records = std::make_unique<application::VehicleRecordService>(m_recordReader, m_vehicles,
+                                                                       m_files, m_reference);
     }
 
     void cleanup()

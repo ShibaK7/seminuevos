@@ -141,9 +141,39 @@ public:
     int adds = 0;
     int nextFolio = 100;
 
+    // update(): lo que responde (por omisión, que guardó) y lo que recibió.
+    UpdateOutcome updateOutcome = [] {
+        UpdateOutcome outcome;
+        outcome.ok = true;
+        return outcome;
+    }();
+    int updates = 0;
+    int updatedFolio = -1;
+    QString updatedVersion;
+    QString updatedSerialNumber;
+    QString updatedInvoicePath;
+    QList<domain::VehicleImage> updatedImages;
+    QList<domain::VehicleDocument> updatedDocuments;
+
     bool serialNumberExists(const QString &serialNumber, QString *) override
     {
         return existingSerialNumbers.contains(serialNumber);
+    }
+    // existingSerialNumbers son de otras unidades.
+    bool serialNumberExistsElsewhere(const QString &serialNumber, int, QString *) override
+    {
+        return existingSerialNumbers.contains(serialNumber);
+    }
+    UpdateOutcome update(domain::Vehicle &vehicle, const QString &expectedVersion) override
+    {
+        ++updates;
+        updatedFolio = vehicle.folio();
+        updatedVersion = expectedVersion;
+        updatedSerialNumber = vehicle.serialNumber();
+        updatedInvoicePath = vehicle.invoiceFilePath();
+        updatedImages = vehicle.images();
+        updatedDocuments = vehicle.documents();
+        return updateOutcome;
     }
     SaveOutcome add(domain::Vehicle &vehicle) override
     {

@@ -34,13 +34,23 @@ public:
     explicit SqlVehicleRepository(ConnectionPool &pool);
 
     bool serialNumberExists(const QString &serialNumber, QString *error) override;
+    bool serialNumberExistsElsewhere(const QString &serialNumber, int folio,
+                                     QString *error) override;
 
     // No es const porque asigna a la unidad el folio y el id de contraparte
     // que devuelve la base.
     SaveOutcome add(domain::Vehicle &vehicle) override;
 
+    // La corrección toca las mismas seis tablas que el alta, en una
+    // transacción: la unidad (solo si su versión, xmin, sigue siendo la que
+    // se leyó), la contraparte, la subtabla de su rama, las condiciones y,
+    // reemplazados, la inspección, las fotos y los documentos con archivo.
+    UpdateOutcome update(domain::Vehicle &vehicle, const QString &expectedVersion) override;
+
 private:
     static SaveOutcome save(QSqlDatabase &db, domain::Vehicle &vehicle);
+    static UpdateOutcome rewrite(QSqlDatabase &db, domain::Vehicle &vehicle,
+                                 const QString &expectedVersion);
 
     ConnectionPool &m_pool;
 };

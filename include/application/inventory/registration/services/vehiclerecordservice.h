@@ -3,7 +3,9 @@
 
 #include "application/common/ports/filestorage.h"
 #include "application/inventory/registration/dto/recorddtos.h"
+#include "application/inventory/registration/ports/referencedatareader.h"
 #include "application/inventory/registration/ports/vehiclerecordreader.h"
+#include "application/inventory/registration/ports/vehiclerepository.h"
 #include "domain/common/value_objects/enums.h"
 
 namespace application {
@@ -18,7 +20,8 @@ namespace application {
 class VehicleRecordService final
 {
 public:
-    VehicleRecordService(VehicleRecordReader &records, FileStorage &files);
+    VehicleRecordService(VehicleRecordReader &records, VehicleRepository &vehicles,
+                         FileStorage &files, ReferenceDataReader &referenceData);
 
     // Qué ve y qué puede hacer ese rol en el expediente. Pura (sin E/S): se
     // puede llamar en el hilo de la interfaz.
@@ -30,9 +33,19 @@ public:
     // correrlo fuera del hilo de la interfaz.
     RecordLoadResult load(int folio, domain::UserRole role) const;
 
+    // Guarda lo corregido (#34), en este orden: el rol, las reglas del
+    // dominio (sin tocar disco ni base), que la unidad siga como se leyó (si
+    // otro la cambió, Conflict antes de copiar nada) y que el VIN no sea de
+    // otra. Después conserva los archivos que ya estaban, copia los nuevos y
+    // guarda todo o nada; si eso falla, borra solo lo que copió, y si
+    // confirma, borra del almacén lo que dejó de usarse. Hace E/S.
+    RecordUpdateResult update(const VehicleUpdateDto &update, domain::UserRole role) const;
+
 private:
     VehicleRecordReader &m_records;
+    VehicleRepository &m_vehicles;
     FileStorage &m_files;
+    ReferenceDataReader &m_referenceData;
 };
 
 } // namespace application

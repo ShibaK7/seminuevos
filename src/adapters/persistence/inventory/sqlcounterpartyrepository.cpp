@@ -18,6 +18,13 @@ QVariant nullIfEmpty(const QString &value)
     return value;
 }
 
+// Dos capturas del mismo nombre no siempre coinciden letra por letra: los
+// espacios de más y las mayúsculas no hacen a otra persona.
+bool sameName(const QString &a, const QString &b)
+{
+    return QString::compare(a.simplified(), b.simplified(), Qt::CaseInsensitive) == 0;
+}
+
 } // namespace
 
 SqlCounterpartyRepository::SqlCounterpartyRepository(QSqlDatabase &db)
@@ -29,9 +36,11 @@ int SqlCounterpartyRepository::findOrCreate(const domain::Counterparty &counterp
                                          QString &errorMessage)
 {
     if (!counterparty.nationalId().isEmpty()) {
+        // ORDER BY id: si por datos viejos la identificación se repite, siempre
+        // se elige la misma persona (la más antigua).
         QSqlQuery lookup(m_db);
         lookup.prepare(QStringLiteral(
-            "SELECT id FROM counterparties WHERE national_id = :national_id LIMIT 1"));
+            "SELECT id FROM counterparties WHERE national_id = :national_id ORDER BY id LIMIT 1"));
         lookup.bindValue(QStringLiteral(":national_id"), counterparty.nationalId());
         if (!lookup.exec()) {
             errorMessage = lookup.lastError().text();
@@ -40,27 +49,94 @@ int SqlCounterpartyRepository::findOrCreate(const domain::Counterparty &counterp
         if (lookup.next())
             return lookup.value(0).toInt();
     }
+    return insert(counterparty, errorMessage);
+}
 
-    QSqlQuery insert(m_db);
-    insert.prepare(QStringLiteral(
+int SqlCounterpartyRepository::keepOrRelink(int currentId, const domain::Counterparty &edited,
+                                            QString &takenBy, QString &errorMessage)
+{
+    QSqlQuery current(m_db);
+    current.prepare(QStringLiteral("SELECT national_id FROM counterparties WHERE id = :id"));
+    current.bindValue(QStringLiteral(":id"), currentId);
+    if (!current.exec()) {
+        errorMessage = current.lastError().text();
+        return -1;
+    }
+    if (!current.next()) {
+        errorMessage = QStringLiteral("La contraparte %1 ya no existe.").arg(currentId);
+        return -1;
+    }
+
+    // La misma identificación es la misma persona: se corrige donde está.
+    const QString currentNationalId = current.value(0).toString().trimmed().toUpper();
+    if (currentNationalId == edited.nationalId()) {
+        QSqlQuery update(m_db);
+        update.prepare(QStringLiteral(
+            "UPDATE counterparties "
+            "   SET full_name = :full_name, street_address = :street_address, suburb = :suburb, "
+            "       locality = :locality, state = :state, postal_code = :postal_code, "
+            "       updated_at = CURRENT_TIMESTAMP "
+            " WHERE id = :id"));
+        update.bindValue(QStringLiteral(":full_name"), edited.fullName());
+        update.bindValue(QStringLiteral(":street_address"), nullIfEmpty(edited.streetAddress()));
+        update.bindValue(QStringLiteral(":suburb"), nullIfEmpty(edited.suburb()));
+        update.bindValue(QStringLiteral(":locality"), nullIfEmpty(edited.locality()));
+        update.bindValue(QStringLiteral(":state"), nullIfEmpty(edited.state()));
+        update.bindValue(QStringLiteral(":postal_code"), nullIfEmpty(edited.postalCode()));
+        update.bindValue(QStringLiteral(":id"), currentId);
+        if (!update.exec()) {
+            errorMessage = update.lastError().text();
+            return -1;
+        }
+        return currentId;
+    }
+
+    // Otra identificación: la persona que ya la tiene, si es la misma que se
+    // capturó, o una nueva.
+    if (!edited.nationalId().isEmpty()) {
+        QSqlQuery owner(m_db);
+        owner.prepare(QStringLiteral("SELECT id, full_name FROM counterparties "
+                                     "WHERE national_id = :national_id ORDER BY id LIMIT 1"));
+        owner.bindValue(QStringLiteral(":national_id"), edited.nationalId());
+        if (!owner.exec()) {
+            errorMessage = owner.lastError().text();
+            return -1;
+        }
+        if (owner.next()) {
+            const QString ownerName = owner.value(1).toString();
+            if (!sameName(ownerName, edited.fullName())) {
+                takenBy = ownerName;
+                return -1;
+            }
+            return owner.value(0).toInt();
+        }
+    }
+    return insert(edited, errorMessage);
+}
+
+int SqlCounterpartyRepository::insert(const domain::Counterparty &counterparty,
+                                      QString &errorMessage)
+{
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
         "INSERT INTO counterparties "
         "(full_name, national_id, street_address, suburb, locality, state, postal_code, phone, email) "
         "VALUES (:full_name, :national_id, :street_address, :suburb, :locality, :state, "
         ":postal_code, :phone, :email) "
         "RETURNING id"));
-    insert.bindValue(QStringLiteral(":full_name"), counterparty.fullName());
-    insert.bindValue(QStringLiteral(":national_id"), nullIfEmpty(counterparty.nationalId()));
-    insert.bindValue(QStringLiteral(":street_address"), nullIfEmpty(counterparty.streetAddress()));
-    insert.bindValue(QStringLiteral(":suburb"), nullIfEmpty(counterparty.suburb()));
-    insert.bindValue(QStringLiteral(":locality"), nullIfEmpty(counterparty.locality()));
-    insert.bindValue(QStringLiteral(":state"), nullIfEmpty(counterparty.state()));
-    insert.bindValue(QStringLiteral(":postal_code"), nullIfEmpty(counterparty.postalCode()));
-    insert.bindValue(QStringLiteral(":phone"), nullIfEmpty(counterparty.phone()));
-    insert.bindValue(QStringLiteral(":email"), nullIfEmpty(counterparty.email()));
+    query.bindValue(QStringLiteral(":full_name"), counterparty.fullName());
+    query.bindValue(QStringLiteral(":national_id"), nullIfEmpty(counterparty.nationalId()));
+    query.bindValue(QStringLiteral(":street_address"), nullIfEmpty(counterparty.streetAddress()));
+    query.bindValue(QStringLiteral(":suburb"), nullIfEmpty(counterparty.suburb()));
+    query.bindValue(QStringLiteral(":locality"), nullIfEmpty(counterparty.locality()));
+    query.bindValue(QStringLiteral(":state"), nullIfEmpty(counterparty.state()));
+    query.bindValue(QStringLiteral(":postal_code"), nullIfEmpty(counterparty.postalCode()));
+    query.bindValue(QStringLiteral(":phone"), nullIfEmpty(counterparty.phone()));
+    query.bindValue(QStringLiteral(":email"), nullIfEmpty(counterparty.email()));
 
-    if (!insert.exec() || !insert.next()) {
-        errorMessage = insert.lastError().text();
+    if (!query.exec() || !query.next()) {
+        errorMessage = query.lastError().text();
         return -1;
     }
-    return insert.value(0).toInt();
+    return query.value(0).toInt();
 }
