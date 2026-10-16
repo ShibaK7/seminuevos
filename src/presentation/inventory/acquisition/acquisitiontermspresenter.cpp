@@ -18,33 +18,37 @@ void AcquisitionTermsPresenter::setAutofactura(bool autofactura)
     refresh();
 }
 
-void AcquisitionTermsPresenter::onBrowseInvoice()
+bool AcquisitionTermsPresenter::onBrowseInvoice()
 {
     const QString path = m_view.askInvoiceFile();
     if (path.isEmpty())
-        return;
+        return false;
+    const QString before = m_attachment.attachedPath();
     m_attachment.attach(path);
     refresh();
+    return m_attachment.attachedPath() != before;
 }
 
-void AcquisitionTermsPresenter::onCfdiRequest()
+bool AcquisitionTermsPresenter::onCfdiRequest()
 {
     const application::TemporaryFileDto form = m_service.prepareCfdiRequestForm();
     if (!form.ok) {
         m_view.showWarning(QStringLiteral("No se pudo abrir el documento"), form.errorMessage);
-        return;
+        return false;
     }
     if (!m_view.openDocument(form.path)) {
         m_view.showWarning(QStringLiteral("No se pudo abrir el documento"),
                            QStringLiteral("No se pudo abrir el navegador para mostrar:\n%1").arg(form.path));
-        return;
+        return false;
     }
 
     // Solo cuenta como generada cuando todo salió bien: ni se desbloquea la
     // subida con una solicitud que el usuario nunca llegó a ver, ni se pierde
     // una factura que todavía puede recuperar volviendo a Facturado.
+    const QString before = m_attachment.attachedPath();
     m_attachment.markCfdiRequestGenerated();
     refresh();
+    return m_attachment.attachedPath() != before;
 }
 
 void AcquisitionTermsPresenter::restoreInvoice(const QString &path, bool autofactura)

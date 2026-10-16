@@ -4,10 +4,13 @@
 #include "presentation/common/components/wizardstepper.h"
 #include "presentation/inventory/record/vehiclerecordpresenter.h"
 #include "presentation/inventory/registration/steps/conditions/vehicleconditionsview.h"
+#include "presentation/inventory/registration/steps/details/vehicledetailspresenter.h"
 #include "presentation/inventory/registration/steps/details/vehicledetailsview.h"
+#include "presentation/inventory/registration/steps/files/vehiclefilespresenter.h"
 #include "presentation/inventory/registration/steps/files/vehiclefilesview.h"
 
 #include <QLabel>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
 
@@ -33,10 +36,8 @@ VehicleRecordView::VehicleRecordView(QWidget *parent)
     ui->errorLabel->setVisible(false);
     ui->noticeLabel->setVisible(false);
 
-    // Solo se puede volver: editar llega con US-03.4.
-    ui->cancelEditButton->setVisible(false);
-    ui->editButton->setVisible(false);
-    ui->saveButton->setVisible(false);
+    // Hasta que el presenter diga el modo, solo se puede volver.
+    showMode(presentation::FormMode::View, false, false);
 }
 
 VehicleRecordView::~VehicleRecordView()
@@ -72,6 +73,28 @@ void VehicleRecordView::bind(presentation::VehicleRecordPresenter &presenter)
 
     connect(ui->stepper, &WizardStepper::stepClicked, p, &VehicleRecordPresenter::onStepClicked);
     connect(ui->backButton, &QPushButton::clicked, p, &VehicleRecordPresenter::onBack);
+    connect(ui->editButton, &QPushButton::clicked, p, &VehicleRecordPresenter::onEdit);
+    connect(ui->saveButton, &QPushButton::clicked, p, &VehicleRecordPresenter::onSave);
+    connect(ui->cancelEditButton, &QPushButton::clicked, p, &VehicleRecordPresenter::onCancel);
+
+    // Las páginas avisan cada cambio; el presenter decide si cuenta (solo al
+    // editar, y nunca lo que él mismo pinta). Aquí sí se vigila el Paso 3:
+    // quitar una foto o un documento también es un cambio que guardar.
+    connect(ui->detailsPage, &VehicleDetailsView::edited, p, [p] { p->onStepEdited(0); });
+    connect(ui->conditionsPage, &VehicleConditionsView::edited, p, [p] { p->onStepEdited(1); });
+    connect(ui->filesPage, &VehicleFilesView::edited, p, [p] { p->onStepEdited(2); });
+
+    // Lo demás que piden las páginas, igual que en el alta.
+    connect(ui->detailsPage, &VehicleDetailsView::invoiceTypeChanged, p,
+            [p] { p->details().onInvoiceTypeChanged(); });
+    connect(ui->detailsPage, &VehicleDetailsView::browseInvoiceRequested, p,
+            &VehicleRecordPresenter::onBrowseInvoice);
+    connect(ui->detailsPage, &VehicleDetailsView::cfdiRequestRequested, p,
+            &VehicleRecordPresenter::onCfdiRequest);
+    connect(ui->filesPage, &VehicleFilesView::imagesChosen, p,
+            [p](const QStringList &paths) { p->files().onImagesChosen(paths); });
+    connect(ui->filesPage, &VehicleFilesView::documentChosen, p,
+            [p](const QString &type, const QString &path) { p->files().onDocumentChosen(type, path); });
 
     connect(p, &VehicleRecordPresenter::closeRequested, this, &VehicleRecordView::returnToInventory);
     connect(p, &VehicleRecordPresenter::vehicleChanged, this, &VehicleRecordView::vehicleChanged);
@@ -125,9 +148,42 @@ void VehicleRecordView::showNotice(const QString &notice)
 
 void VehicleRecordView::setBusy(bool busy)
 {
+    // Editar lo habilita showMode(), que ya sabe si hay algo en curso.
     ui->stepper->setEnabled(!busy);
     ui->stepStack->setEnabled(!busy);
     ui->backButton->setEnabled(!busy);
+    ui->cancelEditButton->setEnabled(!busy);
+    ui->saveButton->setEnabled(!busy);
+}
+
+void VehicleRecordView::showMode(presentation::FormMode mode, bool canEdit, bool editEnabled)
+{
+    const bool editing = mode == presentation::FormMode::Edit;
+    ui->backButton->setVisible(!editing);
+    ui->editButton->setVisible(!editing && canEdit);
+    ui->editButton->setEnabled(editEnabled);
+    ui->cancelEditButton->setVisible(editing);
+    ui->saveButton->setVisible(editing);
+}
+
+bool VehicleRecordView::confirmDiscardChanges()
+{
+    const auto answer = QMessageBox::question(
+        this, QStringLiteral("Descartar cambios"),
+        QStringLiteral("Hay cambios sin guardar en el expediente. ¿Descartarlos?"),
+        QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Cancel);
+    return answer == QMessageBox::Discard;
+}
+
+bool VehicleRecordView::confirmInvoiceRemoval(const QString &fileName)
+{
+    const auto answer = QMessageBox::question(
+        this, QStringLiteral("Quitar factura"),
+        QStringLiteral("Al guardar se quitará del expediente la factura «%1» y se borrará su "
+                       "archivo. ¿Guardar de todos modos?")
+            .arg(fileName),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    return answer == QMessageBox::Yes;
 }
 
 void VehicleRecordView::setDealTermsVisible(bool visible)

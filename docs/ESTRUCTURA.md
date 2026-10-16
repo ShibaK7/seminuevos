@@ -138,8 +138,9 @@ seminuevos/
 │   │       │                        ivehiclefilesview.h  (galería y documentos)
 │   │       ├── record/              Expediente de un vehículo ("Detalles" en una tarjeta): consulta y edición
 │   │       │   └── vehiclerecordview (.ui/.h/.cpp), vehiclerecordpresenter, ivehiclerecordview.h
-│   │       │                        El marco: pestañas libres y Volver; usa las MISMAS tres páginas del
-│   │       │                        alta, pinta lo guardado y el rol decide qué se ve (operación, historial)
+│   │       │                        El marco: pestañas libres, Volver y, para el Administrador, Editar
+│   │       │                        (Guardar cambios / Cancelar); usa las MISMAS tres páginas del alta,
+│   │       │                        pinta lo guardado y el rol decide qué se ve (operación, historial)
 │   │       ├── acquisition/         Solo lo de Adquisición (dentro del Paso 1)
 │   │       │   ├── acquisitiontermssection (.ui/.h/.cpp)   Archivo de factura, precio de compra,
 │   │       │   │                                           tipo y método de pago, precio de venta

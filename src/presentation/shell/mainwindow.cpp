@@ -7,6 +7,7 @@
 #include "presentation/inventory/registration/vehiclewizardview.h"
 #include "presentation/commercial/registration/salewizardview.h"
 
+#include <QCloseEvent>
 #include <QLabel>
 #include <QPushButton>
 #include <QStatusBar>
@@ -208,6 +209,18 @@ void MainWindow::onVehicleChanged(int folio)
 {
     if (m_inventory)
         m_inventory->vehicleUpdated(folio);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    // Si el expediente tiene cambios y el usuario se queda con ellos, se le
+    // muestra para que siga donde iba.
+    if (m_record && !m_record->confirmLeave()) {
+        ui->mainContentStack->setCurrentWidget(m_record);
+        event->ignore();
+        return;
+    }
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::setRecordFactory(RecordFactory factory)

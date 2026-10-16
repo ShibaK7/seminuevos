@@ -58,6 +58,10 @@ public:
 signals:
     void imagesChosen(const QStringList &paths);
     void documentChosen(const QString &documentType, const QString &path);
+    // Cambió lo que se guardaría: fotos agregadas o quitadas, otra portada,
+    // un documento adjunto o quitado, una casilla o el número de póliza.
+    // Pintar lo guardado (showFiles) no lo emite.
+    void edited();
 
 protected:
     // Los tres aceptan un arrastre solo como copia, nunca como Move: la vista

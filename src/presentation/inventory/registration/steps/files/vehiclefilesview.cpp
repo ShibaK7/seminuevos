@@ -151,8 +151,10 @@ void VehicleFilesView::addImages(const QList<presentation::ImagePreview> &images
         entry.thumbnail.loadFromData(preview.bytes);
         m_images << entry;
     }
-    if (!images.isEmpty())
+    if (!images.isEmpty()) {
         rebuildGallery();
+        emit edited();
+    }
 }
 
 void VehicleFilesView::showFiles(const QList<presentation::ImagePreview> &images,
@@ -310,6 +312,7 @@ void VehicleFilesView::rebuildGallery()
                     m_images.first().image.isPrimary = true;
                 }
                 rebuildGallery();
+                emit edited();
             });
             actionsLayout->addWidget(deleteButton, 0, Qt::AlignLeft);
         }
@@ -326,9 +329,12 @@ void VehicleFilesView::rebuildGallery()
                 starButton->setToolTip(QStringLiteral("Portada"));
             } else {
                 connect(starButton, &QPushButton::clicked, this, [this, i]() {
+                    if (m_images.at(i).image.isPrimary)
+                        return; // ya era la portada: nada cambia
                     for (int j = 0; j < m_images.size(); ++j)
                         m_images[j].image.isPrimary = (j == i);
                     rebuildGallery();
+                    emit edited();
                 });
             }
             actionsLayout->addWidget(starButton, 0, Qt::AlignRight);
@@ -397,6 +403,7 @@ void VehicleFilesView::rebuildDocuments()
             connect(policyEdit, &QLineEdit::textChanged, this, [this, type](const QString &text) {
                 m_documents[type].documentType = type;
                 m_documents[type].documentNumber = text;
+                emit edited();
             });
             rowLayout->addWidget(policyEdit);
         }
@@ -453,6 +460,7 @@ void VehicleFilesView::rebuildDocuments()
                 // rebuildDocuments() la retira diferida (ver retireWidget()),
                 // así que esta casilla sigue viva mientras termina su señal.
                 rebuildDocuments();
+                emit edited();
                 return;
             }
 
@@ -468,6 +476,7 @@ void VehicleFilesView::rebuildDocuments()
                 uploadButton->setEnabled(on);
             if (policyEdit)
                 policyEdit->setEnabled(on);
+            emit edited();
         });
 
         ui->documentsLayout->addWidget(row);
@@ -498,6 +507,7 @@ void VehicleFilesView::attachDocument(const QString &documentType, const QString
     m_documents[documentType].documentType = documentType;
     m_documents[documentType].path = path;
     rebuildDocuments();
+    emit edited();
 }
 
 bool VehicleFilesView::isImageCandidate(const QString &path) const

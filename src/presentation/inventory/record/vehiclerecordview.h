@@ -61,6 +61,9 @@ public:
     void showMessage(const QString &message) override;
     void showNotice(const QString &notice) override;
     void setBusy(bool busy) override;
+    void showMode(presentation::FormMode mode, bool canEdit, bool editEnabled) override;
+    bool confirmDiscardChanges() override;
+    bool confirmInvoiceRemoval(const QString &fileName) override;
     void setDealTermsVisible(bool visible) override;
     void setMaintenanceHistoryVisible(bool visible) override;
 

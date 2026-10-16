@@ -257,6 +257,15 @@ public:
     bool busy = false;
     std::optional<bool> dealTermsVisible;
     std::optional<bool> maintenanceHistoryVisible;
+    // El último modo pintado y sus botones.
+    std::optional<presentation::FormMode> mode;
+    bool canEdit = false;
+    bool editEnabled = false;
+    // Lo que contestan las confirmaciones, y cuántas veces se preguntó.
+    bool discard = true;
+    int discardQuestions = 0;
+    bool removeInvoice = true;
+    QStringList invoiceQuestions;
 
     void showTitle(const QString &value) override { title = value; }
     void showStep(int step) override { shownStep = step; }
@@ -264,6 +273,22 @@ public:
     void showMessage(const QString &value) override { message = value; }
     void showNotice(const QString &value) override { notice = value; }
     void setBusy(bool value) override { busy = value; }
+    void showMode(presentation::FormMode value, bool canEditValue, bool editEnabledValue) override
+    {
+        mode = value;
+        canEdit = canEditValue;
+        editEnabled = editEnabledValue;
+    }
+    bool confirmDiscardChanges() override
+    {
+        ++discardQuestions;
+        return discard;
+    }
+    bool confirmInvoiceRemoval(const QString &fileName) override
+    {
+        invoiceQuestions << fileName;
+        return removeInvoice;
+    }
     void setDealTermsVisible(bool visible) override { dealTermsVisible = visible; }
     void setMaintenanceHistoryVisible(bool visible) override { maintenanceHistoryVisible = visible; }
 };
