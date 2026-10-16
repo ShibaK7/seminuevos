@@ -231,6 +231,20 @@ private slots:
         QVERIFY(m_files.stored.isEmpty());
     }
 
+    // El VIN que la unidad ya tenía no es un duplicado; el mismo VIN en otro
+    // folio, sí.
+    void ownVinIsNotADuplicate()
+    {
+        const QString vin = m_reader.records.value(7).details.serialNumber;
+        m_vehicles.serialFolios.insert(vin, 7);
+        QCOMPARE(service().update(editedRecord(), UserRole::Admin).status, UpdateStatus::Saved);
+
+        m_vehicles.serialFolios.insert(vin, 8);
+        const auto result = service().update(editedRecord(), UserRole::Admin);
+        QCOMPARE(result.status, UpdateStatus::Rejected);
+        QVERIFY(result.validation.fields().contains(QStringLiteral("serialNumber")));
+    }
+
     // Lo que ya estaba se conserva con su ruta, lo nuevo se copia y lo que ya
     // no aparece se borra del almacén, solo después de guardar.
     void keepsStoresAndRemovesFiles()

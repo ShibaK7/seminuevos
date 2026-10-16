@@ -156,14 +156,20 @@ public:
     QList<domain::VehicleImage> updatedImages;
     QList<domain::VehicleDocument> updatedDocuments;
 
+    // VIN de unidades ya guardadas, con su folio: al corregir una unidad, el
+    // suyo no cuenta como de otra. Los de existingSerialNumbers son de
+    // unidades que no importan aquí (siempre de otra).
+    QMap<QString, int> serialFolios;
+
     bool serialNumberExists(const QString &serialNumber, QString *) override
     {
-        return existingSerialNumbers.contains(serialNumber);
+        return existingSerialNumbers.contains(serialNumber) || serialFolios.contains(serialNumber);
     }
-    // existingSerialNumbers son de otras unidades.
-    bool serialNumberExistsElsewhere(const QString &serialNumber, int, QString *) override
+    bool serialNumberExistsElsewhere(const QString &serialNumber, int folio, QString *) override
     {
-        return existingSerialNumbers.contains(serialNumber);
+        if (existingSerialNumbers.contains(serialNumber))
+            return true;
+        return serialFolios.contains(serialNumber) && serialFolios.value(serialNumber) != folio;
     }
     UpdateOutcome update(domain::Vehicle &vehicle, const Expected &expected) override
     {

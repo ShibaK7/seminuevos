@@ -57,6 +57,16 @@ private:
     QTemporaryDir m_storage;
     std::unique_ptr<ConnectionPool> m_pool;
     QStringList m_createdSerials;
+    // Identificaciones de contrapartes que crean los casos, además de las
+    // "ID-<VIN>" de registration().
+    QStringList m_createdNationalIds;
+
+    QString uniqueNationalId(const QString &prefix)
+    {
+        const QString nationalId = prefix + uniqueSuffix();
+        m_createdNationalIds << nationalId;
+        return nationalId;
+    }
 
     application::RegistrationLookupsDto m_lookups;
 
@@ -230,6 +240,17 @@ private slots:
             QSqlQuery query(handle.database());
             query.prepare(QStringLiteral("DELETE FROM vehicles WHERE serial_number = :vin"));
             query.bindValue(QStringLiteral(":vin"), vin);
+            query.exec();
+        }
+        // Las contrapartes no se borran en cascada (la operación las
+        // referencia, no al revés). Sin sus unidades ya nadie las usa.
+        QStringList nationalIds = m_createdNationalIds;
+        for (const QString &vin : std::as_const(m_createdSerials))
+            nationalIds << QStringLiteral("ID-") + vin;
+        for (const QString &nationalId : std::as_const(nationalIds)) {
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral("DELETE FROM counterparties WHERE national_id = :id"));
+            query.bindValue(QStringLiteral(":id"), nationalId);
             query.exec();
         }
     }
@@ -578,7 +599,7 @@ private slots:
     // rechaza en vez de ligarla en silencio.
     void counterpartyIsCorrectedOrRelinked()
     {
-        const QString sharedId = QStringLiteral("ID-COMPARTIDA-") + uniqueSuffix();
+        const QString sharedId = uniqueNationalId(QStringLiteral("ID-COMPARTIDA-"));
         application::VehicleRegistrationDto dto = registration(uniqueVin());
         dto.details.counterparty.fullName = QStringLiteral("Ana Prueba");
         dto.details.counterparty.nationalId = sharedId;
@@ -611,7 +632,7 @@ private slots:
 
         // Otra identificación, nueva: la primera pasa a otra persona y la
         // segunda se queda con la de antes.
-        const QString newId = QStringLiteral("ID-NUEVA-") + uniqueSuffix();
+        const QString newId = uniqueNationalId(QStringLiteral("ID-NUEVA-"));
         QCOMPARE(edit(first, QStringLiteral("Beto Prueba"), newId).status, UpdateStatus::Saved);
         QCOMPARE(counterpartyOf(first).nationalId, newId);
         QCOMPARE(counterpartyOf(first).fullName, QStringLiteral("Beto Prueba"));
@@ -638,7 +659,7 @@ private slots:
     // conflicto.
     void staleFormsDoNotUndoACounterpartyCorrection()
     {
-        const QString sharedId = QStringLiteral("ID-COMPARTIDA-") + uniqueSuffix();
+        const QString sharedId = uniqueNationalId(QStringLiteral("ID-COMPARTIDA-"));
         application::VehicleRegistrationDto dto = registration(uniqueVin());
         dto.details.counterparty.fullName = QStringLiteral("Paula Prueba");
         dto.details.counterparty.nationalId = sharedId;

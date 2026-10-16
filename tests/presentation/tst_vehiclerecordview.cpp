@@ -194,15 +194,40 @@ private slots:
     void maintenanceHistoryIsNotAnEdit()
     {
         open(domain::UserRole::Admin);
-        button("editButton")->click();
-        QSignalSpy edited(&m_view->detailsView(), &VehicleDetailsView::edited);
+        // Un editor del historial (como los de su alta en línea) no queda en
+        // solo lectura con el resto de la página...
         auto *table = m_view->detailsView().maintenanceHistory().findChild<QTableWidget *>();
         QVERIFY(table);
         table->setRowCount(1);
-        table->setItem(0, 0, new QTableWidgetItem(QStringLiteral("01/03/2024")));
+        auto *cell = new QLineEdit;
+        table->setCellWidget(0, 0, cell);
+        m_view->detailsView().setReadOnly(true, {});
+        QVERIFY(!cell->isReadOnly());
+
+        // ...y lo que se captura en él no es un cambio de la unidad.
+        button("editButton")->click();
+        QSignalSpy edited(&m_view->detailsView(), &VehicleDetailsView::edited);
+        cell->setText(QStringLiteral("Cambio de aceite"));
         QCOMPARE(edited.size(), 0);
         button("saveButton")->click();
         QCOMPARE(m_vehicles.updates, 0);
+    }
+
+    // El total que repinta el historial a media edición tampoco cuenta como
+    // un cambio, con los widgets reales: el spin bloqueado avisa su nuevo
+    // valor como cualquier campo.
+    void maintenanceTotalIsNotAnEdit()
+    {
+        open(domain::UserRole::Admin);
+        button("editButton")->click();
+        m_presenter->showMaintenanceCost(3100.0);
+        QCOMPARE(fieldWidget<QDoubleSpinBox>(&m_view->detailsView(), QStringLiteral("maintenanceCost"))
+                     ->value(),
+                 3100.0);
+        button("saveButton")->click();
+        QCOMPARE(m_vehicles.updates, 0);
+        QCOMPARE(m_view->findChild<QLabel *>(QStringLiteral("noticeLabel"))->text(),
+                 QStringLiteral("No hubo cambios que guardar."));
     }
 
     // Cada página sigue en su área con scroll, así cabe en una laptop chica.
