@@ -346,6 +346,9 @@
     </widget>
    </item>
    <item>
+    <widget class="MaintenanceHistoryTableWidget" name="maintenanceHistorySection" native="true"/>
+   </item>
+   <item>
     <widget class="QFrame" name="ownerAndAcquisitionCard">
      <layout class="QGridLayout" name="ownerAndAcquisitionGrid" columnstretch="0,1,0,1">
       <property name="leftMargin">
@@ -645,6 +648,12 @@
    <class>ConsignmentTermsSection</class>
    <extends>QWidget</extends>
    <header>presentation/inventory/consignment/consignmenttermssection.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>MaintenanceHistoryTableWidget</class>
+   <extends>QWidget</extends>
+   <header>presentation/inventory/maintenance/maintenancehistorytablewidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

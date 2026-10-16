@@ -81,6 +81,13 @@ Used for the single main action on a page (e.g., `+ Agregar Vehículo`, `Guardar
   btn->setProperty("class", "primary");
   ```
 
+### B. Data tables (`class="data-table"`)
+Used for tabular lists inside a card (e.g., the maintenance history of a vehicle).
+* **Border:** `#DEE2E6`, `8px` radius; grid lines `#E9ECEF`; alternating rows `#F8F9FA`.
+* **Selection:** `#E6E9FC` background with `#0A25C9` text.
+* **Header:** `#F8F9FA` background, `#495057` semi-bold text.
+* Set it as the `class` property of the `QTableWidget`/`QTableView` in Designer (Translatable unchecked). It is matched by class on purpose: a rule on every `QTableView` would also restyle the calendar popup of `QDateEdit`.
+
 ## 📁 4. Project Setup & Stylesheet Loading
 
 The global stylesheet is located in the resource bundle at:

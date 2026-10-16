@@ -8,6 +8,7 @@
 #include "presentation/inventory/registration/steps/files/vehiclefilespresenter.h"
 #include "presentation/inventory/registration/vehiclewizardpresenter.h"
 #include "presentation/common/components/aspectratioimagelabel.h"
+#include "presentation/inventory/maintenance/maintenancehistorytablewidget.h"
 #include "presentation/inventory/registration/steps/conditions/vehicleconditionsview.h"
 #include "presentation/inventory/registration/steps/details/vehicledetailsview.h"
 #include "presentation/inventory/registration/steps/files/vehiclefilesview.h"
@@ -18,11 +19,13 @@
 #include <QDoubleSpinBox>
 #include <QFrame>
 #include <QLabel>
+#include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSpinBox>
 #include <QStackedWidget>
+#include <QTableWidget>
 #include <QtTest>
 
 #include <memory>
@@ -373,6 +376,67 @@ private slots:
         QCOMPARE(cards(&m_view->detailsView()), 2);
         QCOMPARE(cards(&m_view->conditionsView()), 2);
         QCOMPARE(cards(&m_view->filesView()), 2);
+    }
+
+    // El historial de mantenimientos (US-03.3) va acomodado en el Paso 1,
+    // entre las dos tarjetas, pero el alta nunca lo muestra.
+    void maintenanceHistoryIsHiddenWhileRegistering()
+    {
+        QWidget *page = &m_view->detailsView();
+        auto *history = page->findChild<MaintenanceHistoryTableWidget *>(
+            QStringLiteral("maintenanceHistorySection"));
+        QVERIFY(history);
+        QCOMPARE(&m_view->detailsView().maintenanceHistory(), history);
+        QVERIFY(!history->isVisibleTo(page));
+
+        QLayout *layout = page->layout();
+        QCOMPARE(layout->indexOf(history), 1);
+        QCOMPARE(layout->itemAt(0)->widget()->objectName(), QStringLiteral("cardPanel"));
+        QCOMPARE(layout->itemAt(2)->widget()->objectName(), QStringLiteral("cardPanel"));
+
+        // Las columnas del mockup, en orden.
+        auto *table = history->findChild<QTableWidget *>(QStringLiteral("historyTable"));
+        QVERIFY(table);
+        const QStringList expected{QStringLiteral("Fecha"), QStringLiteral("Tipo de mantenimiento"),
+                                   QStringLiteral("Costo"), QStringLiteral("Descripción"),
+                                   QStringLiteral("Recibo")};
+        QCOMPARE(table->columnCount(), expected.size());
+        for (int column = 0; column < expected.size(); ++column)
+            QCOMPARE(table->horizontalHeaderItem(column)->text(), expected.at(column));
+    }
+
+    void maintenanceHistoryAnnouncesItsButtons()
+    {
+        MaintenanceHistoryTableWidget &history = m_view->detailsView().maintenanceHistory();
+        QSignalSpy added(&history, &MaintenanceHistoryTableWidget::addMaintenanceRequested);
+        QSignalSpy printed(&history, &MaintenanceHistoryTableWidget::printReceiptsRequested);
+        history.findChild<QPushButton *>(QStringLiteral("addMaintenanceButton"))->click();
+        history.findChild<QPushButton *>(QStringLiteral("printReceiptsButton"))->click();
+        QCOMPARE(added.size(), 1);
+        QCOMPARE(printed.size(), 1);
+    }
+
+    // Visible, el historial queda en el Tab entre la descripción y Tipo
+    // Operación, igual que en la pantalla.
+    void tabOrderRunsThroughTheMaintenanceHistory()
+    {
+        QWidget *page = &m_view->detailsView();
+        m_view->detailsView().setMaintenanceHistoryVisible(true);
+        const auto nextTabStop = [](QWidget *from) {
+            QWidget *next = from->nextInFocusChain();
+            while (next != from
+                   && (!(next->focusPolicy() & Qt::TabFocus)
+                       || next->objectName().startsWith(QStringLiteral("qt_"))))
+                next = next->nextInFocusChain();
+            return next;
+        };
+        const auto named = [page](const char *name) {
+            return page->findChild<QWidget *>(QString::fromLatin1(name));
+        };
+        QCOMPARE(nextTabStop(named("descriptionEdit")), named("addMaintenanceButton"));
+        QCOMPARE(nextTabStop(named("addMaintenanceButton")), named("historyTable"));
+        QCOMPARE(nextTabStop(named("historyTable")), named("printReceiptsButton"));
+        QCOMPARE(nextTabStop(named("printReceiptsButton")), named("acquisitionTypeCombo"));
     }
 };
 

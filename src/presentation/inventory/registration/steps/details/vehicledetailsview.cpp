@@ -4,6 +4,7 @@
 #include "presentation/common/forms/formsupport.h"
 #include "presentation/inventory/acquisition/acquisitiontermssection.h"
 #include "presentation/inventory/consignment/consignmenttermssection.h"
+#include "presentation/inventory/maintenance/maintenancehistorytablewidget.h"
 
 #include <QComboBox>
 #include <QCompleter>
@@ -109,6 +110,17 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     for (qsizetype i = 0; i + 1 < focusChain.size(); ++i)
         QWidget::setTabOrder(focusChain.at(i), focusChain.at(i + 1));
 
+    // El historial de mantenimientos va entre las dos tarjetas, y el Tab
+    // también: de la descripción a sus botones y de ahí a Tipo Operación.
+    // Mientras está oculto (en el alta, siempre), el Tab se lo salta. Va oculto
+    // desde aquí porque solo el expediente lo muestra, y solo a quien su rol
+    // se lo permite.
+    QList<QWidget *> historyChain{ui->descriptionEdit};
+    historyChain << ui->maintenanceHistorySection->focusOrder() << ui->acquisitionTypeCombo;
+    for (qsizetype i = 0; i + 1 < historyChain.size(); ++i)
+        QWidget::setTabOrder(historyChain.at(i), historyChain.at(i + 1));
+    ui->maintenanceHistorySection->setVisible(false);
+
     // Bajo cada campo, el lugar de sus mensajes de error (también los de las
     // secciones). Sin errores no ocupa espacio.
     formsupport::addFieldErrorLabels(this);
@@ -121,8 +133,12 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     // Deja la vista coherente con la rama seleccionada por omisión.
     onAcquisitionTypeChanged();
 
-    // Cualquier cambio se avisa; el presenter decide cuándo revalidar.
-    formsupport::watchEdits(this, this, [this] { emit edited(); });
+    // Cualquier cambio se avisa; el presenter decide cuándo revalidar. Solo
+    // dentro de las dos tarjetas (las secciones de cada rama van en la
+    // segunda): lo que se capture en el historial de mantenimientos no es una
+    // edición de la unidad.
+    for (QFrame *card : {ui->generalInfoCard, ui->ownerAndAcquisitionCard})
+        formsupport::watchEdits(card, this, [this] { emit edited(); });
 }
 
 VehicleDetailsView::~VehicleDetailsView()
@@ -165,6 +181,16 @@ void VehicleDetailsView::onAcquisitionTypeChanged()
 presentation::IAcquisitionTermsView &VehicleDetailsView::acquisitionTerms()
 {
     return *ui->acquisitionSection;
+}
+
+MaintenanceHistoryTableWidget &VehicleDetailsView::maintenanceHistory()
+{
+    return *ui->maintenanceHistorySection;
+}
+
+void VehicleDetailsView::setMaintenanceHistoryVisible(bool visible)
+{
+    ui->maintenanceHistorySection->setVisible(visible);
 }
 
 void VehicleDetailsView::showEvent(QShowEvent *event)

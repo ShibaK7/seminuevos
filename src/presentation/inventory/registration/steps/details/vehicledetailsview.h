@@ -14,6 +14,8 @@ namespace Ui {
 }
 QT_END_NAMESPACE
 
+class MaintenanceHistoryTableWidget;
+
 // Paso 1 del wizard: datos generales del vehículo + contraparte + condiciones
 // de la operación. Cubre las dos ramas -- Adquisición (la agencia compra) y
 // Consignación (la agencia vende por cuenta del dueño y cobra comisión). Lo
@@ -37,6 +39,12 @@ class VehicleDetailsView : public QWidget, public presentation::IVehicleDetailsV
 public:
     explicit VehicleDetailsView(QWidget *parent = nullptr);
     ~VehicleDetailsView() override;
+
+    // La sección del historial de mantenimientos, entre las dos tarjetas
+    // (US-03.3). Arranca oculta: el alta nunca la muestra, y el expediente
+    // decide según el rol si se ve.
+    MaintenanceHistoryTableWidget &maintenanceHistory();
+    void setMaintenanceHistoryVisible(bool visible);
 
     // --- IVehicleDetailsView ---
     application::VehicleDetailsDto details() const override;

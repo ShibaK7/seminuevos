@@ -126,8 +126,12 @@ seminuevos/
 │   │       │   │                                           tipo y método de pago, precio de venta
 │   │       │   ├── acquisitiontermspresenter, iacquisitiontermsview.h   Botones de factura y CFDI
 │   │       │   └── invoiceattachment                       Regla de la autofactura (factura después del CFDI)
-│   │       └── consignment/         Solo lo de Consignación (dentro del Paso 1)
-│   │           └── consignmenttermssection (.ui/.h/.cpp)   Precio base y comisión
+│   │       ├── consignment/         Solo lo de Consignación (dentro del Paso 1)
+│   │       │   └── consignmenttermssection (.ui/.h/.cpp)   Precio base y comisión
+│   │       └── maintenance/         Historial de mantenimientos (dentro del Paso 1, entre sus dos
+│   │           │                    tarjetas; el alta lo oculta)
+│   │           └── maintenancehistorytablewidget (.ui/.h/.cpp)   La tabla con "Agregar Mantenimiento"
+│   │                                                             e "Imprimir"
 │   │
 │   └── app/                         Raíz de composición: lo único que conoce todas las capas
 │       ├── appsettings              Lee el .env (conexión, almacén, banderas de desarrollo)
