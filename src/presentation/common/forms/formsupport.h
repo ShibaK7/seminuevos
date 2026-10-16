@@ -24,6 +24,7 @@ class QDateEdit;
 class QDoubleSpinBox;
 class QGridLayout;
 class QLabel;
+class QLineEdit;
 class QSpinBox;
 
 namespace formsupport {
@@ -175,6 +176,10 @@ void selectEnum(QComboBox *combo, const std::optional<Enum> &value)
 {
     selectData(combo, value ? QVariant(static_cast<int>(*value)) : QVariant());
 }
+
+// Un texto guardado se pinta desde su principio: setText() deja el cursor al
+// final, y un texto más largo que el campo se vería cortado por el inicio.
+void showText(QLineEdit *edit, const QString &text);
 
 // Un número o una fecha guardados se pintan tal cual aunque se salgan del
 // rango que el campo ofrece al capturar (una unidad de 1975 contra un año

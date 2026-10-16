@@ -472,6 +472,14 @@ void selectData(QComboBox *combo, const QVariant &data)
     combo->setCurrentIndex(data.isValid() ? combo->findData(data) : -1);
 }
 
+void showText(QLineEdit *edit, const QString &text)
+{
+    if (!edit)
+        return;
+    edit->setText(text);
+    edit->setCursorPosition(0);
+}
+
 void showValue(QSpinBox *spin, int value)
 {
     if (!spin)

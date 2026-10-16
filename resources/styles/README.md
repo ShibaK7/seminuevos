@@ -91,6 +91,7 @@ Used for tabular lists inside a card (e.g., the maintenance history of a vehicle
 ### C. Read-only fields (`readOnly`) and fields locked while editing (`lockedByForm`)
 The vehicle record shows the registration form read-only. `formsupport::setReadOnly()` does it for a whole form; never set these properties by hand.
 * **`readOnly`:** the real property of `QLineEdit`, `QTextEdit` and spin boxes, and a dynamic one on `QComboBox`, `QCheckBox` and `QRadioButton`. Read-only fields keep their normal look (readable text) but lose hover and arrows. Do not use `QComboBox:read-only`: Qt applies it to every non-editable combo.
+* **Read-only `QDateEdit`:** with a calendar popup, Qt draws its frame as disabled when it is read-only, so it would take the `:disabled` grey. `QDateEdit[readOnly="true"]:disabled` puts back the normal white.
 * **`lockedByForm`:** a field that cannot change while the record is being edited (operation type, maintenance cost). It is disabled, so it takes the `:disabled` grey.
 
 ## 📁 4. Project Setup & Stylesheet Loading

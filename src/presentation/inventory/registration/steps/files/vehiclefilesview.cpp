@@ -348,6 +348,7 @@ void VehicleFilesView::rebuildGallery()
 
     // Absorbe el espacio vertical sobrante para que las filas no se estiren.
     ui->galleryLayout->addStretch(1);
+    chainTabOrder();
 }
 
 void VehicleFilesView::rebuildDocuments()
@@ -392,7 +393,7 @@ void VehicleFilesView::rebuildDocuments()
             policyEdit = new QLineEdit(row);
             policyEdit->setObjectName(QStringLiteral("policyNumberEdit"));
             policyEdit->setPlaceholderText(QStringLiteral("No. Póliza"));
-            policyEdit->setText(m_documents.value(type).documentNumber);
+            formsupport::showText(policyEdit, m_documents.value(type).documentNumber);
             policyEdit->setMaximumWidth(120);
             // El tope de la columna vehicle_documents.document_number: uno más largo
             // fallaría hasta el INSERT, ya con los archivos copiados.
@@ -484,6 +485,40 @@ void VehicleFilesView::rebuildDocuments()
         if (m_readOnly)
             formsupport::setReadOnly(row, true);
     }
+    chainTabOrder();
+}
+
+void VehicleFilesView::chainTabOrder()
+{
+    // Los controles de cada foto y de cada fila de documento, en el orden en
+    // que se crearon, que es el de la pantalla. Las que van de salida ya no
+    // están en los layouts.
+    const auto focusableChildren = [](QWidget *container) {
+        QList<QWidget *> controls;
+        for (QWidget *child : container->findChildren<QWidget *>(Qt::FindDirectChildrenOnly)) {
+            if (child->focusPolicy() & Qt::TabFocus)
+                controls << child;
+        }
+        return controls;
+    };
+
+    QList<QWidget *> chain{ui->galleryScrollArea};
+    for (int i = 0; i < ui->galleryLayout->count(); ++i) {
+        QLayout *rowLayout = ui->galleryLayout->itemAt(i)->layout();
+        if (!rowLayout)
+            continue;
+        for (int j = 0; j < rowLayout->count(); ++j) {
+            if (QWidget *cell = rowLayout->itemAt(j)->widget())
+                chain << focusableChildren(cell);
+        }
+    }
+    chain << ui->addPhotoButton;
+    for (int i = 0; i < ui->documentsLayout->count(); ++i) {
+        if (QWidget *row = ui->documentsLayout->itemAt(i)->widget())
+            chain << focusableChildren(row);
+    }
+    for (qsizetype i = 0; i + 1 < chain.size(); ++i)
+        QWidget::setTabOrder(chain.at(i), chain.at(i + 1));
 }
 
 bool VehicleFilesView::hasDocumentFile(const QString &type) const

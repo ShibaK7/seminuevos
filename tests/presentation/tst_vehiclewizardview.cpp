@@ -751,6 +751,32 @@ private slots:
         QCOMPARE(view.conditions().inspection.first().elementId, 7);
     }
 
+    // Un texto guardado más largo que su campo se ve desde el principio, no
+    // cortado por el inicio.
+    void longStoredTextShowsItsStart()
+    {
+        application::VehicleDetailsDto stored = completeDetails(domain::AcquisitionType::Adquisicion);
+        stored.counterparty.streetAddress =
+            QStringLiteral("Avenida Francisco I. Madero Poniente 1234, interior 5, edificio B");
+        m_view->detailsView().showDetails(3, stored);
+        auto *street = fieldWidget<QLineEdit>(&m_view->detailsView(),
+                                              QStringLiteral("counterparty.streetAddress"));
+        QCOMPARE(street->cursorPosition(), 0);
+        QCOMPARE(street->text(), stored.counterparty.streetAddress);
+    }
+
+    // Si el catálogo de condiciones llega en una lectura posterior, el aviso
+    // de que no estaba disponible desaparece.
+    void checklistNoticeGoesAwayWhenTheCatalogArrives()
+    {
+        VehicleConditionsView view;
+        view.showChecklistMessage(QStringLiteral("El catálogo no está disponible."));
+        auto *notice = view.findChild<QLabel *>(QStringLiteral("checklistMessageLabel"));
+        QVERIFY(notice->isVisibleTo(&view));
+        view.setChecklist({{7, QStringLiteral("Exterior"), QStringLiteral("Llantas")}});
+        QVERIFY(!notice->isVisibleTo(&view));
+    }
+
     // Lo guardado del Paso 3 reemplaza lo que hubiera, con su portada, y no
     // arrastra casillas ni avisos de antes.
     void storedFilesReplaceWhatWasThere()
