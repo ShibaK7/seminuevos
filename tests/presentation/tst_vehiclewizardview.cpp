@@ -564,9 +564,14 @@ private slots:
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         for (QCheckBox *check : files->findChildren<QCheckBox *>())
             QVERIFY(check->property("readOnly").toBool());
-        // El historial de mantenimientos no es parte de la captura.
-        QVERIFY(!m_view->detailsView().maintenanceHistory().findChild<QPushButton *>(
-                    QStringLiteral("addMaintenanceButton"))->property("readOnly").isValid());
+        // El historial de mantenimientos no es parte de la captura: un editor
+        // suyo (como los de su alta en línea) sigue editable.
+        auto *history = m_view->detailsView().maintenanceHistory().findChild<QTableWidget *>();
+        history->setRowCount(1);
+        auto *historyCell = new QLineEdit;
+        history->setCellWidget(0, 0, historyCell);
+        m_view->detailsView().setReadOnly(true, {});
+        QVERIFY(!historyCell->isReadOnly());
 
         m_view->detailsView().setReadOnly(false, {});
         m_view->conditionsView().setReadOnly(false, {});
