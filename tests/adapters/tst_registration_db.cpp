@@ -123,7 +123,7 @@ public:
                 QSqlQuery session(handle.database());
                 // Si la prueba falla con el hilo esperando un candado, que no
                 // espere para siempre; más que lo que waitForALock() pregunta,
-                // para que una espera que no se vio no termine en error.
+                // para que el hilo no se rinda antes de que se le vea esperar.
                 session.exec(QStringLiteral("SET lock_timeout = '20s'"));
                 if (session.exec(QStringLiteral("SELECT pg_backend_pid()")) && session.next())
                     m_backendPid = session.value(0).toInt();
@@ -134,7 +134,10 @@ public:
     }
 
     // Espera, hasta 10 s, a que la corrección se quede esperando un candado,
-    // o a que termine sin haber esperado. Devuelve si llegó a esperar.
+    // o a que termine sin haber esperado. Devuelve si llegó a esperar. Las
+    // pruebas lo exigen: si la otra sesión confirmara antes de que el hilo
+    // llegue, el hilo vería todo ya confirmado y pasarían sin que haya
+    // carrera, aunque faltara justo lo que prueban.
     bool waitForALock(ConnectionPool &pool) const
     {
         const QDeadlineTimer deadline(10000);
@@ -916,7 +919,7 @@ private slots:
                  qPrintable(error));
 
         relink.start(*m_pool, records, update);
-        relink.waitForALock(*m_pool);
+        QVERIFY2(relink.waitForALock(*m_pool), "el religado no esperó a la otra sesión");
         QVERIFY2(session.commit(), qPrintable(session.lastError()));
 
         const application::RecordUpdateResult &result = relink.result();
@@ -960,7 +963,7 @@ private slots:
         QVERIFY2(street.exec(), qPrintable(street.lastError().text()));
 
         correction.start(*m_pool, records, update);
-        correction.waitForALock(*m_pool);
+        QVERIFY2(correction.waitForALock(*m_pool), "la corrección no esperó a la otra sesión");
         QVERIFY2(session.commit(), qPrintable(session.lastError()));
 
         QCOMPARE(correction.result().status, application::RecordUpdateResult::Status::Conflict);
