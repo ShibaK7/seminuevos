@@ -588,13 +588,13 @@ application::VehicleRepository::SaveOutcome SqlVehicleRepository::save(QSqlDatab
 }
 
 application::VehicleRepository::UpdateOutcome SqlVehicleRepository::update(
-    domain::Vehicle &vehicle, const QString &expectedVersion)
+    domain::Vehicle &vehicle, const Expected &expected)
 {
     UpdateOutcome result;
     {
         ConnectionPool::Handle handle = m_pool.acquire();
         QSqlDatabase &db = handle.database();
-        result = rewrite(db, vehicle, expectedVersion);
+        result = rewrite(db, vehicle, expected);
     }
     // Como en add(): con la conexión ya soltada, una que falló se descarta
     // para que el reintento abra otra.
@@ -604,7 +604,7 @@ application::VehicleRepository::UpdateOutcome SqlVehicleRepository::update(
 }
 
 application::VehicleRepository::UpdateOutcome SqlVehicleRepository::rewrite(
-    QSqlDatabase &db, domain::Vehicle &vehicle, const QString &expectedVersion)
+    QSqlDatabase &db, domain::Vehicle &vehicle, const Expected &expected)
 {
     UpdateOutcome result;
 
@@ -629,7 +629,7 @@ application::VehicleRepository::UpdateOutcome SqlVehicleRepository::rewrite(
 
     // 1. La unidad, solo si nadie la cambió desde que se leyó.
     int rowsAffected = 0;
-    if (!updateVehicleRow(db, vehicle, expectedVersion, rowsAffected, errorMessage)) {
+    if (!updateVehicleRow(db, vehicle, expected.vehicleVersion, rowsAffected, errorMessage)) {
         result.duplicateSerialNumber = errorMessage.contains(QStringLiteral("vehicles_serial_number_key"));
         return fail(errorMessage);
     }
@@ -646,18 +646,30 @@ application::VehicleRepository::UpdateOutcome SqlVehicleRepository::rewrite(
         return result;
     }
 
-    // 2. Su contraparte: la misma persona corregida, u otra.
-    const int currentId = currentCounterpartyId(db, folio, errorMessage);
-    if (currentId < 0)
+    // 2. Su contraparte. Si el usuario no la cambió, la unidad se queda con la
+    // que tiene y esa no se escribe: otro usuario pudo corregirla mientras
+    // tanto desde otra operación de la misma persona, y reescribirla con lo
+    // que este formulario leyó desharía esa corrección. Si la cambió, la misma
+    // persona corregida (solo si sigue como se leyó) u otra.
+    int counterpartyId = currentCounterpartyId(db, folio, errorMessage);
+    if (counterpartyId < 0)
         return fail(errorMessage);
-    SqlCounterpartyRepository counterparties(db);
-    QString takenBy;
-    const int counterpartyId =
-        counterparties.keepOrRelink(currentId, vehicle.counterparty(), takenBy, errorMessage);
-    if (counterpartyId < 0) {
-        result.takenNationalIdOwner = takenBy;
-        return fail(takenBy.isEmpty() ? errorMessage
-                                      : QStringLiteral("la identificación ya es de otra persona"));
+    if (expected.counterpartyEdited) {
+        SqlCounterpartyRepository counterparties(db);
+        const SqlCounterpartyRepository::Relink relink = counterparties.keepOrRelink(
+            counterpartyId, vehicle.counterparty(), expected.counterpartyVersion);
+        if (relink.conflict) {
+            result.conflict = true;
+            db.rollback();
+            return result;
+        }
+        if (relink.id < 0) {
+            result.takenNationalIdOwner = relink.takenBy;
+            return fail(relink.takenBy.isEmpty()
+                            ? relink.errorMessage
+                            : QStringLiteral("la identificación ya es de otra persona"));
+        }
+        counterpartyId = relink.id;
     }
     vehicle.assignCounterpartyId(counterpartyId);
 

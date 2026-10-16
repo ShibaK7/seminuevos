@@ -64,6 +64,7 @@ inline application::VehicleRecordDto storedRecord(int folio, domain::Acquisition
     application::VehicleRecordDto record;
     record.folio = folio;
     record.version = QStringLiteral("1001");
+    record.counterpartyVersion = QStringLiteral("2001");
     record.hasDealTerms = true;
     record.details = captured.details;
     record.details.dealDate = QDate(2024, 3, 15);

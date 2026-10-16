@@ -34,6 +34,8 @@ private:
         application::VehicleUpdateDto update;
         update.folio = 7;
         update.version = loaded.record.version;
+        update.loadedCounterparty = loaded.record.details.counterparty;
+        update.counterpartyVersion = loaded.record.counterpartyVersion;
         update.details = loaded.record.details;
         update.conditions = loaded.record.conditions;
         for (const application::StoredImageDto &stored : loaded.record.images)
@@ -266,6 +268,24 @@ private slots:
         QCOMPARE(service().update(update, UserRole::Admin).status, UpdateStatus::Saved);
         QVERIFY(m_vehicles.updatedInvoicePath.isEmpty());
         QCOMPARE(m_files.removed, QStringList{stored(QStringLiteral("documents/factura.pdf"))});
+    }
+
+    // La contraparte solo se escribe si el usuario la cambió: otro usuario
+    // pudo corregirla mientras tanto desde otra unidad de la misma persona.
+    void untouchedCounterpartyIsNotWritten()
+    {
+        QCOMPARE(service().update(editedRecord(), UserRole::Admin).status, UpdateStatus::Saved);
+        QVERIFY(!m_vehicles.updatedExpected.counterpartyEdited);
+        QCOMPARE(m_vehicles.updatedExpected.vehicleVersion, QStringLiteral("1001"));
+    }
+
+    void editedCounterpartyCarriesItsVersion()
+    {
+        application::VehicleUpdateDto update = editedRecord();
+        update.details.counterparty.locality = QStringLiteral("Pátzcuaro");
+        QCOMPARE(service().update(update, UserRole::Admin).status, UpdateStatus::Saved);
+        QVERIFY(m_vehicles.updatedExpected.counterpartyEdited);
+        QCOMPARE(m_vehicles.updatedExpected.counterpartyVersion, QStringLiteral("2001"));
     }
 
     // Sin cambios en los archivos, no se copia ni se borra nada.

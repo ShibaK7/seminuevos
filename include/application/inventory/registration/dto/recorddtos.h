@@ -46,6 +46,10 @@ struct VehicleRecordDto
     // con la de la base: si otro usuario la cambió entre tanto, el guardado
     // se rechaza en vez de pisar sus cambios.
     QString version;
+    // La versión del renglón de su contraparte, que comparten todas las
+    // operaciones de esa persona: otro usuario puede corregirla desde otra
+    // unidad sin cambiar la versión de esta.
+    QString counterpartyVersion;
     // Si existe el renglón de su rama (compra o consignación). Sin él la
     // unidad se puede consultar, pero no corregir: no hay operación que
     // editar.
@@ -74,6 +78,12 @@ struct VehicleUpdateDto
     int folio = -1;
     // La versión que se leyó (VehicleRecordDto::version).
     QString version;
+    // La contraparte como se leyó, con su versión. Si lo capturado es igual,
+    // la contraparte no se escribe; si cambió, se corrige solo si nadie la
+    // corrigió desde que se leyó. Así un guardado que no la tocó no deshace la
+    // corrección que otro usuario le hizo desde otra unidad de esa persona.
+    CounterpartyDto loadedCounterparty;
+    QString counterpartyVersion;
     VehicleDetailsDto details;
     VehicleConditionsDto conditions;
     // Rutas absolutas: las de los archivos que ya estaban guardados, tal como

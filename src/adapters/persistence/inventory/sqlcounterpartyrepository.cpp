@@ -52,24 +52,34 @@ int SqlCounterpartyRepository::findOrCreate(const domain::Counterparty &counterp
     return insert(counterparty, errorMessage);
 }
 
-int SqlCounterpartyRepository::keepOrRelink(int currentId, const domain::Counterparty &edited,
-                                            QString &takenBy, QString &errorMessage)
+SqlCounterpartyRepository::Relink SqlCounterpartyRepository::keepOrRelink(
+    int currentId, const domain::Counterparty &edited, const QString &expectedVersion)
 {
+    Relink result;
+
+    // FOR UPDATE: el renglón queda bloqueado hasta el fin de la transacción,
+    // así nadie lo cambia entre revisar su versión y corregirlo.
     QSqlQuery current(m_db);
-    current.prepare(QStringLiteral("SELECT national_id FROM counterparties WHERE id = :id"));
+    current.prepare(QStringLiteral("SELECT national_id, CAST(xmin AS text) FROM counterparties "
+                                   "WHERE id = :id FOR UPDATE"));
     current.bindValue(QStringLiteral(":id"), currentId);
     if (!current.exec()) {
-        errorMessage = current.lastError().text();
-        return -1;
+        result.errorMessage = current.lastError().text();
+        return result;
     }
     if (!current.next()) {
-        errorMessage = QStringLiteral("La contraparte %1 ya no existe.").arg(currentId);
-        return -1;
+        result.errorMessage = QStringLiteral("La contraparte %1 ya no existe.").arg(currentId);
+        return result;
     }
 
-    // La misma identificación es la misma persona: se corrige donde está.
+    // La misma identificación es la misma persona: se corrige donde está, si
+    // nadie la corrigió desde que se leyó.
     const QString currentNationalId = current.value(0).toString().trimmed().toUpper();
     if (currentNationalId == edited.nationalId()) {
+        if (current.value(1).toString() != expectedVersion) {
+            result.conflict = true;
+            return result;
+        }
         QSqlQuery update(m_db);
         update.prepare(QStringLiteral(
             "UPDATE counterparties "
@@ -85,10 +95,11 @@ int SqlCounterpartyRepository::keepOrRelink(int currentId, const domain::Counter
         update.bindValue(QStringLiteral(":postal_code"), nullIfEmpty(edited.postalCode()));
         update.bindValue(QStringLiteral(":id"), currentId);
         if (!update.exec()) {
-            errorMessage = update.lastError().text();
-            return -1;
+            result.errorMessage = update.lastError().text();
+            return result;
         }
-        return currentId;
+        result.id = currentId;
+        return result;
     }
 
     // Otra identificación: la persona que ya la tiene, si es la misma que se
@@ -99,19 +110,21 @@ int SqlCounterpartyRepository::keepOrRelink(int currentId, const domain::Counter
                                      "WHERE national_id = :national_id ORDER BY id LIMIT 1"));
         owner.bindValue(QStringLiteral(":national_id"), edited.nationalId());
         if (!owner.exec()) {
-            errorMessage = owner.lastError().text();
-            return -1;
+            result.errorMessage = owner.lastError().text();
+            return result;
         }
         if (owner.next()) {
             const QString ownerName = owner.value(1).toString();
             if (!sameName(ownerName, edited.fullName())) {
-                takenBy = ownerName;
-                return -1;
+                result.takenBy = ownerName;
+                return result;
             }
-            return owner.value(0).toInt();
+            result.id = owner.value(0).toInt();
+            return result;
         }
     }
-    return insert(edited, errorMessage);
+    result.id = insert(edited, result.errorMessage);
+    return result;
 }
 
 int SqlCounterpartyRepository::insert(const domain::Counterparty &counterparty,

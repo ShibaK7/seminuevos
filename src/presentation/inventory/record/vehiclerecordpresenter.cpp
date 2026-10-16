@@ -315,6 +315,8 @@ void VehicleRecordPresenter::onSave()
     application::VehicleUpdateDto update;
     update.folio = m_folio;
     update.version = m_loaded->version;
+    update.loadedCounterparty = m_loaded->details.counterparty;
+    update.counterpartyVersion = m_loaded->counterpartyVersion;
     update.details = m_details->dto();
     update.conditions = m_conditions->dto();
     update.files = m_files->dto();

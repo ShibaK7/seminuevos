@@ -25,12 +25,27 @@ public:
         QString errorMessage;
     };
 
+    // Lo que se esperaba encontrar al corregir una unidad.
+    struct Expected
+    {
+        // La versión de la unidad que se leyó.
+        QString vehicleVersion;
+        // Si el usuario cambió los datos de la contraparte. Si no, la unidad
+        // se queda ligada a la que tiene y esa no se escribe: otro usuario pudo
+        // corregirla mientras tanto desde otra operación de la misma persona.
+        bool counterpartyEdited = false;
+        // La versión de la contraparte que se leyó. Corregirla en su lugar
+        // (misma identificación) solo procede si sigue siendo esa.
+        QString counterpartyVersion;
+    };
+
     struct UpdateOutcome
     {
         bool ok = false;
         // El folio ya no existe.
         bool notFound = false;
-        // Su versión ya no es la que se leyó: otro usuario la cambió.
+        // Su versión, o la de su contraparte, ya no es la que se leyó: otro
+        // usuario la cambió.
         bool conflict = false;
         // El VIN ya es de otra unidad.
         bool duplicateSerialNumber = false;
@@ -58,9 +73,9 @@ public:
     virtual SaveOutcome add(domain::Vehicle &vehicle) = 0;
 
     // Corrige la unidad ya guardada con el folio de `vehicle`, todo o nada, y
-    // solo si su versión sigue siendo `expectedVersion`. Nunca cambia su rama,
-    // su estado ni el costo de mantenimientos: ese lo acumula el historial.
-    virtual UpdateOutcome update(domain::Vehicle &vehicle, const QString &expectedVersion) = 0;
+    // solo si sigue como se leyó (`expected`). Nunca cambia su rama, su estado
+    // ni el costo de mantenimientos: ese lo acumula el historial.
+    virtual UpdateOutcome update(domain::Vehicle &vehicle, const Expected &expected) = 0;
 
 protected:
     VehicleRepository() = default;
