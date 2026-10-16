@@ -91,18 +91,11 @@ QDateEdit[readOnly="true"]::down-arrow {
     image: none;
 }
 
-/* Sin el ícono del calendario no hace falta su lugar a la derecha. */
+/* Sin el ícono del calendario no hace falta su lugar a la derecha. En solo
+   lectura formsupport también le quita el calendario a la fecha: con él, Qt
+   la pintaría como deshabilitada (gris). */
 QDateEdit[readOnly="true"] {
     padding-right: 14px;
-}
-
-/* Qt dibuja el marco de un QDateEdit con calendario como deshabilitado
-   cuando es de solo lectura, y le tocaría el gris de :disabled. Se ve como
-   los demás campos de solo lectura, que no se pintan de gris. */
-QDateEdit[readOnly="true"]:disabled {
-    background-color: #FFFFFF;
-    border-color: #E1E4EA;
-    color: #111827;
 }
 
 QCheckBox[readOnly="true"]::indicator:hover,

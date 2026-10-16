@@ -770,6 +770,18 @@ private slots:
         QCOMPARE(street->text(), stored.counterparty.streetAddress);
     }
 
+    // También el número de póliza del Seguro, que se arma en código.
+    void longPolicyNumberShowsItsStart()
+    {
+        const QString policy = QStringLiteral("POLIZA-0123456789-ABCDEFGHIJ");
+        m_view->filesView().showFiles({}, {{QStringLiteral("Seguro"),
+                                            QStringLiteral("C:/store/seguro.pdf"), policy}});
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        auto *edit = m_view->filesView().findChild<QLineEdit *>(QStringLiteral("policyNumberEdit"));
+        QCOMPARE(edit->text(), policy);
+        QCOMPARE(edit->cursorPosition(), 0);
+    }
+
     // Si el catálogo de condiciones llega en una lectura posterior, el aviso
     // de que no estaba disponible desaparece.
     void checklistNoticeGoesAwayWhenTheCatalogArrives()

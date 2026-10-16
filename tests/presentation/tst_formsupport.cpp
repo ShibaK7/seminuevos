@@ -3,6 +3,7 @@
 #include <QAbstractItemView>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDateEdit>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QLabel>
@@ -75,6 +76,7 @@ private slots:
     // Solo lectura (el expediente en consulta) y campos bloqueados al editar.
     void readOnlyTextsStaySelectableButDoNotChange();
     void readOnlySpinBoxGetsItsArrowsBackOnlyOnce();
+    void readOnlyDateDropsItsCalendarUntilEditable();
     void readOnlyComboIgnoresClicksKeysAndWheel();
     void readOnlyCheckBoxDoesNotToggle();
     void lockedFieldsAreDisabledAndOnlyThoseComeBack();
@@ -449,6 +451,25 @@ void TestFormSupport::readOnlySpinBoxGetsItsArrowsBackOnlyOnce()
     formsupport::setReadOnly(&root, false);
     QVERIFY(!spin->isReadOnly());
     QCOMPARE(spin->buttonSymbols(), QAbstractSpinBox::UpDownArrows);
+}
+
+// Una fecha con calendario se pintaría como deshabilitada en solo lectura: se
+// queda sin calendario mientras lo es, y lo recupera una sola vez al volver.
+void TestFormSupport::readOnlyDateDropsItsCalendarUntilEditable()
+{
+    QWidget root;
+    auto *date = new QDateEdit(&root);
+    date->setCalendarPopup(true);
+    auto *plain = new QDateEdit(&root);
+    QVERIFY(!plain->calendarPopup());
+
+    formsupport::setReadOnly(&root, true);
+    QVERIFY(date->isReadOnly());
+    QVERIFY(!date->calendarPopup());
+    formsupport::setReadOnly(&root, true);
+    formsupport::setReadOnly(&root, false);
+    QVERIFY(date->calendarPopup());
+    QVERIFY(!plain->calendarPopup());
 }
 
 // QComboBox no tiene readOnly: la guarda se traga flechas y clics, y la rueda
