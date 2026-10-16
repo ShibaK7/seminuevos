@@ -323,9 +323,14 @@ RecordUpdateResult VehicleRecordService::update(const VehicleUpdateDto &update,
     expected.counterpartyVersion = update.counterpartyVersion;
     const VehicleRepository::UpdateOutcome outcome = m_vehicles.update(*vehicle, expected);
     if (!outcome.ok) {
-        // Si falló el COMMIT no se sabe si quedó guardado: se deja todo.
-        if (!outcome.commitFailed)
-            files.removeCopies();
+        // Si falló el COMMIT no se sabe si quedó guardado: se deja todo, y
+        // quien llama tiene que releer en vez de reintentar.
+        if (outcome.commitFailed) {
+            RecordUpdateResult unconfirmed = withStatus(RecordUpdateResult::Status::Unconfirmed);
+            unconfirmed.errorMessage = outcome.errorMessage;
+            return unconfirmed;
+        }
+        files.removeCopies();
         if (outcome.notFound)
             return withStatus(RecordUpdateResult::Status::NotFound);
         if (outcome.conflict)

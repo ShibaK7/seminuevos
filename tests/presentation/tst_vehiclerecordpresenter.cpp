@@ -534,6 +534,94 @@ private slots:
         QCOMPARE(m_vehicles.updates, 0);
     }
 
+    // Guardar sin cambios también pinta la relectura que llegó a media
+    // edición, así lo siguiente que se edite viaja con la versión nueva.
+    void savingWithoutChangesAppliesAPendingReread()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        deferred.finish(0);
+        m_presenter->onEdit();
+        m_recordReader.records[7].version = QStringLiteral("2002");
+        m_recordReader.records[7].details.model = QStringLiteral("March");
+        m_presenter->refresh();
+        deferred.finish(1); // llega a media edición: se guarda para después
+        QCOMPARE(m_details.shown->model, QStringLiteral("Versa"));
+
+        m_presenter->onSave(); // sin cambios
+        QCOMPARE(m_record.notice, QStringLiteral("No hubo cambios que guardar."));
+        QCOMPARE(m_details.shown->model, QStringLiteral("March"));
+
+        editModel(QStringLiteral("Sentra"));
+        m_presenter->onSave();
+        deferred.finish(2);
+        QCOMPARE(m_vehicles.updatedVersion, QStringLiteral("2002"));
+    }
+
+    // Una relectura que termina a medio guardado no quita el ocupado: lo que
+    // se tecleara ahí no viajaría en el guardado y se perdería.
+    void rereadDuringSaveKeepsTheRecordBusy()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        deferred.finish(0);
+        editModel(QStringLiteral("Sentra"));
+        m_presenter->onSave(); // tarea 1: guardar
+        QVERIFY(m_record.busy);
+        m_presenter->refresh(); // tarea 2: releer
+        deferred.finish(2);
+        QVERIFY(m_record.busy);
+        deferred.finish(1);
+        QVERIFY(!m_record.busy);
+        QCOMPARE(m_record.notice, QStringLiteral("Cambios guardados."));
+    }
+
+    // Tras un conflicto no se deja en pantalla lo rechazado, y si la
+    // relectura falla no se dice que se cargaron los datos del otro, ni se
+    // edita sobre la versión vieja.
+    void conflictWithAFailedRereadKeepsEditingBlocked()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        deferred.finish(0);
+        editModel(QStringLiteral("Sentra"));
+        m_recordReader.records[7].version = QStringLiteral("2002");
+        m_presenter->onSave();
+        deferred.finish(1); // conflicto: pide releer
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QCOMPARE(m_details.shown->model, QStringLiteral("Versa"));
+        QVERIFY(m_record.message.contains(QStringLiteral("no se guardaron")));
+        QVERIFY(!m_record.editEnabled);
+
+        m_recordReader.failWith = QStringLiteral("server closed the connection");
+        deferred.finish(2);
+        QVERIFY(m_record.message.contains(QStringLiteral("Tampoco se pudieron leer")));
+        QVERIFY(!m_record.message.contains(QStringLiteral("Se cargaron")));
+        QVERIFY(!m_record.editEnabled);
+    }
+
+    // Si falló el COMMIT no se sabe si quedó: en vez de quedarse a
+    // reintentar sobre la versión vieja (daría un conflicto falso), relee.
+    void unconfirmedSaveRereadsInsteadOfRetrying()
+    {
+        startPresenter();
+        QSignalSpy changed(m_presenter.get(), &presentation::VehicleRecordPresenter::vehicleChanged);
+        editModel(QStringLiteral("Sentra"));
+        application::VehicleRepository::UpdateOutcome failure;
+        failure.commitFailed = true;
+        failure.errorMessage = QStringLiteral("could not commit");
+        m_vehicles.updateOutcome = failure;
+        const qsizetype reads = m_recordReader.reads.size();
+
+        m_presenter->onSave();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QVERIFY(m_record.message.contains(QStringLiteral("No se pudo confirmar")));
+        QVERIFY(m_record.message.contains(QStringLiteral("revisa si tus cambios están")));
+        QCOMPARE(m_recordReader.reads.size(), reads + 2); // revisar la versión y releer
+        QCOMPARE(changed.size(), 1);
+        QVERIFY(m_record.editEnabled);
+    }
+
     // Disco o base: se queda en edición, con lo capturado, para reintentar.
     void failedSaveStaysInEdit()
     {
