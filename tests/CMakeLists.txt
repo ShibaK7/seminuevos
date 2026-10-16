@@ -113,6 +113,11 @@ seminuevos_add_test(tst_wizardnavigator
     LIBS seminuevos_presentation
 )
 
+seminuevos_add_test(tst_editsession
+    SOURCES presentation/tst_editsession.cpp
+    LIBS seminuevos_presentation
+)
+
 seminuevos_add_test(tst_loginpresenter
     SOURCES presentation/tst_loginpresenter.cpp support/fakes.h
     LIBS seminuevos_presentation

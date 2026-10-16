@@ -52,6 +52,7 @@ private slots:
     void freeNavigationEntersAnyStep();
     void visualPriorities();
     void markAllAttemptedMarksEveryStep();
+    void resetAttemptsForgetsTheMarks();
     void allValidRequiresEveryStep();
     void outOfRangeIndicesAreIgnored();
 };
@@ -263,6 +264,25 @@ void TestWizardNavigator::visualPriorities()
     QCOMPARE(nav.visual(3), StepVisual::Pending);
     nav.setValid(3, true);
     QCOMPARE(nav.visual(3), StepVisual::Pending);
+}
+
+// Al volver a consulta, el expediente olvida los intentos: nada se pinta en
+// rojo hasta que se intente otra vez. El paso actual y la validez se quedan.
+void TestWizardNavigator::resetAttemptsForgetsTheMarks()
+{
+    WizardNavigator nav(3, true);
+    nav.setValid(0, true);
+    nav.moveTo(2);
+    nav.markAllAttempted();
+    QCOMPARE(nav.visual(1), StepVisual::Error);
+
+    nav.resetAttempts();
+    for (int step = 0; step < nav.stepCount(); ++step)
+        QVERIFY(!nav.isAttempted(step));
+    QCOMPARE(nav.visual(1), StepVisual::Pending);
+    QVERIFY(!nav.isComplete(0));
+    QVERIFY(nav.isValid(0));
+    QCOMPARE(nav.current(), 2);
 }
 
 void TestWizardNavigator::markAllAttemptedMarksEveryStep()
