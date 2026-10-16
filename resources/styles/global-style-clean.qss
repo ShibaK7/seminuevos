@@ -54,10 +54,56 @@ QDateEdit:hover {
 
 /* Inputs: disabled */
 QLineEdit:disabled,
-QComboBox:disabled {
+QComboBox:disabled,
+QSpinBox:disabled,
+QDoubleSpinBox:disabled,
+QDateEdit:disabled,
+QTextEdit:disabled {
     background-color: #F8F9FA;
     border-color: #E9ECEF;
     color: #ADB5BD;
+}
+
+/* Inputs: solo lectura (el expediente en consulta)
+   readOnly es la propiedad real de QLineEdit, QTextEdit y los spinbox, y una
+   dinámica en QComboBox, QCheckBox y QRadioButton: la pone
+   formsupport::setReadOnly(). Los campos se ven como siempre, legibles, pero
+   sin hover ni flechas: no invitan a editar. No se usa QComboBox:read-only
+   porque Qt lo aplica a todo combo no editable. No fija fondo ni color, así
+   que un campo deshabilitado (Folio) se sigue viendo gris. */
+QLineEdit[readOnly="true"]:hover,
+QTextEdit[readOnly="true"]:hover,
+QPlainTextEdit[readOnly="true"]:hover,
+QAbstractSpinBox[readOnly="true"]:hover,
+QComboBox[readOnly="true"]:hover {
+    border: 1px solid #CED4DA;
+}
+
+QComboBox[readOnly="true"]::drop-down,
+QDateEdit[readOnly="true"]::drop-down {
+    width: 0px;
+    margin: 0px;
+    border: none;
+}
+
+QComboBox[readOnly="true"]::down-arrow,
+QDateEdit[readOnly="true"]::down-arrow {
+    image: none;
+}
+
+/* Sin el ícono del calendario no hace falta su lugar a la derecha. */
+QDateEdit[readOnly="true"] {
+    padding-right: 14px;
+}
+
+QCheckBox[readOnly="true"]::indicator:hover,
+QRadioButton[readOnly="true"]::indicator:hover {
+    border-color: #ADB5BD;
+}
+
+QCheckBox[readOnly="true"]::indicator:checked:hover,
+QRadioButton[readOnly="true"]::indicator:checked:hover {
+    border-color: #0A25C9;
 }
 
 /* Validation

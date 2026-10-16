@@ -1,9 +1,13 @@
 #include "presentation/common/forms/formsupport.h"
 
 #include <QAbstractButton>
+#include <QAbstractSpinBox>
 #include <QBoxLayout>
+#include <QCheckBox>
 #include <QColor>
+#include <QEvent>
 #include <QGraphicsDropShadowEffect>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QComboBox>
 #include <QDateEdit>
@@ -12,6 +16,7 @@
 #include <QGridLayout>
 #include <QHash>
 #include <QLineEdit>
+#include <QRadioButton>
 #include <QPlainTextEdit>
 #include <QResource>
 #include <QScrollArea>
@@ -426,6 +431,215 @@ void fillCombo(QComboBox *combo, const QList<application::CatalogOptionDto> &opt
     for (const application::CatalogOptionDto &option : options)
         combo->addItem(option.name, option.id);
     combo->setCurrentIndex(-1);
+}
+
+void selectOption(QComboBox *combo, const domain::CatalogRef &ref)
+{
+    if (!combo)
+        return;
+    if (!ref.isValid()) {
+        combo->setCurrentIndex(-1);
+        return;
+    }
+    int index = combo->findData(ref.id);
+    if (index < 0 && !ref.name.isEmpty()) {
+        combo->addItem(ref.name, ref.id);
+        index = combo->count() - 1;
+    }
+    combo->setCurrentIndex(index);
+}
+
+void selectText(QComboBox *combo, const QString &text)
+{
+    if (!combo)
+        return;
+    if (text.isEmpty()) {
+        combo->setCurrentIndex(-1);
+        return;
+    }
+    int index = combo->findText(text);
+    if (index < 0) {
+        combo->addItem(text);
+        index = combo->count() - 1;
+    }
+    combo->setCurrentIndex(index);
+}
+
+} // namespace formsupport
+
+// ---------------------------------------------------------------------------
+// Solo lectura
+// ---------------------------------------------------------------------------
+
+namespace formsupport {
+namespace {
+
+// "readOnly" la lee el QSS (y la guarda): en QLineEdit, QTextEdit y los
+// spinbox es su propiedad real; en combos, casillas y radios, una dinámica.
+// Las demás guardan lo original para poder devolverlo.
+constexpr char kReadOnlyProperty[] = "readOnly";
+constexpr char kLockedByFormProperty[] = "lockedByForm";
+constexpr char kLockedOriginalToolTipProperty[] = "lockedOriginalToolTip";
+constexpr char kReadOnlyButtonSymbolsProperty[] = "readOnlyButtonSymbols";
+constexpr char kReadOnlyGuardProperty[] = "readOnlyGuard";
+
+QString lockedToolTip()
+{
+    return QStringLiteral("Este dato no se cambia al editar el expediente.");
+}
+
+// Se traga lo que cambiaría el valor de un combo, una casilla o un radio en
+// solo lectura: clics y teclas, salvo Tab, para que se pueda recorrer el
+// formulario. La rueda la deja pasar: marcada como no aceptada, Qt la manda
+// al padre, y el área con scroll se sigue desplazando aunque el mouse esté
+// sobre un campo. En un spinbox solo hace eso último: su readOnly ya impide
+// cambiarlo, pero se queda con la rueda, y la página dejaría de desplazarse.
+class ReadOnlyGuard final : public QObject
+{
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (!watched->property(kReadOnlyProperty).toBool())
+            return false;
+        const bool spinBox = qobject_cast<QAbstractSpinBox *>(watched) != nullptr;
+        switch (event->type()) {
+        case QEvent::Wheel:
+            event->ignore();
+            return true;
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseButtonRelease:
+        case QEvent::MouseButtonDblClick:
+            // Un spinbox de solo lectura deja seleccionar su texto.
+            return !spinBox;
+        case QEvent::KeyPress:
+        case QEvent::KeyRelease: {
+            if (spinBox)
+                return false;
+            const int key = static_cast<QKeyEvent *>(event)->key();
+            return key != Qt::Key_Tab && key != Qt::Key_Backtab;
+        }
+        default:
+            return false;
+        }
+    }
+};
+
+// Uno por root, guardado en una propiedad del propio root (como la etiqueta
+// de error de un campo) e hijo suyo: muere con él, también con cada fila que
+// una vista vuelve a armar.
+QObject *guardFor(QWidget *root)
+{
+    auto *guard = root->property(kReadOnlyGuardProperty).value<QObject *>();
+    if (!guard) {
+        guard = new ReadOnlyGuard(root);
+        root->setProperty(kReadOnlyGuardProperty, QVariant::fromValue(guard));
+    }
+    return guard;
+}
+
+// El QLineEdit que llevan dentro un spinbox o un combo editable no es un
+// campo aparte: lo maneja su dueño.
+bool isInnerEditor(const QWidget *widget)
+{
+    const QWidget *parent = widget->parentWidget();
+    return qobject_cast<const QAbstractSpinBox *>(parent) || qobject_cast<const QComboBox *>(parent);
+}
+
+bool isEditor(const QWidget *widget)
+{
+    if (qobject_cast<const QLineEdit *>(widget))
+        return !isInnerEditor(widget);
+    return qobject_cast<const QTextEdit *>(widget) || qobject_cast<const QPlainTextEdit *>(widget)
+           || qobject_cast<const QAbstractSpinBox *>(widget) || qobject_cast<const QComboBox *>(widget)
+           || qobject_cast<const QCheckBox *>(widget) || qobject_cast<const QRadioButton *>(widget);
+}
+
+// Bloquea o desbloquea un campo de lockedFields. Solo marca lo que deshabilita
+// aquí: uno que ya venía deshabilitado por su cuenta (WA_ForceDisabled, como
+// Folio) se queda como estaba y nunca se habilita al desbloquear. Uno
+// deshabilitado solo porque un contenedor lo está (el paso mientras guarda)
+// sí se puede bloquear.
+void applyLock(QWidget *widget, bool locked)
+{
+    const bool lockedByForm = widget->property(kLockedByFormProperty).toBool();
+    if (locked) {
+        if (lockedByForm || widget->testAttribute(Qt::WA_ForceDisabled))
+            return;
+        widget->setProperty(kLockedByFormProperty, true);
+        widget->setProperty(kLockedOriginalToolTipProperty, widget->toolTip());
+        widget->setEnabled(false);
+        widget->setToolTip(lockedToolTip());
+    } else if (lockedByForm) {
+        widget->setEnabled(true);
+        widget->setToolTip(widget->property(kLockedOriginalToolTipProperty).toString());
+        widget->setProperty(kLockedByFormProperty, QVariant());
+        widget->setProperty(kLockedOriginalToolTipProperty, QVariant());
+    }
+}
+
+void applyReadOnly(QWidget *widget, bool readOnly, QWidget *root)
+{
+    bool changed = false;
+    if (auto *edit = qobject_cast<QLineEdit *>(widget)) {
+        changed = edit->isReadOnly() != readOnly;
+        edit->setReadOnly(readOnly);
+    } else if (auto *text = qobject_cast<QTextEdit *>(widget)) {
+        changed = text->isReadOnly() != readOnly;
+        text->setReadOnly(readOnly);
+    } else if (auto *plain = qobject_cast<QPlainTextEdit *>(widget)) {
+        changed = plain->isReadOnly() != readOnly;
+        plain->setReadOnly(readOnly);
+    } else if (auto *spin = qobject_cast<QAbstractSpinBox *>(widget)) {
+        changed = spin->isReadOnly() != readOnly;
+        // Las flechas originales se guardan solo al entrar a solo lectura: si
+        // se guardaran en cada llamada, la segunda guardaría "sin flechas".
+        if (changed && readOnly) {
+            spin->setProperty(kReadOnlyButtonSymbolsProperty,
+                              static_cast<int>(spin->buttonSymbols()));
+            spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        } else if (changed) {
+            const QVariant original = spin->property(kReadOnlyButtonSymbolsProperty);
+            if (original.isValid())
+                spin->setButtonSymbols(static_cast<QAbstractSpinBox::ButtonSymbols>(original.toInt()));
+            spin->setProperty(kReadOnlyButtonSymbolsProperty, QVariant());
+        }
+        spin->setReadOnly(readOnly);
+        spin->installEventFilter(guardFor(root));
+    } else {
+        // Combos, casillas y radios no tienen un readOnly propio.
+        changed = widget->property(kReadOnlyProperty).toBool() != readOnly;
+        widget->setProperty(kReadOnlyProperty, readOnly);
+        widget->installEventFilter(guardFor(root));
+        // La línea de un combo editable (la marca) usa su readOnly real y sin
+        // filtro: así se puede seleccionar y copiar lo que dice. Las teclas que
+        // cambiarían el valor llegan al combo, y ahí las detiene el filtro.
+        if (auto *combo = qobject_cast<QComboBox *>(widget); combo && combo->lineEdit())
+            combo->lineEdit()->setReadOnly(readOnly);
+    }
+    if (changed)
+        repolish(widget);
+}
+
+} // namespace
+
+void setReadOnly(QWidget *root, bool readOnly, const QStringList &lockedFields)
+{
+    if (!root)
+        return;
+    QList<QWidget *> widgets = root->findChildren<QWidget *>();
+    widgets.prepend(root);
+    for (QWidget *widget : std::as_const(widgets)) {
+        // Lo que vive en otra ventana (el calendario emergente de una fecha)
+        // no es un campo del formulario.
+        if (widget->window() != root->window() || !isEditor(widget))
+            continue;
+        const QString field = fieldOf(widget);
+        applyLock(widget, !field.isEmpty() && lockedFields.contains(field));
+        applyReadOnly(widget, readOnly, root);
+    }
 }
 
 } // namespace formsupport
