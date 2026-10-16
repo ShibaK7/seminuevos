@@ -20,12 +20,6 @@ namespace presentation {
 
 namespace {
 
-constexpr int kStepCount = 3;
-
-// Cuánto se espera después de la última edición para revalidar, como en el
-// alta.
-constexpr int kRevalidateDelayMs = 150;
-
 // Lo que no se corrige al editar el expediente: la rama decide qué subtabla
 // guarda la operación, y el total de mantenimientos lo acumula el historial.
 // Folio no hace falta: ya viene deshabilitado del .ui y nunca se habilita.
@@ -70,37 +64,18 @@ VehicleRecordPresenter::VehicleRecordPresenter(IVehicleRecordView &record,
                                                const application::VehicleRecordService &records,
                                                TaskRunner &runner, int folio, domain::UserRole role,
                                                QObject *parent)
-    : QObject(parent)
+    // Pestañas libres: el navegador va con navegación libre.
+    : VehicleFormPresenter(record, details, conditions, files, forms, true, parent)
     , m_record(record)
     , m_forms(forms)
     , m_records(records)
     , m_runner(runner)
     , m_folio(folio)
     , m_role(role)
-    , m_details(std::make_unique<VehicleDetailsPresenter>(details, forms))
-    , m_conditions(std::make_unique<VehicleConditionsPresenter>(conditions, forms))
-    , m_files(std::make_unique<VehicleFilesPresenter>(files, forms))
-    , m_nav(kStepCount, true)
 {
-    m_steps = {m_details.get(), m_conditions.get(), m_files.get()};
-
-    m_revalidateTimer.setSingleShot(true);
-    m_revalidateTimer.setInterval(kRevalidateDelayMs);
-    connect(&m_revalidateTimer, &QTimer::timeout, this,
-            &VehicleRecordPresenter::revalidateEditedSteps);
 }
 
 VehicleRecordPresenter::~VehicleRecordPresenter() = default;
-
-VehicleDetailsPresenter &VehicleRecordPresenter::details()
-{
-    return *m_details;
-}
-
-VehicleFilesPresenter &VehicleRecordPresenter::files()
-{
-    return *m_files;
-}
 
 int VehicleRecordPresenter::folio() const
 {
@@ -199,6 +174,10 @@ void VehicleRecordPresenter::onLoaded(int generation, const Loaded &loaded)
         problems << std::exchange(m_reloadReason, QString());
     if (loaded.lookups) {
         applyLookups(*loaded.lookups);
+        // Sin el checklist, guardar borraría la inspección: los catálogos se
+        // vuelven a pedir hasta que lleguen completos (y no se edita antes).
+        m_lookupsComplete =
+            loaded.lookups->errorMessage.isEmpty() && !loaded.lookups->checklist.isEmpty();
         if (!loaded.lookups->errorMessage.isEmpty()) {
             problems << QStringLiteral("No se pudieron leer todos los catálogos:\n")
                             + loaded.lookups->errorMessage;
@@ -235,16 +214,6 @@ void VehicleRecordPresenter::onLoaded(int generation, const Loaded &loaded)
         showRecord(*m_loaded);
     m_record.showMessage(problems.join(QStringLiteral("\n\n")));
     refreshMode();
-}
-
-void VehicleRecordPresenter::applyLookups(const application::RegistrationLookupsDto &lookups)
-{
-    const QScopedValueRollback<bool> painting(m_painting, true);
-    m_details->setLookups(lookups);
-    m_conditions->setLookups(lookups);
-    // Sin el checklist, guardar borraría la inspección: los catálogos se
-    // vuelven a pedir hasta que lleguen completos, y mientras no se edita.
-    m_lookupsComplete = lookups.errorMessage.isEmpty() && !lookups.checklist.isEmpty();
 }
 
 void VehicleRecordPresenter::showRecord(const application::VehicleRecordDto &record)
@@ -318,8 +287,7 @@ void VehicleRecordPresenter::onSave()
     if (!m_session.isEditing() || m_saving || !m_loaded)
         return;
     // Lo pendiente del debounce sobra: aquí se valida todo.
-    m_revalidateTimer.stop();
-    m_editedSteps.clear();
+    cancelRevalidation();
 
     // Sin cambios no se valida: las reglas de hoy (la UMA, el año) no deben
     // marcar errores en datos que nadie tocó.
@@ -331,18 +299,8 @@ void VehicleRecordPresenter::onSave()
 
     // Los tres pasos, no solo el que se ve: cada uno marca sus campos, y se
     // lleva al usuario al primero que falle.
-    m_nav.markAllAttempted();
-    int firstInvalidStep = -1;
     domain::ValidationResult firstInvalidResult;
-    for (int step = 0; step < kStepCount; ++step) {
-        domain::ValidationResult result = m_steps[step]->validate();
-        m_nav.setValid(step, result.isValid());
-        markStepFields(step, result);
-        if (!result.isValid() && firstInvalidStep < 0) {
-            firstInvalidStep = step;
-            firstInvalidResult = std::move(result);
-        }
-    }
+    const int firstInvalidStep = validateAllSteps(firstInvalidResult);
     if (firstInvalidStep >= 0) {
         showInvalidStep(firstInvalidStep, firstInvalidResult);
         return;
@@ -446,8 +404,7 @@ void VehicleRecordPresenter::onCancel()
 
 void VehicleRecordPresenter::enterView()
 {
-    m_revalidateTimer.stop();
-    m_editedSteps.clear();
+    cancelRevalidation();
     for (WizardStepPresenter *step : m_steps) {
         step->showErrors(domain::ValidationResult());
         step->setReadOnly(true);
@@ -459,15 +416,14 @@ void VehicleRecordPresenter::enterView()
     refreshMode();
 }
 
-void VehicleRecordPresenter::onStepEdited(int step)
+bool VehicleRecordPresenter::editCounts() const
 {
-    if (m_painting || !m_session.isEditing() || step < 0 || step >= kStepCount)
-        return;
+    return !m_painting && m_session.isEditing();
+}
+
+void VehicleRecordPresenter::noteEdit()
+{
     m_session.markEdited();
-    m_editedSteps.insert(step);
-    // start() reinicia la cuenta si ya corría: la revalidación espera a que
-    // el usuario deje de teclear.
-    m_revalidateTimer.start();
 }
 
 void VehicleRecordPresenter::onBrowseInvoice()
@@ -480,31 +436,6 @@ void VehicleRecordPresenter::onCfdiRequest()
 {
     if (m_details->acquisitionTerms().onCfdiRequest())
         onStepEdited(0);
-}
-
-void VehicleRecordPresenter::revalidateEditedSteps()
-{
-    m_revalidateTimer.stop();
-    const QSet<int> editedSteps = std::exchange(m_editedSteps, QSet<int>());
-    for (int step : editedSteps) {
-        const domain::ValidationResult result = m_steps[step]->validate();
-        m_nav.setValid(step, result.isValid());
-
-        // Los errores se muestran solo en un paso que ya se intentó guardar:
-        // antes de eso, nada en rojo mientras se corrige.
-        if (!m_nav.isAttempted(step))
-            continue;
-
-        // Los campos siguen a la corrección, pero el foco se queda donde está.
-        const domain::ValidationResult unshown = markStepFields(step, result);
-        if (step == m_nav.current()) {
-            if (result.isValid())
-                m_record.showMessage(QString());
-            else
-                showValidationErrors(QStringLiteral("Revisa los campos marcados"), unshown);
-        }
-    }
-    refreshStepper();
 }
 
 bool VehicleRecordPresenter::editAvailable() const
@@ -550,55 +481,6 @@ bool VehicleRecordPresenter::invoiceWouldBeRemoved(QString *fileName) const
         return false;
     *fileName = fileNameOf(stored);
     return true;
-}
-
-int VehicleRecordPresenter::stepOwning(const domain::ValidationResult &result) const
-{
-    // El primer paso que tenga errores, en el orden de las pestañas.
-    for (int step = 0; step < kStepCount; ++step) {
-        for (const domain::ValidationError &error : result.errors()) {
-            if (m_steps[step]->ownsField(error.field))
-                return step;
-        }
-    }
-    return 0;
-}
-
-void VehicleRecordPresenter::showInvalidStep(int step, const domain::ValidationResult &result)
-{
-    m_nav.moveTo(step);
-    showCurrentStep();
-    // Quien llama ya marcó los campos; marcarlos otra vez dice qué errores no
-    // quedaron a la vista, que son los que lleva el aviso.
-    showValidationErrors(QStringLiteral("Revisa los campos marcados"),
-                         markStepFields(step, result));
-    // El foco se mueve solo aquí: el usuario acaba de pedir guardar.
-    m_steps[step]->focusFirstError(result);
-}
-
-domain::ValidationResult VehicleRecordPresenter::markStepFields(int step,
-                                                                const domain::ValidationResult &result)
-{
-    return m_steps[step]->showErrors(result);
-}
-
-void VehicleRecordPresenter::showValidationErrors(const QString &title,
-                                                  const domain::ValidationResult &unshown)
-{
-    // Cada mensaje ya se ve bajo su campo; el aviso lista solo los que no
-    // tienen campo en pantalla.
-    if (unshown.isValid()) {
-        m_record.showMessage(title);
-        return;
-    }
-    m_record.showMessage(title + QStringLiteral(":\n• ")
-                         + unshown.joinedMessages(QStringLiteral("\n• ")));
-}
-
-void VehicleRecordPresenter::showCurrentStep()
-{
-    m_record.showStep(m_nav.current());
-    refreshStepper();
 }
 
 void VehicleRecordPresenter::refreshStepper()
