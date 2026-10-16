@@ -51,6 +51,17 @@ bool AcquisitionTermsPresenter::onCfdiRequest()
     return m_attachment.attachedPath() != before;
 }
 
+void AcquisitionTermsPresenter::onViewInvoice()
+{
+    const QString path = m_attachment.attachedPath();
+    if (path.isEmpty())
+        return;
+    if (!m_view.openDocument(path)) {
+        m_view.showWarning(QStringLiteral("No se pudo abrir la factura"),
+                           QStringLiteral("No se pudo abrir:\n%1").arg(path));
+    }
+}
+
 void AcquisitionTermsPresenter::restoreInvoice(const QString &path, bool autofactura)
 {
     m_attachment.restore(path, autofactura);
@@ -70,6 +81,7 @@ void AcquisitionTermsPresenter::refresh()
     state.cfdiButtonVisible = m_attachment.showsCfdiButton();
     state.uploadEnabled = m_attachment.canUpload();
     state.uploadToolTip = m_attachment.uploadToolTip();
+    state.viewVisible = m_attachment.canView();
     m_view.showInvoiceAttachment(state);
 }
 

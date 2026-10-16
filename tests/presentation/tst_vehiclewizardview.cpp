@@ -632,6 +632,42 @@ private slots:
         QVERIFY(!upload->isEnabled());
     }
 
+    // "Ver" aparece solo con una factura adjunta, también en consulta, y el
+    // Tab pasa por él después de "Subir documento".
+    void invoiceViewButtonFollowsTheAttachment()
+    {
+        QWidget *details = &m_view->detailsView();
+        auto *view = details->findChild<QPushButton *>(QStringLiteral("invoiceViewButton"));
+        QVERIFY(view);
+        QVERIFY(!view->isVisibleTo(details));
+
+        presentation::InvoiceAttachmentState state;
+        state.fileLabel = QStringLiteral("factura.pdf");
+        state.viewVisible = true;
+        m_view->detailsView().acquisitionTerms().showInvoiceAttachment(state);
+        QVERIFY(view->isVisibleTo(details));
+        m_view->detailsView().setReadOnly(true, {});
+        QVERIFY(view->isVisibleTo(details));
+
+        QSignalSpy clicked(&m_view->detailsView(), &VehicleDetailsView::viewInvoiceRequested);
+        view->click();
+        QCOMPARE(clicked.size(), 1);
+
+        // El siguiente que recibe Tab, sin contar los widgets internos de Qt.
+        const auto nextTabStop = [](QWidget *from) {
+            QWidget *next = from->nextInFocusChain();
+            while (next != from
+                   && (!(next->focusPolicy() & Qt::TabFocus)
+                       || next->objectName().startsWith(QStringLiteral("qt_"))))
+                next = next->nextInFocusChain();
+            return next;
+        };
+        auto *upload = details->findChild<QWidget *>(QStringLiteral("invoiceUploadButton"));
+        QWidget *purchase = fieldWidget<QDoubleSpinBox>(details, QStringLiteral("purchasePrice"));
+        QCOMPARE(nextTabStop(upload), static_cast<QWidget *>(view));
+        QCOMPARE(nextTabStop(view), purchase);
+    }
+
     // Lo guardado se pinta tal cual y details() lo devuelve igual, en las dos
     // ramas: así lee el expediente lo que el usuario corrige.
     void storedDetailsComeBackUnchanged_data()

@@ -31,6 +31,8 @@ public:
     // diálogo, o solo abrir la solicitud de CFDI, no es un cambio que guardar.
     bool onBrowseInvoice();
     bool onCfdiRequest();
+    // "Ver": abre la factura adjunta con el programa que el sistema tenga.
+    void onViewInvoice();
 
     // Pinta la factura de una compra ya guardada (el expediente). Va al final
     // de pintar el paso: los cambios de rama y de tipo de factura que pasaron

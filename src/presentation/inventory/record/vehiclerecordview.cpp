@@ -91,6 +91,8 @@ void VehicleRecordView::bind(presentation::VehicleRecordPresenter &presenter)
             &VehicleRecordPresenter::onBrowseInvoice);
     connect(ui->detailsPage, &VehicleDetailsView::cfdiRequestRequested, p,
             &VehicleRecordPresenter::onCfdiRequest);
+    connect(ui->detailsPage, &VehicleDetailsView::viewInvoiceRequested, p,
+            [p] { p->details().acquisitionTerms().onViewInvoice(); });
     connect(ui->filesPage, &VehicleFilesView::imagesChosen, p,
             [p](const QStringList &paths) { p->files().onImagesChosen(paths); });
     connect(ui->filesPage, &VehicleFilesView::documentChosen, p,

@@ -92,6 +92,11 @@ bool InvoiceAttachment::showsCfdiButton() const
     return m_autofactura;
 }
 
+bool InvoiceAttachment::canView() const
+{
+    return !m_path.isEmpty();
+}
+
 QString InvoiceAttachment::label() const
 {
     // Apartada no es lo mismo que sin archivo: la etiqueta lo dice para que

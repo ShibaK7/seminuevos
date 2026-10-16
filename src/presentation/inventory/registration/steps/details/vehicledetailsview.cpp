@@ -102,6 +102,8 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
             &VehicleDetailsView::browseInvoiceRequested);
     connect(ui->acquisitionSection, &AcquisitionTermsSection::cfdiRequestRequested, this,
             &VehicleDetailsView::cfdiRequestRequested);
+    connect(ui->acquisitionSection, &AcquisitionTermsSection::viewInvoiceRequested, this,
+            &VehicleDetailsView::viewInvoiceRequested);
 
     // El orden de tabulación cruza tres formularios, así que el .ui de este
     // paso solo lo declara hasta "Expidió Factura" y el resto se encadena

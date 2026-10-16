@@ -44,8 +44,9 @@ public:
     // Su rejilla, para alinear sus columnas con las de la tarjeta del paso.
     QGridLayout *grid() const;
 
-    // En consulta, los botones de la factura (CFDI y subir) no se ven. Sus
-    // campos los pone en solo lectura el paso, junto con los suyos.
+    // En consulta, los botones de la factura que capturan (CFDI y subir) no
+    // se ven; "Ver" sí. Sus campos los pone en solo lectura el paso, junto
+    // con los suyos.
     void setReadOnly(bool readOnly);
 
     // --- IAcquisitionTermsView ---
@@ -57,6 +58,7 @@ public:
 signals:
     void browseInvoiceRequested();
     void cfdiRequestRequested();
+    void viewInvoiceRequested();
 
 private:
     // Muestra los botones de la factura según el último estado y el modo.

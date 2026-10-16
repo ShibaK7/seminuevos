@@ -41,6 +41,11 @@ AcquisitionTermsSection::AcquisitionTermsSection(QWidget *parent)
             &AcquisitionTermsSection::cfdiRequestRequested);
     connect(ui->invoiceUploadButton, &QPushButton::clicked, this,
             &AcquisitionTermsSection::browseInvoiceRequested);
+    // "Ver" solo existe con una factura adjunta; también lo decide el
+    // presenter.
+    ui->invoiceViewButton->setVisible(false);
+    connect(ui->invoiceViewButton, &QPushButton::clicked, this,
+            &AcquisitionTermsSection::viewInvoiceRequested);
 }
 
 AcquisitionTermsSection::~AcquisitionTermsSection()
@@ -67,8 +72,9 @@ void AcquisitionTermsSection::showTerms(const application::VehicleDetailsDto &dt
 
 QList<QWidget *> AcquisitionTermsSection::focusOrder() const
 {
-    return {ui->cfdiRequestButton, ui->invoiceUploadButton, ui->purchasePriceSpin,
-            ui->paymentTypeCombo,  ui->paymentMethodCombo,  ui->salePriceSpin};
+    return {ui->cfdiRequestButton, ui->invoiceUploadButton, ui->invoiceViewButton,
+            ui->purchasePriceSpin, ui->paymentTypeCombo,    ui->paymentMethodCombo,
+            ui->salePriceSpin};
 }
 
 QGridLayout *AcquisitionTermsSection::grid() const
@@ -100,6 +106,8 @@ void AcquisitionTermsSection::applyInvoiceButtons()
     ui->invoiceUploadButton->setVisible(!m_readOnly);
     ui->invoiceUploadButton->setEnabled(m_invoiceState.uploadEnabled);
     ui->invoiceUploadButton->setToolTip(m_invoiceState.uploadToolTip);
+    // Abrir no cambia nada: en consulta también se puede.
+    ui->invoiceViewButton->setVisible(m_invoiceState.viewVisible);
 }
 
 QString AcquisitionTermsSection::askInvoiceFile()
