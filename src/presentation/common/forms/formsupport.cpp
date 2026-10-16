@@ -529,6 +529,7 @@ constexpr char kReadOnlyProperty[] = "readOnly";
 constexpr char kLockedByFormProperty[] = "lockedByForm";
 constexpr char kLockedOriginalToolTipProperty[] = "lockedOriginalToolTip";
 constexpr char kReadOnlyButtonSymbolsProperty[] = "readOnlyButtonSymbols";
+constexpr char kReadOnlyCalendarPopupProperty[] = "readOnlyCalendarPopup";
 constexpr char kReadOnlyGuardProperty[] = "readOnlyGuard";
 
 QString lockedToolTip()
@@ -642,17 +643,33 @@ void applyReadOnly(QWidget *widget, bool readOnly, QWidget *root)
         plain->setReadOnly(readOnly);
     } else if (auto *spin = qobject_cast<QAbstractSpinBox *>(widget)) {
         changed = spin->isReadOnly() != readOnly;
-        // Las flechas originales se guardan solo al entrar a solo lectura: si
-        // se guardaran en cada llamada, la segunda guardaría "sin flechas".
+        // Una fecha con calendario se pinta como deshabilitada cuando es de
+        // solo lectura (QDateTimeEdit le quita el estado "enabled" a su marco),
+        // así que mientras lo es se queda sin calendario, que de todos modos no
+        // abriría.
+        auto *date = qobject_cast<QDateTimeEdit *>(spin);
+        // Lo original (las flechas, el calendario) se guarda solo al entrar a
+        // solo lectura: si se guardara en cada llamada, la segunda guardaría
+        // "sin flechas".
         if (changed && readOnly) {
             spin->setProperty(kReadOnlyButtonSymbolsProperty,
                               static_cast<int>(spin->buttonSymbols()));
             spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
+            if (date) {
+                date->setProperty(kReadOnlyCalendarPopupProperty, date->calendarPopup());
+                date->setCalendarPopup(false);
+            }
         } else if (changed) {
             const QVariant original = spin->property(kReadOnlyButtonSymbolsProperty);
             if (original.isValid())
                 spin->setButtonSymbols(static_cast<QAbstractSpinBox::ButtonSymbols>(original.toInt()));
             spin->setProperty(kReadOnlyButtonSymbolsProperty, QVariant());
+            if (date) {
+                const QVariant popup = date->property(kReadOnlyCalendarPopupProperty);
+                if (popup.isValid())
+                    date->setCalendarPopup(popup.toBool());
+                date->setProperty(kReadOnlyCalendarPopupProperty, QVariant());
+            }
         }
         spin->setReadOnly(readOnly);
         spin->installEventFilter(guardFor(root));

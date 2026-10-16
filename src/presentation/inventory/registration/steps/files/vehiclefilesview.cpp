@@ -393,11 +393,13 @@ void VehicleFilesView::rebuildDocuments()
             policyEdit = new QLineEdit(row);
             policyEdit->setObjectName(QStringLiteral("policyNumberEdit"));
             policyEdit->setPlaceholderText(QStringLiteral("No. Póliza"));
-            formsupport::showText(policyEdit, m_documents.value(type).documentNumber);
             policyEdit->setMaximumWidth(120);
             // El tope de la columna vehicle_documents.document_number: uno más largo
             // fallaría hasta el INSERT, ya con los archivos copiados.
             policyEdit->setMaxLength(50);
+            // Después del tope: setMaxLength() vuelve a poner el texto y deja el
+            // cursor al final, y un número largo se vería por su final.
+            formsupport::showText(policyEdit, m_documents.value(type).documentNumber);
             // La póliza es del documento Seguro: sin él marcado no hay de qué
             // capturarla.
             policyEdit->setEnabled(checked);
