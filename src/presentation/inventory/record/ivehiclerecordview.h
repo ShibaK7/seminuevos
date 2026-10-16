@@ -3,6 +3,7 @@
 
 #include "presentation/common/navigation/editsession.h"
 #include "presentation/common/navigation/wizardnavigator.h"
+#include "presentation/inventory/registration/ivehicleformview.h"
 
 #include <QList>
 #include <QString>
@@ -11,24 +12,19 @@ namespace presentation {
 
 // El marco del expediente de un vehículo (US-03.3 y US-03.4): título,
 // pestañas, avisos y botones. Las páginas son las mismas del alta, cada una
-// con su propia interfaz (IVehicleDetailsView y compañía).
-class IVehicleRecordView
+// con su propia interfaz (IVehicleDetailsView y compañía). Lo que comparte
+// con el asistente (la pestaña que se ve, el aviso de error, ocupado) viene
+// de IVehicleFormView.
+class IVehicleRecordView : public IVehicleFormView
 {
 public:
-    virtual ~IVehicleRecordView() = default;
-
     virtual void showTitle(const QString &title) = 0;
-    virtual void showStep(int step) = 0;
     // Cómo se ve cada pestaña. En el expediente nunca hay candados ni
     // palomitas: solo la actual, las demás y, al editar, las que tienen
     // errores.
     virtual void showStepStates(const QList<StepVisual> &states) = 0;
-    // El aviso de error bajo las páginas. Vacío = ocultarlo.
-    virtual void showMessage(const QString &message) = 0;
     // Una línea neutra, por ejemplo "Cambios guardados.". Vacía = ocultarla.
     virtual void showNotice(const QString &notice) = 0;
-    // Ocupado: pestañas, páginas y botones deshabilitados.
-    virtual void setBusy(bool busy) = 0;
 
     // Los botones de cada modo (#33). En consulta: Volver y, si el rol puede
     // editar, Editar, habilitado solo si ahora se puede (expediente cargado y

@@ -123,6 +123,8 @@ seminuevos/
 │   │       ├── registration/        Asistente "Registrar Vehículo", común a Adquisición y Consignación
 │   │       │   ├── vehiclewizardview (.ui/.h/.cpp), vehiclewizardpresenter, ivehiclewizardview.h
 │   │       │   │                    El marco: stepper, pasos, aviso y botones; navegación y registro
+│   │       │   ├── vehicleformpresenter, ivehicleformview.h   Base abstracta del formulario por
+│   │       │   │                    pasos que comparten el alta y el expediente (Template Method)
 │   │       │   ├── wizardsteppresenter, istepview.h   Base abstracta de un paso
 │   │       │   └── steps/
 │   │       │       ├── details/     Paso 1: vehicledetailsview (.ui/.h/.cpp), vehicledetailspresenter,

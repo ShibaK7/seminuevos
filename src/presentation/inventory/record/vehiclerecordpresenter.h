@@ -5,14 +5,8 @@
 #include "application/inventory/registration/dto/recorddtos.h"
 #include "domain/common/value_objects/enums.h"
 #include "presentation/common/navigation/editsession.h"
-#include "presentation/common/navigation/wizardnavigator.h"
+#include "presentation/inventory/registration/vehicleformpresenter.h"
 
-#include <QObject>
-#include <QSet>
-#include <QTimer>
-
-#include <array>
-#include <memory>
 #include <optional>
 
 namespace application {
@@ -27,17 +21,13 @@ class IVehicleDetailsView;
 class IVehicleFilesView;
 class IVehicleRecordView;
 class TaskRunner;
-class VehicleConditionsPresenter;
-class VehicleDetailsPresenter;
-class VehicleFilesPresenter;
-class WizardStepPresenter;
 
 // Presenter del expediente de un vehículo (US-03.3 y US-03.4): la misma
-// captura del alta, abierta para un folio que ya existe. Usa las mismas tres
-// páginas y los mismos presenters de paso que el asistente, así que la
-// validación, la regla de la autofactura y los formatos de archivo son los
-// mismos; lo que cambia es el marco (pestañas libres, Volver y Editar) y que
-// los datos vienen de la base.
+// captura del alta, abierta para un folio que ya existe. Comparte con el
+// asistente las tres páginas, sus presenters de paso y el ruteo de errores
+// (VehicleFormPresenter), así que la validación, la regla de la autofactura y
+// los formatos de archivo son los mismos; lo que cambia es el marco (pestañas
+// libres, Volver y Editar) y que los datos vienen de la base.
 //
 // Dos modos (EditSession):
 //   - Consulta: las tres páginas en solo lectura, sin validar nada.
@@ -47,7 +37,7 @@ class WizardStepPresenter;
 //     pasos y lleva los errores a su campo, y Cancelar vuelve a lo guardado.
 //
 // Sin widgets (solo QtCore): se prueba con vistas falsas.
-class VehicleRecordPresenter final : public QObject
+class VehicleRecordPresenter final : public VehicleFormPresenter
 {
     Q_OBJECT
 
@@ -59,8 +49,6 @@ public:
                            int folio, domain::UserRole role, QObject *parent = nullptr);
     ~VehicleRecordPresenter() override;
 
-    VehicleDetailsPresenter &details();
-    VehicleFilesPresenter &files();
     int folio() const;
 
     // Aplica lo que el rol deja ver, muestra la primera pestaña y lee los
@@ -89,16 +77,10 @@ public:
     void onEdit();
     void onSave();
     void onCancel();
-    // Algo cambió en el paso `step`. Solo cuenta al editar, y fuera de lo que
-    // el presenter pinta: marca el formulario como modificado y revalida con
-    // un debounce.
-    void onStepEdited(int step);
     // Los botones de la factura: solo cuentan como cambio si cambió la
     // factura adjunta (cancelar el diálogo no lo es).
     void onBrowseInvoice();
     void onCfdiRequest();
-    // Corre ya la revalidación pendiente, sin esperar el debounce.
-    void revalidateEditedSteps();
 
 signals:
     // La unidad cambió o ya no existe: el inventario de atrás debe releerla.
@@ -115,10 +97,18 @@ private:
         application::RecordLoadResult record;
     };
 
+    // --- VehicleFormPresenter ---
+    // Solo cuenta al editar, y nunca lo que el presenter mismo pinta.
+    bool editCounts() const override;
+    // La edición marca el formulario como modificado.
+    void noteEdit() override;
+    // Pestañas, no pasos: la actual, las demás y, al guardar, las que tienen
+    // errores. Nunca candados ni palomitas.
+    void refreshStepper() override;
+
     void load();
     void onLoaded(int generation, const Loaded &loaded);
     void onSaved(const application::RecordUpdateResult &result);
-    void applyLookups(const application::RegistrationLookupsDto &lookups);
     void showRecord(const application::VehicleRecordDto &record);
     // De vuelta a consulta: sin errores marcados ni intentos, en solo
     // lectura y sin cambios pendientes.
@@ -133,12 +123,6 @@ private:
     // Si guardar quitaría la factura que tenía la unidad (por ejemplo, al
     // pasar a Autofactura sin una solicitud nueva, que la aparta).
     bool invoiceWouldBeRemoved(QString *fileName) const;
-    int stepOwning(const domain::ValidationResult &result) const;
-    void showInvalidStep(int step, const domain::ValidationResult &result);
-    domain::ValidationResult markStepFields(int step, const domain::ValidationResult &result);
-    void showValidationErrors(const QString &title, const domain::ValidationResult &unshown);
-    void showCurrentStep();
-    void refreshStepper();
 
     IVehicleRecordView &m_record;
     const application::VehicleRegistrationService &m_forms;
@@ -149,20 +133,7 @@ private:
     // Lo que el rol deja ver y hacer, ya decidido por el dominio.
     application::RecordAccessDto m_access;
 
-    std::unique_ptr<VehicleDetailsPresenter> m_details;
-    std::unique_ptr<VehicleConditionsPresenter> m_conditions;
-    std::unique_ptr<VehicleFilesPresenter> m_files;
-    // Los tres en el orden de las pestañas.
-    std::array<WizardStepPresenter *, 3> m_steps{};
-
-    // Navegación libre: las pestañas no se bloquean ni llevan palomita. Al
-    // guardar recuerda qué pasos se intentaron, para marcar sus errores.
-    WizardNavigator m_nav;
     EditSession m_session;
-
-    // Debounce de la revalidación en vivo, como en el alta.
-    QTimer m_revalidateTimer;
-    QSet<int> m_editedSteps;
 
     // Cada lectura lleva un número; solo se pinta la respuesta de la última.
     // Así una respuesta vieja o que llega fuera de orden no pisa a una nueva.
