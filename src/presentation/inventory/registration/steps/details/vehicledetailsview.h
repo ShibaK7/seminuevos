@@ -53,6 +53,8 @@ public:
     // --- IVehicleDetailsView ---
     application::VehicleDetailsDto details() const override;
     void setLookups(const application::RegistrationLookupsDto &lookups) override;
+    void showDetails(int folio, const application::VehicleDetailsDto &details) override;
+    void showMaintenanceCost(double cost) override;
     presentation::IAcquisitionTermsView &acquisitionTerms() override;
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override;

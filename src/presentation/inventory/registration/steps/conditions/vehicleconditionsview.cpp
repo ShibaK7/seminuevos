@@ -95,6 +95,39 @@ void VehicleConditionsView::showChecklistMessage(const QString &message)
     ui->checklistMessageLabel->setVisible(true);
 }
 
+void VehicleConditionsView::showConditions(const application::VehicleConditionsDto &conditions)
+{
+    formsupport::selectOption(ui->fuelTypeCombo, conditions.fuelType);
+    formsupport::selectText(ui->cylindersCombo, conditions.cylinders
+                                                    ? QString::number(*conditions.cylinders)
+                                                    : QString());
+    formsupport::selectEnum(ui->transmissionCombo, conditions.transmission);
+    formsupport::selectText(ui->interiorMaterialCombo, conditions.interiorMaterial);
+    formsupport::selectEnum(ui->windowRegulatorsCombo, conditions.windowRegulators);
+    formsupport::selectEnum(ui->airConditioningCombo, conditions.airConditioning);
+
+    m_shownInspection = conditions.inspection;
+    applyShownInspection();
+}
+
+void VehicleConditionsView::applyShownInspection()
+{
+    if (!m_shownInspection)
+        return;
+    // Una fila sin renglón guardado es un elemento que la unidad no trae (o
+    // que se agregó al catálogo después de guardarla): va desmarcada.
+    for (ConditionChecklistRow *row : std::as_const(m_checklistRows)) {
+        std::optional<application::InspectionEntryDto> entry;
+        for (const application::InspectionEntryDto &stored : std::as_const(*m_shownInspection)) {
+            if (stored.elementId == row->elementId()) {
+                entry = stored;
+                break;
+            }
+        }
+        row->showEntry(entry);
+    }
+}
+
 void VehicleConditionsView::markAllInGroup(const QString &category, bool checked)
 {
     bool allChecked = true;
@@ -221,6 +254,10 @@ void VehicleConditionsView::setChecklist(const QList<application::ChecklistItemD
     separator->setFrameShape(QFrame::HLine);
     ui->checklistLayout->addWidget(separator);
     ui->checklistLayout->addStretch();
+
+    // Si lo guardado llegó antes que el catálogo, se pinta ahora, antes de
+    // vigilar las filas: pintar no es una edición.
+    applyShownInspection();
 
     // Las filas nacen después del constructor, así que se vigilan aquí.
     formsupport::watchEdits(ui->checklistContent, this, [this] { emit edited(); });

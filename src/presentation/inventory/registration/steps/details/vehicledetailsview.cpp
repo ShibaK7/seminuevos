@@ -262,6 +262,53 @@ void VehicleDetailsView::setLookups(const application::RegistrationLookupsDto &l
     formsupport::fillCombo(ui->brandCombo, lookups.brands);
 }
 
+void VehicleDetailsView::showDetails(int folio, const application::VehicleDetailsDto &details)
+{
+    ui->folioEdit->setText(QString::number(folio));
+
+    // El orden importa: la rama decide qué tipos de factura ofrece su combo,
+    // y el tipo de vehículo, qué subtipos. Cada uno repuebla al siguiente, así
+    // que se eligen de arriba abajo y lo demás va al final.
+    formsupport::selectEnum(ui->acquisitionTypeCombo, details.acquisitionType);
+    formsupport::selectOption(ui->vehicleTypeCombo, details.vehicleType);
+    formsupport::selectOption(ui->subtypeCombo, details.subtype);
+    formsupport::selectOption(ui->brandCombo, details.brand);
+    formsupport::selectEnum(ui->invoiceTypeCombo, details.invoiceType);
+
+    formsupport::showDate(ui->dateEdit, details.dealDate);
+    ui->modelEdit->setText(details.model);
+    formsupport::showValue(ui->yearModelSpin, details.yearModel);
+    ui->colorEdit->setText(details.color);
+    formsupport::showValue(ui->mileageSpin, details.mileage);
+    ui->descriptionEdit->setPlainText(details.description);
+    ui->motorNumberEdit->setText(details.motorNumber);
+    ui->serialNumberEdit->setText(details.serialNumber);
+    ui->repuveEdit->setText(details.repuve);
+    ui->platesEdit->setText(details.plates);
+    ui->platesHolderEdit->setText(details.platesHolder);
+
+    ui->ownerNameEdit->setText(details.counterparty.fullName);
+    ui->ownerIdEdit->setText(details.counterparty.nationalId);
+    ui->ownerAddressEdit->setText(details.counterparty.streetAddress);
+    ui->ownerSuburbEdit->setText(details.counterparty.suburb);
+    ui->ownerLocalityEdit->setText(details.counterparty.locality);
+    ui->ownerStateEdit->setText(details.counterparty.state);
+    ui->ownerPostalCodeEdit->setText(details.counterparty.postalCode);
+
+    ui->invoiceNumberEdit->setText(details.invoiceNumber);
+    ui->invoiceIssuerEdit->setText(details.invoiceIssuer);
+    showMaintenanceCost(details.maintenanceCost);
+    ui->observationsEdit->setPlainText(details.observations);
+
+    ui->acquisitionSection->showTerms(details);
+    ui->consignmentSection->showTerms(details);
+}
+
+void VehicleDetailsView::showMaintenanceCost(double cost)
+{
+    formsupport::showValue(ui->maintenanceCostSpin, cost);
+}
+
 void VehicleDetailsView::setUpBrandSearch()
 {
     ui->brandCombo->setEditable(true);

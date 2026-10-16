@@ -1,6 +1,8 @@
 #include "presentation/inventory/acquisition/acquisitiontermssection.h"
 #include "ui_acquisitiontermssection.h"
 
+#include "presentation/common/forms/formsupport.h"
+
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDoubleSpinBox>
@@ -53,6 +55,14 @@ void AcquisitionTermsSection::fill(application::VehicleDetailsDto &dto) const
     dto.paymentType = static_cast<domain::PaymentType>(ui->paymentTypeCombo->currentData().toInt());
     dto.paymentMethod =
         static_cast<domain::PaymentMethod>(ui->paymentMethodCombo->currentData().toInt());
+}
+
+void AcquisitionTermsSection::showTerms(const application::VehicleDetailsDto &dto)
+{
+    formsupport::showValue(ui->purchasePriceSpin, dto.purchasePrice);
+    formsupport::showValue(ui->salePriceSpin, dto.salePrice);
+    formsupport::selectEnum(ui->paymentTypeCombo, dto.paymentType);
+    formsupport::selectEnum(ui->paymentMethodCombo, dto.paymentMethod);
 }
 
 QList<QWidget *> AcquisitionTermsSection::focusOrder() const

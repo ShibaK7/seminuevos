@@ -465,6 +465,46 @@ void selectText(QComboBox *combo, const QString &text)
     combo->setCurrentIndex(index);
 }
 
+void selectData(QComboBox *combo, const QVariant &data)
+{
+    if (!combo)
+        return;
+    combo->setCurrentIndex(data.isValid() ? combo->findData(data) : -1);
+}
+
+void showValue(QSpinBox *spin, int value)
+{
+    if (!spin)
+        return;
+    if (value < spin->minimum())
+        spin->setMinimum(value);
+    if (value > spin->maximum())
+        spin->setMaximum(value);
+    spin->setValue(value);
+}
+
+void showValue(QDoubleSpinBox *spin, double value)
+{
+    if (!spin)
+        return;
+    if (value < spin->minimum())
+        spin->setMinimum(value);
+    if (value > spin->maximum())
+        spin->setMaximum(value);
+    spin->setValue(value);
+}
+
+void showDate(QDateEdit *edit, const QDate &date)
+{
+    if (!edit || !date.isValid())
+        return;
+    if (date < edit->minimumDate())
+        edit->setMinimumDate(date);
+    if (date > edit->maximumDate())
+        edit->setMaximumDate(date);
+    edit->setDate(date);
+}
+
 } // namespace formsupport
 
 // ---------------------------------------------------------------------------

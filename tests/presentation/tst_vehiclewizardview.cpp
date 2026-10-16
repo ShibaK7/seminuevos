@@ -5,6 +5,7 @@
 
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "fakes.h"
+#include "registrationfixtures.h"
 #include "presentation/inventory/registration/steps/files/vehiclefilespresenter.h"
 #include "presentation/inventory/registration/vehiclewizardpresenter.h"
 #include "presentation/common/components/aspectratioimagelabel.h"
@@ -59,6 +60,85 @@ void settleLayouts()
 {
     for (int i = 0; i < 5; ++i)
         QCoreApplication::sendPostedEvents(nullptr, QEvent::LayoutRequest);
+}
+
+// La casilla de la fila de un tipo de documento.
+QCheckBox *documentCheck(QWidget *files, const QString &type)
+{
+    for (QWidget *row : files->findChildren<QWidget *>(QStringLiteral("documentRow"))) {
+        if (row->property("documentType").toString() == type)
+            return row->findChild<QCheckBox *>(QStringLiteral("documentCheck"));
+    }
+    return nullptr;
+}
+
+// Una unidad guardada con todos los campos del Paso 1 llenos, de las dos
+// ramas (cada una con sus términos).
+application::VehicleDetailsDto completeDetails(domain::AcquisitionType type)
+{
+    application::VehicleDetailsDto details = fixtures::validRegistration(type).details;
+    details.dealDate = QDate(2024, 3, 15);
+    details.color = QStringLiteral("Rojo");
+    details.mileage = 45000;
+    details.description = QStringLiteral("Un solo dueño");
+    details.counterparty.streetAddress = QStringLiteral("Calle 1 #23");
+    details.counterparty.suburb = QStringLiteral("Centro");
+    details.counterparty.locality = QStringLiteral("Morelia");
+    details.counterparty.state = QStringLiteral("Michoacán");
+    details.counterparty.postalCode = QStringLiteral("58000");
+    details.invoiceIssuer = QStringLiteral("Agencia del Centro");
+    details.maintenanceCost = 1500.5;
+    details.observations = QStringLiteral("Sin detalles");
+    if (type == domain::AcquisitionType::Adquisicion) {
+        details.paymentType = domain::PaymentType::Credito;
+        details.paymentMethod = domain::PaymentMethod::Efectivo;
+    } else {
+        details.commissionRate = 12.5;
+    }
+    return details;
+}
+
+// Campo por campo, salvo la factura adjunta, que no viaja en details().
+void compareDetails(const application::VehicleDetailsDto &actual,
+                    const application::VehicleDetailsDto &expected)
+{
+    QCOMPARE(actual.acquisitionType, expected.acquisitionType);
+    QCOMPARE(actual.dealDate, expected.dealDate);
+    QCOMPARE(actual.vehicleType.id, expected.vehicleType.id);
+    QCOMPARE(actual.subtype.id, expected.subtype.id);
+    QCOMPARE(actual.brand.id, expected.brand.id);
+    QCOMPARE(actual.brand.name, expected.brand.name);
+    QCOMPARE(actual.model, expected.model);
+    QCOMPARE(actual.yearModel, expected.yearModel);
+    QCOMPARE(actual.color, expected.color);
+    QCOMPARE(actual.mileage, expected.mileage);
+    QCOMPARE(actual.description, expected.description);
+    QCOMPARE(actual.motorNumber, expected.motorNumber);
+    QCOMPARE(actual.serialNumber, expected.serialNumber);
+    QCOMPARE(actual.repuve, expected.repuve);
+    QCOMPARE(actual.plates, expected.plates);
+    QCOMPARE(actual.platesHolder, expected.platesHolder);
+    QCOMPARE(actual.counterparty.fullName, expected.counterparty.fullName);
+    QCOMPARE(actual.counterparty.nationalId, expected.counterparty.nationalId);
+    QCOMPARE(actual.counterparty.streetAddress, expected.counterparty.streetAddress);
+    QCOMPARE(actual.counterparty.suburb, expected.counterparty.suburb);
+    QCOMPARE(actual.counterparty.locality, expected.counterparty.locality);
+    QCOMPARE(actual.counterparty.state, expected.counterparty.state);
+    QCOMPARE(actual.counterparty.postalCode, expected.counterparty.postalCode);
+    QCOMPARE(actual.invoiceType, expected.invoiceType);
+    QCOMPARE(actual.invoiceNumber, expected.invoiceNumber);
+    QCOMPARE(actual.invoiceIssuer, expected.invoiceIssuer);
+    QCOMPARE(actual.maintenanceCost, expected.maintenanceCost);
+    QCOMPARE(actual.observations, expected.observations);
+    if (expected.acquisitionType == domain::AcquisitionType::Adquisicion) {
+        QCOMPARE(actual.purchasePrice, expected.purchasePrice);
+        QCOMPARE(actual.salePrice, expected.salePrice);
+        QCOMPARE(actual.paymentType, expected.paymentType);
+        QCOMPARE(actual.paymentMethod, expected.paymentMethod);
+    } else {
+        QCOMPARE(actual.basePrice, expected.basePrice);
+        QCOMPARE(actual.commissionRate, expected.commissionRate);
+    }
 }
 
 } // namespace
@@ -550,6 +630,129 @@ private slots:
         QVERIFY(cfdi->isVisibleTo(details));
         QVERIFY(upload->isVisibleTo(details));
         QVERIFY(!upload->isEnabled());
+    }
+
+    // Lo guardado se pinta tal cual y details() lo devuelve igual, en las dos
+    // ramas: así lee el expediente lo que el usuario corrige.
+    void storedDetailsComeBackUnchanged_data()
+    {
+        QTest::addColumn<int>("type");
+        QTest::newRow("compra") << static_cast<int>(domain::AcquisitionType::Adquisicion);
+        QTest::newRow("consignación") << static_cast<int>(domain::AcquisitionType::Consignacion);
+    }
+
+    void storedDetailsComeBackUnchanged()
+    {
+        QFETCH(int, type);
+        const application::VehicleDetailsDto stored =
+            completeDetails(static_cast<domain::AcquisitionType>(type));
+
+        m_view->detailsView().showDetails(12, stored);
+        compareDetails(m_view->detailsView().details(), stored);
+        if (QTest::currentTestFailed())
+            return;
+        auto *folio = fieldWidget<QLineEdit>(&m_view->detailsView(), QStringLiteral("folio"));
+        QCOMPARE(folio->text(), QStringLiteral("12"));
+        QVERIFY(!folio->isEnabled());
+    }
+
+    // Un dato guardado que el formulario no ofrecería al capturar se pinta
+    // igual: el rango se amplía y la opción que falta se agrega, en vez de
+    // cambiar el dato.
+    void storedValuesOutsideTheFormStayAsTheyAre()
+    {
+        application::VehicleDetailsDto stored = completeDetails(domain::AcquisitionType::Adquisicion);
+        stored.dealDate = QDate(1999, 5, 1);
+        stored.yearModel = 1975;
+        stored.mileage = 2500000;
+        stored.maintenanceCost = 12000000.5;
+        stored.purchasePrice = 150000000.0;
+        stored.salePrice = 160000000.0;
+        stored.brand = {99, QStringLiteral("Datsun")};
+
+        m_view->detailsView().showDetails(3, stored);
+        compareDetails(m_view->detailsView().details(), stored);
+        if (QTest::currentTestFailed())
+            return;
+        // El total de mantenimientos se puede repintar solo.
+        m_view->detailsView().showMaintenanceCost(12000100.0);
+        QCOMPARE(m_view->detailsView().details().maintenanceCost, 12000100.0);
+    }
+
+    // Lo guardado del Paso 2 vuelve igual. Si llega antes que el checklist,
+    // se aplica al armarlo: la fila que no viene queda desmarcada.
+    void storedConditionsComeBackUnchanged()
+    {
+        application::VehicleConditionsDto stored =
+            fixtures::validRegistration(domain::AcquisitionType::Adquisicion).conditions;
+        stored.cylinders = 12; // no está entre las opciones del .ui
+        stored.interiorMaterial = QStringLiteral("Piel");
+        stored.windowRegulators = domain::WindowRegulators::ElectricosInteligentes;
+        stored.inspection = {{8, false, QStringLiteral("Uno estrellado")}};
+
+        VehicleConditionsView view;
+        view.setFuelTypes({{1, QStringLiteral("Gasolina"), -1}});
+        view.showConditions(stored);
+        view.setChecklist({{7, QStringLiteral("Exterior"), QStringLiteral("Llantas")},
+                           {8, QStringLiteral("Exterior"), QStringLiteral("Faros")}});
+
+        const application::VehicleConditionsDto shown = view.conditions();
+        QCOMPARE(shown.fuelType.id, stored.fuelType.id);
+        QCOMPARE(shown.cylinders, stored.cylinders);
+        QCOMPARE(shown.transmission, stored.transmission);
+        QCOMPARE(shown.interiorMaterial, stored.interiorMaterial);
+        QCOMPARE(shown.windowRegulators, stored.windowRegulators);
+        QCOMPARE(shown.airConditioning, stored.airConditioning);
+        QCOMPARE(shown.inspection.size(), 1);
+        QCOMPARE(shown.inspection.first().elementId, 8);
+        QVERIFY(!shown.inspection.first().isOptimal);
+        QCOMPARE(shown.inspection.first().observations, QStringLiteral("Uno estrellado"));
+
+        // Con las filas ya armadas se aplica en el acto.
+        stored.inspection = {{7, true, QString()}};
+        view.showConditions(stored);
+        QCOMPARE(view.conditions().inspection.size(), 1);
+        QCOMPARE(view.conditions().inspection.first().elementId, 7);
+    }
+
+    // Lo guardado del Paso 3 reemplaza lo que hubiera, con su portada, y no
+    // arrastra casillas ni avisos de antes.
+    void storedFilesReplaceWhatWasThere()
+    {
+        auto &view = m_view->filesView();
+        QWidget *files = &view;
+        view.addImages({{QStringLiteral("C:/nuevas/a.jpg"), QByteArray()}});
+        view.showGalleryMessage(QStringLiteral("No se agregó este archivo"));
+        view.showDocumentsMessage(QStringLiteral("Formato no permitido"));
+        documentCheck(files, QStringLiteral("Placas"))->setChecked(true);
+
+        const QString card = QStringLiteral("Tarjeta de circulación");
+        const QString insurance = QStringLiteral("Seguro");
+        view.showFiles({{QStringLiteral("C:/store/1.jpg"), QByteArray(), false},
+                        {QStringLiteral("C:/store/2.jpg"), QByteArray(), true}},
+                       {{card, QStringLiteral("C:/store/tarjeta.pdf"), QString()},
+                        {insurance, QStringLiteral("C:/store/seguro.pdf"), QStringLiteral("POL-9")}});
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+
+        const application::VehicleFilesDto shown = view.files();
+        QCOMPARE(shown.images.size(), 2);
+        QCOMPARE(shown.images.at(0).path, QStringLiteral("C:/store/1.jpg"));
+        QVERIFY(!shown.images.at(0).isPrimary);
+        QVERIFY(shown.images.at(1).isPrimary);
+        QCOMPARE(shown.documents.size(), 2);
+        for (const domain::VehicleDocument &document : shown.documents) {
+            if (document.documentType == insurance)
+                QCOMPARE(document.documentNumber, QStringLiteral("POL-9"));
+            else
+                QCOMPARE(document.path, QStringLiteral("C:/store/tarjeta.pdf"));
+        }
+
+        QVERIFY(!documentCheck(files, QStringLiteral("Placas"))->isChecked());
+        QVERIFY(documentCheck(files, card)->isChecked());
+        QVERIFY(!files->findChild<QLabel *>(QStringLiteral("galleryErrorLabel"))->isVisibleTo(files));
+        QVERIFY(!files->findChild<QLabel *>(QStringLiteral("documentsErrorLabel"))->isVisibleTo(files));
+        QCOMPARE(files->findChild<QLineEdit *>(QStringLiteral("policyNumberEdit"))->text(),
+                 QStringLiteral("POL-9"));
     }
 };
 

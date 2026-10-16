@@ -35,6 +35,8 @@ public:
 
     // Copia al DTO del paso lo capturado en esta sección.
     void fill(application::VehicleDetailsDto &dto) const;
+    // Lo contrario: pinta lo guardado (el expediente).
+    void showTerms(const application::VehicleDetailsDto &dto);
 
     // Sus campos en orden de tabulación, para que el paso los encadene con
     // los suyos (el orden cruza dos formularios).
