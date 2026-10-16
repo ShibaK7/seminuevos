@@ -43,7 +43,8 @@ private:
     {
         m_forms = std::make_unique<application::VehicleRegistrationService>(
             m_vehicles, m_files, m_reference, m_contracts);
-        m_records = std::make_unique<application::VehicleRecordService>(m_recordReader, m_files);
+        m_records = std::make_unique<application::VehicleRecordService>(m_recordReader, m_vehicles,
+                                                                       m_files, m_reference);
     }
 
     void startPresenter(domain::UserRole role = domain::UserRole::Admin, int folio = 7)

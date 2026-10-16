@@ -68,6 +68,33 @@ struct RecordLoadResult
     QString errorMessage; // en Failed
 };
 
+// Lo corregido en el expediente, para guardarlo (US-03.4).
+struct VehicleUpdateDto
+{
+    int folio = -1;
+    // La versión que se leyó (VehicleRecordDto::version).
+    QString version;
+    VehicleDetailsDto details;
+    VehicleConditionsDto conditions;
+    // Rutas absolutas: las de los archivos que ya estaban guardados, tal como
+    // las entregó la lectura, y las de los nuevos, donde el usuario los eligió.
+    VehicleFilesDto files;
+};
+
+struct RecordUpdateResult
+{
+    enum class Status {
+        Saved,    // quedó guardado
+        Rejected, // los datos no pasan las reglas, o el VIN o la identificación son de otro
+        Conflict, // otro usuario la cambió desde que se leyó; no se guardó nada
+        NotFound, // ya no existe
+        Failed,   // falló el disco o la base; se puede reintentar
+    };
+    Status status = Status::Failed;
+    domain::ValidationResult validation; // en Rejected, qué campo y por qué
+    QString errorMessage;                // en Failed
+};
+
 } // namespace application
 
 #endif // APPLICATION_INVENTORY_REGISTRATION_DTO_RECORDDTOS_H

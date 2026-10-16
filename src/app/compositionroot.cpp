@@ -172,8 +172,13 @@ bool CompositionRoot::start()
 >>>>>>> 5255cc8 (Open the vehicle record from the inventory)
 =======
     m_recordReader = std::make_unique<SqlVehicleRecordReader>(pool);
+<<<<<<< HEAD
     m_records = std::make_unique<application::VehicleRecordService>(*m_recordReader, *m_files);
 >>>>>>> 8bb4177 (Read a vehicle record by folio (#30))
+=======
+    m_records = std::make_unique<application::VehicleRecordService>(
+        *m_recordReader, *m_vehicles, *m_files, *m_referenceData);
+>>>>>>> a2f7d8d (Update a vehicle record in one transaction (#34))
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
