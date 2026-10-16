@@ -1,6 +1,7 @@
 #ifndef PRESENTATION_INVENTORY_RECORD_IVEHICLERECORDVIEW_H
 #define PRESENTATION_INVENTORY_RECORD_IVEHICLERECORDVIEW_H
 
+#include "presentation/common/navigation/editsession.h"
 #include "presentation/common/navigation/wizardnavigator.h"
 
 #include <QList>
@@ -28,6 +29,16 @@ public:
     virtual void showNotice(const QString &notice) = 0;
     // Ocupado: pestañas, páginas y botones deshabilitados.
     virtual void setBusy(bool busy) = 0;
+
+    // Los botones de cada modo (#33). En consulta: Volver y, si el rol puede
+    // editar, Editar, habilitado solo si ahora se puede (expediente cargado y
+    // sin una lectura en curso). En edición: Cancelar y Guardar cambios.
+    virtual void showMode(FormMode mode, bool canEdit, bool editEnabled) = 0;
+    // Si se descartan los cambios sin guardar.
+    virtual bool confirmDiscardChanges() = 0;
+    // Si se guarda aunque eso quite del expediente (y borre del almacén) la
+    // factura que tenía.
+    virtual bool confirmInvoiceRemoval(const QString &fileName) = 0;
 
     // Lo que el rol de quien entró deja ver (lo decide VehicleRecordAccess).
     // La tarjeta de la operación: contraparte, factura, precios.

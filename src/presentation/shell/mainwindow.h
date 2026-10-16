@@ -60,6 +60,11 @@ public:
     // registros que haga el asistente.
     void bindInventory(presentation::InventoryPresenter &presenter);
 
+protected:
+    // Cerrar la ventana también pregunta por los cambios sin guardar del
+    // expediente (y espera si se están guardando).
+    void closeEvent(QCloseEvent *event) override;
+
 private:
     WizardFactory m_wizardFactory;
     RecordFactory m_recordFactory;

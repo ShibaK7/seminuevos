@@ -15,9 +15,11 @@
 #include "presentation/inventory/registration/steps/files/vehiclefilesview.h"
 
 #include <QComboBox>
+#include <QDoubleSpinBox>
 #include <QFrame>
 #include <QLabel>
 #include <QLineEdit>
+#include <QTableWidget>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -76,6 +78,8 @@ private:
 private slots:
     void init()
     {
+        m_vehicles = fakes::InMemoryVehicleRepository();
+        m_recordReader = fakes::FakeVehicleRecordReader();
         m_forms = std::make_unique<application::VehicleRegistrationService>(
             m_vehicles, m_files, m_reference, m_contracts);
         m_recordReader.records.insert(
@@ -98,11 +102,81 @@ private slots:
         QCOMPARE(m_view->folio(), 5);
         auto *title = m_view->findChild<QLabel *>(QStringLiteral("titleLabel"));
         QCOMPARE(title->text(), QStringLiteral("Folio 5 · Nissan Versa 2020"));
-        // Solo se puede volver: editar llega después.
+        // En consulta: Volver y, para el Administrador, Editar.
         QVERIFY(button("backButton")->isVisibleTo(m_view.get()));
-        QVERIFY(!button("editButton")->isVisibleTo(m_view.get()));
+        QVERIFY(button("editButton")->isVisibleTo(m_view.get()));
+        QVERIFY(button("editButton")->isEnabled());
         QVERIFY(!button("saveButton")->isVisibleTo(m_view.get()));
         QVERIFY(!button("cancelEditButton")->isVisibleTo(m_view.get()));
+    }
+
+    void salesAgentCannotEdit()
+    {
+        open(domain::UserRole::SalesAgent);
+        QVERIFY(!button("editButton")->isVisibleTo(m_view.get()));
+        QVERIFY(button("backButton")->isVisibleTo(m_view.get()));
+    }
+
+    // US-03.4 con los widgets reales: Editar desbloquea los campos, salvo la
+    // rama, el total de mantenimientos y Folio, y cambia los botones.
+    void editUnlocksAllButTheLockedFields()
+    {
+        open(domain::UserRole::Admin);
+        button("editButton")->click();
+        QWidget *details = &m_view->detailsView();
+        QVERIFY(!fieldWidget<QLineEdit>(details, QStringLiteral("serialNumber"))->isReadOnly());
+        QVERIFY(!fieldWidget<QComboBox>(details, QStringLiteral("acquisitionType"))->isEnabled());
+        QVERIFY(!fieldWidget<QDoubleSpinBox>(details, QStringLiteral("maintenanceCost"))->isEnabled());
+        QVERIFY(!fieldWidget<QLineEdit>(details, QStringLiteral("folio"))->isEnabled());
+        QVERIFY(fieldWidget<QComboBox>(details, QStringLiteral("brand"))->isEnabled());
+        QWidget *files = &m_view->filesView();
+        QVERIFY(files->findChild<QPushButton *>(QStringLiteral("addPhotoButton"))->isVisibleTo(files));
+
+        QVERIFY(!button("backButton")->isVisibleTo(m_view.get()));
+        QVERIFY(!button("editButton")->isVisibleTo(m_view.get()));
+        QVERIFY(button("saveButton")->isVisibleTo(m_view.get()));
+        QVERIFY(button("cancelEditButton")->isVisibleTo(m_view.get()));
+
+        // Sin cambios, Cancelar no pregunta y todo vuelve a consulta.
+        button("cancelEditButton")->click();
+        QVERIFY(fieldWidget<QLineEdit>(details, QStringLiteral("serialNumber"))->isReadOnly());
+        QVERIFY(fieldWidget<QComboBox>(details, QStringLiteral("acquisitionType"))->isEnabled());
+        QVERIFY(button("editButton")->isVisibleTo(m_view.get()));
+    }
+
+    // Lo que se teclea en un campo real cuenta como cambio y se guarda; al
+    // terminar, el expediente vuelve a consulta con su aviso.
+    void typingAndSavingGoesThrough()
+    {
+        open(domain::UserRole::Admin);
+        button("editButton")->click();
+        QWidget *details = &m_view->detailsView();
+        fieldWidget<QLineEdit>(details, QStringLiteral("serialNumber"))
+            ->setText(QStringLiteral("3N1CN7AD0LL000002"));
+        button("saveButton")->click();
+
+        QCOMPARE(m_vehicles.updates, 1);
+        QCOMPARE(m_vehicles.updatedSerialNumber, QStringLiteral("3N1CN7AD0LL000002"));
+        QVERIFY(fieldWidget<QLineEdit>(details, QStringLiteral("serialNumber"))->isReadOnly());
+        auto *notice = m_view->findChild<QLabel *>(QStringLiteral("noticeLabel"));
+        QVERIFY(notice->isVisibleTo(m_view.get()));
+        QCOMPARE(notice->text(), QStringLiteral("Cambios guardados."));
+    }
+
+    // Lo que se capture en el historial de mantenimientos no es una edición
+    // de la unidad.
+    void maintenanceHistoryIsNotAnEdit()
+    {
+        open(domain::UserRole::Admin);
+        button("editButton")->click();
+        QSignalSpy edited(&m_view->detailsView(), &VehicleDetailsView::edited);
+        auto *table = m_view->detailsView().maintenanceHistory().findChild<QTableWidget *>();
+        QVERIFY(table);
+        table->setRowCount(1);
+        table->setItem(0, 0, new QTableWidgetItem(QStringLiteral("01/03/2024")));
+        QCOMPARE(edited.size(), 0);
+        button("saveButton")->click();
+        QCOMPARE(m_vehicles.updates, 0);
     }
 
     // Cada página sigue en su área con scroll, así cabe en una laptop chica.

@@ -49,11 +49,25 @@ private:
 
     void startPresenter(domain::UserRole role = domain::UserRole::Admin, int folio = 7)
     {
+        startWith(m_runner, role, folio);
+    }
+
+    void startWith(presentation::TaskRunner &runner, domain::UserRole role = domain::UserRole::Admin,
+                   int folio = 7)
+    {
         createServices();
         m_presenter = std::make_unique<presentation::VehicleRecordPresenter>(
-            m_record, m_details, m_conditions, m_filesView, *m_forms, *m_records, m_runner, folio,
+            m_record, m_details, m_conditions, m_filesView, *m_forms, *m_records, runner, folio,
             role);
         m_presenter->start();
+    }
+
+    // Entra a editar y cambia algo del Paso 1, como lo haría la vista.
+    void editModel(const QString &model)
+    {
+        m_presenter->onEdit();
+        m_details.captured.model = model;
+        m_presenter->onStepEdited(0);
     }
 
 private slots:
@@ -300,6 +314,346 @@ private slots:
         QVERIFY(m_presenter->confirmLeave());
         m_presenter->onBack();
         QCOMPARE(closed.size(), 1);
+        QCOMPARE(m_record.discardQuestions, 0);
+    }
+
+    // --- Edición (US-03.4) ---
+
+    // "Editar" solo para el Administrador, y en consulta.
+    void editIsOfferedOnlyToAdmins()
+    {
+        startPresenter(domain::UserRole::Admin);
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QVERIFY(m_record.canEdit);
+        QVERIFY(m_record.editEnabled);
+
+        init();
+        startPresenter(domain::UserRole::SalesAgent);
+        QVERIFY(!m_record.canEdit);
+        m_presenter->onEdit();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QCOMPARE(m_details.readOnly, std::optional(true));
+    }
+
+    // Sin el checklist completo (guardar borraría la inspección) o sin la
+    // operación de su rama, no se edita.
+    void editNeedsCompleteCatalogsAndDealTerms()
+    {
+        m_reference.checklistError = QStringLiteral("relation does not exist");
+        startPresenter();
+        QVERIFY(m_record.canEdit);
+        QVERIFY(!m_record.editEnabled);
+        m_presenter->onEdit();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+
+        init();
+        m_recordReader.records[7].hasDealTerms = false;
+        startPresenter();
+        QVERIFY(!m_record.editEnabled);
+    }
+
+    // Mientras se relee, "Editar" se deshabilita sin agrisar la página.
+    void editWaitsForAReread()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        QVERIFY(!m_record.editEnabled);
+        deferred.finish(0);
+        QVERIFY(m_record.editEnabled);
+
+        m_presenter->refresh();
+        QVERIFY(!m_record.editEnabled);
+        QVERIFY(!m_record.busy);
+        deferred.finish(1);
+        QVERIFY(m_record.editEnabled);
+    }
+
+    // Editar desbloquea los tres pasos, salvo la rama y el total de
+    // mantenimientos.
+    void editUnlocksAllButTheLockedFields()
+    {
+        startPresenter();
+        m_presenter->onEdit();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::Edit));
+        QCOMPARE(m_details.readOnly, std::optional(false));
+        QCOMPARE(m_details.lockedFields,
+                 (QStringList{QStringLiteral("acquisitionType"), QStringLiteral("maintenanceCost")}));
+        QCOMPARE(m_conditions.readOnly, std::optional(false));
+        QCOMPARE(m_filesView.readOnly, std::optional(false));
+    }
+
+    // Sin cambios, Guardar no valida ni guarda: las reglas de hoy no deben
+    // marcar errores en datos que nadie tocó.
+    void savingWithoutChangesSkipsValidation()
+    {
+        m_recordReader.records[7].details.model.clear(); // hoy no pasaría
+        startPresenter();
+        m_presenter->onEdit();
+        // Lo que el presenter pinta (o los campos en consulta) no es un cambio.
+        m_presenter->showMaintenanceCost(4000.0);
+        m_presenter->onSave();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QCOMPARE(m_record.notice, QStringLiteral("No hubo cambios que guardar."));
+        QVERIFY(m_details.markedErrors.isEmpty());
+        QCOMPARE(m_vehicles.updates, 0);
+        QCOMPARE(m_details.readOnly, std::optional(true));
+    }
+
+    void editsInViewModeDoNotCount()
+    {
+        startPresenter();
+        m_presenter->onStepEdited(0);
+        m_presenter->onEdit();
+        m_presenter->onSave();
+        QCOMPARE(m_record.notice, QStringLiteral("No hubo cambios que guardar."));
+    }
+
+    // Lo inválido se queda en edición, con sus campos marcados y en su
+    // pestaña.
+    void invalidChangesStayInEdit()
+    {
+        startPresenter();
+        m_presenter->onStepClicked(2);
+        editModel(QString());
+        m_presenter->onSave();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::Edit));
+        QCOMPARE(m_record.shownStep, 0);
+        QVERIFY(m_details.markedFields().contains(QStringLiteral("model")));
+        QVERIFY(m_record.message.startsWith(QStringLiteral("Revisa los campos marcados")));
+        QCOMPARE(m_details.focusRequests.first(), QStringLiteral("model"));
+        QCOMPARE(m_vehicles.updates, 0);
+
+        // Corregido, la revalidación en vivo limpia la marca y el aviso.
+        m_details.captured.model = QStringLiteral("Versa");
+        m_presenter->onStepEdited(0);
+        m_presenter->revalidateEditedSteps();
+        QVERIFY(m_details.markedErrors.isEmpty());
+        QVERIFY(m_record.message.isEmpty());
+    }
+
+    // Guardado: el inventario se relee, el expediente también, y vuelve a
+    // consulta.
+    void savingRereadsAndReturnsToView()
+    {
+        startPresenter();
+        QSignalSpy changed(m_presenter.get(), &presentation::VehicleRecordPresenter::vehicleChanged);
+        const qsizetype reads = m_recordReader.reads.size();
+        editModel(QStringLiteral("Sentra"));
+        m_presenter->onSave();
+
+        QCOMPARE(m_vehicles.updates, 1);
+        QCOMPARE(m_vehicles.updatedVersion, QStringLiteral("1001"));
+        QCOMPARE(changed.size(), 1);
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QCOMPARE(m_record.notice, QStringLiteral("Cambios guardados."));
+        QCOMPARE(m_details.readOnly, std::optional(true));
+        // Una lectura para revisar la versión al guardar y otra para releer.
+        QCOMPARE(m_recordReader.reads.size(), reads + 2);
+        QVERIFY(m_record.editEnabled);
+    }
+
+    // Si la relectura falla después de guardar, se avisa y no se edita con
+    // la versión vieja.
+    void failedRereadAfterSavingBlocksEditing()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        deferred.finish(0);
+        editModel(QStringLiteral("Sentra"));
+        m_presenter->onSave();
+        QVERIFY(m_record.busy);
+        deferred.finish(1); // guarda
+        m_recordReader.failWith = QStringLiteral("server closed the connection");
+        deferred.finish(2); // relee
+        QVERIFY(m_record.message.contains(QStringLiteral("Los cambios se guardaron")));
+        QVERIFY(!m_record.editEnabled);
+    }
+
+    // Quitar la factura guardada (pasar a Autofactura la aparta) pregunta
+    // antes, porque su archivo se borraría.
+    void removingTheInvoiceAsksFirst()
+    {
+        startPresenter();
+        m_presenter->onEdit();
+        m_details.captured.invoiceType = domain::InvoiceType::Autofactura;
+        m_presenter->details().onInvoiceTypeChanged();
+        m_presenter->onStepEdited(0);
+
+        m_record.removeInvoice = false;
+        m_presenter->onSave();
+        QCOMPARE(m_record.invoiceQuestions, QStringList{QStringLiteral("factura.pdf")});
+        QCOMPARE(m_vehicles.updates, 0);
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::Edit));
+
+        m_record.removeInvoice = true;
+        m_presenter->onSave();
+        QCOMPARE(m_vehicles.updates, 1);
+        QVERIFY(m_vehicles.updatedInvoicePath.isEmpty());
+    }
+
+    // Lo que la base rechaza (un VIN de otra unidad) va a su campo.
+    void rejectedSaveMarksTheOwningStep()
+    {
+        startPresenter();
+        m_presenter->onStepClicked(1);
+        editModel(QStringLiteral("Sentra"));
+        m_vehicles.existingSerialNumbers << m_details.captured.serialNumber;
+        m_presenter->onSave();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::Edit));
+        QCOMPARE(m_record.shownStep, 0);
+        QVERIFY(m_details.markedFields().contains(QStringLiteral("serialNumber")));
+        QCOMPARE(m_record.states.at(0), StepVisual::Current);
+    }
+
+    // Si otro usuario la cambió, se cargan sus datos y se dice que los
+    // cambios no se guardaron.
+    void conflictLoadsTheirData()
+    {
+        startPresenter();
+        editModel(QStringLiteral("Sentra"));
+        m_recordReader.records[7].version = QStringLiteral("2002");
+        m_recordReader.records[7].details.model = QStringLiteral("March");
+        m_presenter->onSave();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QVERIFY(m_record.message.contains(QStringLiteral("Otro usuario")));
+        QCOMPARE(m_details.shown->model, QStringLiteral("March"));
+        QCOMPARE(m_vehicles.updates, 0);
+    }
+
+    // Disco o base: se queda en edición, con lo capturado, para reintentar.
+    void failedSaveStaysInEdit()
+    {
+        startPresenter();
+        editModel(QStringLiteral("Sentra"));
+        application::VehicleRepository::UpdateOutcome failure;
+        failure.errorMessage = QStringLiteral("server closed the connection");
+        m_vehicles.updateOutcome = failure;
+        m_presenter->onSave();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::Edit));
+        QVERIFY(m_record.message.contains(QStringLiteral("server closed the connection")));
+        QCOMPARE(m_details.captured.model, QStringLiteral("Sentra"));
+        QVERIFY(!m_record.busy);
+    }
+
+    void vanishedVehicleEndsTheEdit()
+    {
+        startPresenter();
+        QSignalSpy changed(m_presenter.get(), &presentation::VehicleRecordPresenter::vehicleChanged);
+        editModel(QStringLiteral("Sentra"));
+        m_recordReader.records.remove(7);
+        m_presenter->onSave();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QVERIFY(m_record.message.contains(QStringLiteral("ya no existe")));
+        QCOMPARE(changed.size(), 1);
+        QVERIFY(!m_record.editEnabled);
+    }
+
+    // Cancelar pregunta solo si hay cambios, y vuelve a lo guardado desde
+    // memoria, sin ir a la base.
+    void cancelAsksOnlyWithChanges()
+    {
+        startPresenter();
+        m_presenter->onEdit();
+        m_presenter->onCancel();
+        QCOMPARE(m_record.discardQuestions, 0);
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+
+        editModel(QStringLiteral("Sentra"));
+        m_record.discard = false;
+        m_presenter->onCancel();
+        QCOMPARE(m_record.discardQuestions, 1);
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::Edit));
+
+        const qsizetype reads = m_recordReader.reads.size();
+        const int painted = m_details.showDetailsCalls;
+        m_record.discard = true;
+        m_presenter->onCancel();
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QCOMPARE(m_details.showDetailsCalls, painted + 1);
+        QCOMPARE(m_details.captured.model, QStringLiteral("Versa"));
+        QCOMPARE(m_recordReader.reads.size(), reads);
+        QCOMPARE(m_details.readOnly, std::optional(true));
+    }
+
+    // Volver a consulta limpia los errores marcados y las pestañas en rojo.
+    void cancelClearsTheErrors()
+    {
+        startPresenter();
+        editModel(QString());
+        m_presenter->onSave();
+        QVERIFY(!m_details.markedErrors.isEmpty());
+        m_presenter->onCancel();
+        QVERIFY(m_details.markedErrors.isEmpty());
+        QVERIFY(m_record.message.isEmpty());
+        QVERIFY(!m_record.states.contains(StepVisual::Error));
+    }
+
+    // Una relectura que llega a media edición no pisa lo capturado: se
+    // pinta al volver a consulta.
+    void rereadDuringEditWaitsForView()
+    {
+        startPresenter();
+        editModel(QStringLiteral("Sentra"));
+        const int painted = m_details.showDetailsCalls;
+        m_recordReader.records[7].details.color = QStringLiteral("Azul");
+        m_presenter->refresh();
+        QCOMPARE(m_details.showDetailsCalls, painted);
+        QCOMPARE(m_details.captured.model, QStringLiteral("Sentra"));
+
+        m_presenter->onCancel();
+        QCOMPARE(m_details.shown->color, QStringLiteral("Azul"));
+    }
+
+    // Salir pregunta solo con cambios; mientras se guarda, pide esperar.
+    void leavingAsksOnlyWithChanges()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        deferred.finish(0);
+        m_presenter->onEdit();
+        QVERIFY(m_presenter->confirmLeave());
+        QCOMPARE(m_record.discardQuestions, 0);
+
+        m_details.captured.model = QStringLiteral("Sentra");
+        m_presenter->onStepEdited(0);
+        m_record.discard = false;
+        QVERIFY(!m_presenter->confirmLeave());
+        QCOMPARE(m_record.discardQuestions, 1);
+
+        m_presenter->onSave();
+        QVERIFY(!m_presenter->confirmLeave());
+        QVERIFY(m_record.message.contains(QStringLiteral("Espera")));
+        QCOMPARE(m_record.discardQuestions, 1);
+    }
+
+    // Cancelar el diálogo de la factura no es un cambio; elegir una, sí.
+    void invoiceDialogOnlyCountsWithAFile()
+    {
+        startPresenter();
+        m_presenter->onEdit();
+        m_presenter->onBrowseInvoice();
+        m_presenter->onSave();
+        QCOMPARE(m_record.notice, QStringLiteral("No hubo cambios que guardar."));
+
+        m_presenter->onEdit();
+        m_details.acquisition.nextInvoiceFile = QStringLiteral("C:/nuevas/factura2.pdf");
+        m_presenter->onBrowseInvoice();
+        m_presenter->onSave();
+        QCOMPARE(m_vehicles.updates, 1);
+    }
+
+    // Si el expediente se cierra con una lectura o un guardado en curso, la
+    // respuesta ya no se entrega.
+    void closingWithWorkInFlightIsSafe()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        deferred.finish(0);
+        editModel(QStringLiteral("Sentra"));
+        m_presenter->onSave();
+        m_presenter.reset();
+        deferred.finish(1);
+        QCOMPARE(m_vehicles.updates, 1);
     }
 };
 

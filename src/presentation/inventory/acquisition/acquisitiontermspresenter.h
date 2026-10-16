@@ -27,8 +27,10 @@ public:
     // factura según la regla de la autofactura y vuelve a pintar la fila.
     void setAutofactura(bool autofactura);
 
-    void onBrowseInvoice();
-    void onCfdiRequest();
+    // Devuelven si cambió la factura que cuenta como adjunta: cancelar el
+    // diálogo, o solo abrir la solicitud de CFDI, no es un cambio que guardar.
+    bool onBrowseInvoice();
+    bool onCfdiRequest();
 
     // Pinta la factura de una compra ya guardada (el expediente). Va al final
     // de pintar el paso: los cambios de rama y de tipo de factura que pasaron
