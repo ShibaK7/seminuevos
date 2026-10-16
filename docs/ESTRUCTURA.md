@@ -59,7 +59,8 @@ seminuevos/
 │   │       │       └── consignedvehicle  Rama consignación: precio base y comisión
 │   │       ├── value_objects/       VehicleImage, VehicleDocument, ContractData
 │   │       └── rules/
-│   │           └── uploadformatpolicy  Formatos admitidos de fotos y documentos
+│   │           ├── uploadformatpolicy  Formatos admitidos de fotos y documentos
+│   │           └── vehiclerecordaccess Qué ve y qué puede hacer cada rol en el expediente (único lugar)
 │   │
 │   ├── application/                 NÚCLEO: casos de uso. Solo QtCore; no conoce adaptadores ni widgets.
 │   │   │                            En cada módulo: dto/ (datos que cruzan la frontera, uno por caso de uso),
@@ -76,12 +77,15 @@ seminuevos/
 │   │       ├── dto/                 inventorydtos: filtro y tarjeta de la rejilla
 │   │       ├── ports/               inventoryreader
 │   │       ├── services/            inventoryservice: consultar el inventario con sus miniaturas
-│   │       └── registration/        Registrar un vehículo (las dos ramas)
+│   │       └── registration/        El formulario del vehículo: alta (las dos ramas) y expediente
+│   │           │                    (consultarlo y corregirlo)
 │   │           ├── dto/             registrationdtos (lo que captura cada paso y el resultado),
-│   │           │                    catalogdtos (catálogos, checklist y UMA del asistente)
+│   │           │                    catalogdtos (catálogos, checklist y UMA del asistente),
+│   │           │                    recorddtos (expediente: qué deja ver cada rol)
 │   │           ├── ports/           vehiclerepository, referencedatareader, contractgenerator
 │   │           └── services/        vehicleregistrationservice (valida, revisa VIN, copia archivos, guarda,
-│   │                                deshace lo copiado si algo falla) y registrationmapping (privado)
+│   │                                deshace lo copiado si algo falla), vehiclerecordservice (el
+│   │                                expediente) y registrationmapping (privado)
 │   │
 │   ├── adapters/                    Implementan los puertos. Primero la tecnología (cada una es su
 │   │   │                            biblioteca, con solo su módulo de Qt), luego el módulo

@@ -71,6 +71,11 @@ seminuevos_add_test(tst_uploadformatpolicy
     LIBS seminuevos_domain
 )
 
+seminuevos_add_test(tst_vehiclerecordaccess
+    SOURCES domain/tst_vehiclerecordaccess.cpp
+    LIBS seminuevos_domain
+)
+
 # --- Aplicación -----------------------------------------------------------------
 seminuevos_add_test(tst_authenticationservice
     SOURCES application/tst_authenticationservice.cpp support/fakes.h
@@ -79,6 +84,11 @@ seminuevos_add_test(tst_authenticationservice
 
 seminuevos_add_test(tst_registrationservice
     SOURCES application/tst_registrationservice.cpp support/fakes.h support/registrationfixtures.h
+    LIBS seminuevos_application
+)
+
+seminuevos_add_test(tst_vehiclerecordservice
+    SOURCES application/tst_vehiclerecordservice.cpp
     LIBS seminuevos_application
 )
 
