@@ -483,6 +483,26 @@ private slots:
         QVERIFY(!m_record.editEnabled);
     }
 
+    // Al guardar viaja la contraparte como se leyó, con su versión: si el
+    // usuario no la tocó, no se escribe (otro pudo corregirla mientras tanto).
+    void savingSendsTheCounterpartyAsItWasRead()
+    {
+        startPresenter();
+        editModel(QStringLiteral("Sentra"));
+        m_presenter->onSave();
+        QCOMPARE(m_vehicles.updates, 1);
+        QVERIFY(!m_vehicles.updatedExpected.counterpartyEdited);
+        QCOMPARE(m_vehicles.updatedExpected.counterpartyVersion, QStringLiteral("2001"));
+
+        m_presenter->onEdit();
+        m_details.captured.counterparty.locality = QStringLiteral("Pátzcuaro");
+        m_presenter->onStepEdited(0);
+        m_presenter->onSave();
+        QCOMPARE(m_vehicles.updates, 2);
+        QVERIFY(m_vehicles.updatedExpected.counterpartyEdited);
+        QCOMPARE(m_vehicles.updatedExpected.counterpartyVersion, QStringLiteral("2001"));
+    }
+
     // Quitar la factura guardada (pasar a Autofactura la aparta) pregunta
     // antes, porque su archivo se borraría.
     void removingTheInvoiceAsksFirst()
@@ -589,7 +609,8 @@ private slots:
         m_presenter->onSave();
         deferred.finish(1); // conflicto: pide releer
         QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
-        QCOMPARE(m_details.shown->model, QStringLiteral("Versa"));
+        // Lo rechazado ya no está en pantalla: se repintó lo último leído.
+        QCOMPARE(m_details.captured.model, QStringLiteral("Versa"));
         QVERIFY(m_record.message.contains(QStringLiteral("no se guardaron")));
         QVERIFY(!m_record.editEnabled);
 
@@ -620,6 +641,32 @@ private slots:
         QCOMPARE(m_recordReader.reads.size(), reads + 2); // revisar la versión y releer
         QCOMPARE(changed.size(), 1);
         QVERIFY(m_record.editEnabled);
+    }
+
+    // Lo mismo si el COMMIT quedó sin confirmar y la relectura también
+    // falla: se ve lo último leído, el aviso no dice que se releyó y no se
+    // edita sobre la versión vieja.
+    void unconfirmedSaveWithAFailedRereadKeepsEditingBlocked()
+    {
+        fakes::DeferredTaskRunner deferred;
+        startWith(deferred);
+        deferred.finish(0);
+        editModel(QStringLiteral("Sentra"));
+        application::VehicleRepository::UpdateOutcome failure;
+        failure.commitFailed = true;
+        failure.errorMessage = QStringLiteral("could not commit");
+        m_vehicles.updateOutcome = failure;
+        m_presenter->onSave();
+        deferred.finish(1); // sin confirmar: pide releer
+        QCOMPARE(m_record.mode, std::optional(presentation::FormMode::View));
+        QCOMPARE(m_details.captured.model, QStringLiteral("Versa"));
+        QVERIFY(!m_record.editEnabled);
+
+        m_recordReader.failWith = QStringLiteral("server closed the connection");
+        deferred.finish(2);
+        QVERIFY(m_record.message.contains(QStringLiteral("No se pudo confirmar")));
+        QVERIFY(m_record.message.contains(QStringLiteral("Tampoco se pudo releer")));
+        QVERIFY(!m_record.editEnabled);
     }
 
     // Disco o base: se queda en edición, con lo capturado, para reintentar.
