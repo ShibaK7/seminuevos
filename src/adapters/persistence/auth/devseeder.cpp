@@ -1,5 +1,6 @@
 #include "adapters/persistence/auth/devseeder.h"
 #include "application/auth/ports/passwordhasher.h"
+#include "domain/common/value_objects/enums.h"
 
 #include <QList>
 #include <QSqlDatabase>
@@ -47,11 +48,11 @@ DevSeeder::Result DevSeeder::run(QSqlDatabase &db, const application::PasswordHa
 
     static const QList<SeedUser> seedUsers = {
         {QStringLiteral("a"), QStringLiteral("a"),
-         QStringLiteral("Administrador"), QStringLiteral("Administrador")},
+         QStringLiteral("Administrador"), domain::toDbString(domain::UserRole::Admin)},
         {QStringLiteral("admin"), QStringLiteral("Admin123!"),
-         QStringLiteral("Administrador"), QStringLiteral("Administrador")},
+         QStringLiteral("Administrador"), domain::toDbString(domain::UserRole::Admin)},
         {QStringLiteral("vendedor"), QStringLiteral("Vendedor123!"),
-         QStringLiteral("Vendedor de Prueba"), QStringLiteral("Vendedor")},
+         QStringLiteral("Vendedor de Prueba"), domain::toDbString(domain::UserRole::SalesAgent)},
     };
 
     if (!db.transaction()) {
