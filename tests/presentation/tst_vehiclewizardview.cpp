@@ -268,6 +268,34 @@ private slots:
                 < m_view->filesView().minimumSizeHint().height());
     }
 
+    // Como en el expediente: el Paso 1 no estira ni aplasta sus tarjetas, sea
+    // cual sea la altura de la ventana. En una pantalla grande el alta también
+    // separaba sus renglones, y en una chica aplastaba la descripción.
+    void detailsCardsKeepTheirHeightInAnyWindow()
+    {
+        QWidget *page = &m_view->detailsView();
+        auto *area = qobject_cast<QScrollArea *>(page->parentWidget()->parentWidget());
+        QVERIFY(area);
+        // Sin la hoja de estilos de la app, la descripción pide de mínimo más
+        // que su máximo y no puede encogerse: la ventana chica no probaría
+        // nada. Se le deja encogerse, como con la hoja.
+        fieldWidget<QWidget>(page, QStringLiteral("description"))->setMinimumHeight(1);
+        for (const int height : {300, 2400}) {
+            m_view->resize(1400, height);
+            QTRY_COMPARE(m_view->size(), QSize(1400, height).expandedTo(m_view->minimumSize()));
+            settleLayouts();
+            QTRY_COMPARE(page->height(), qMax(area->viewport()->height(), page->sizeHint().height()));
+            QCOMPARE(area->viewport()->height() > page->sizeHint().height(), height > 1000);
+            QLayout *layout = page->layout();
+            for (int i = 0; i < layout->count(); ++i) {
+                QLayoutItem *item = layout->itemAt(i);
+                if (!item->widget() || !item->widget()->isVisibleTo(page))
+                    continue;
+                QCOMPARE(item->widget()->height(), item->sizeHint().height());
+            }
+        }
+    }
+
     // Con errores, el Paso 1 crece un renglón por campo. Va dentro de un área
     // con scroll para que el asistente no pida más alto del que tiene la
     // pantalla: la pila de pasos pide lo mismo con errores que sin ellos.

@@ -18,6 +18,7 @@
 #include <QDoubleSpinBox>
 #include <QFrame>
 #include <QLabel>
+#include <QLayout>
 #include <QLineEdit>
 #include <QTableWidget>
 #include <QPushButton>
@@ -260,6 +261,41 @@ private slots:
         QVERIFY(!fieldWidget<QLineEdit>(page, QStringLiteral("counterparty.fullName"))->isVisibleTo(page));
         // La tarjeta del vehículo sí se ve.
         QVERIFY(fieldWidget<QLineEdit>(page, QStringLiteral("serialNumber"))->isVisibleTo(page));
+    }
+
+    // El Paso 1 no estira ni aplasta sus secciones, sea cual sea la altura de
+    // la ventana. Si sobra espacio, queda abajo: al Vendedor solo le queda la
+    // tarjeta del vehículo y, en una pantalla grande, sus renglones se
+    // separaban. Si falta, la página hace scroll en vez de aplastar la
+    // descripción o el historial.
+    void detailsSectionsKeepTheirHeightInAnyWindow()
+    {
+        for (const domain::UserRole role : {domain::UserRole::SalesAgent, domain::UserRole::Admin}) {
+            open(role);
+            QWidget *page = &m_view->detailsView();
+            auto *area = qobject_cast<QScrollArea *>(page->parentWidget()->parentWidget());
+            QVERIFY(area);
+            // Sin la hoja de estilos de la app, la descripción pide de mínimo
+            // más que su máximo y no puede encogerse: la ventana chica no
+            // probaría nada. Se le deja encogerse, como con la hoja.
+            fieldWidget<QWidget>(page, QStringLiteral("description"))->setMinimumHeight(1);
+            for (const int height : {300, 2400}) {
+                m_view->resize(1400, height);
+                QTRY_COMPARE(m_view->size(), QSize(1400, height).expandedTo(m_view->minimumSize()));
+                QTRY_COMPARE(page->height(),
+                             qMax(area->viewport()->height(), page->sizeHint().height()));
+                // La ventana chica deja la página más alta que el área, y la
+                // grande, más baja: así se prueban los dos casos.
+                QCOMPARE(area->viewport()->height() > page->sizeHint().height(), height > 1000);
+                QLayout *layout = page->layout();
+                for (int i = 0; i < layout->count(); ++i) {
+                    QLayoutItem *item = layout->itemAt(i);
+                    if (!item->widget() || !item->widget()->isVisibleTo(page))
+                        continue;
+                    QCOMPARE(item->widget()->height(), item->sizeHint().height());
+                }
+            }
+        }
     }
 
     // #30 con los widgets reales: cada página muestra lo guardado, el folio

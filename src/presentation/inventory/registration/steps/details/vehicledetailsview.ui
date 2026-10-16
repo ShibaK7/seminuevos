@@ -10,7 +10,7 @@
     <height>760</height>
    </rect>
   </property>
-  <layout class="QVBoxLayout" name="detailsLayout">
+  <layout class="QVBoxLayout" name="detailsLayout" stretch="0,0,0,1">
    <item>
     <widget class="QFrame" name="generalInfoCard">
      <layout class="QGridLayout" name="generalInfoGrid">
@@ -634,6 +634,19 @@
       </item>
      </layout>
     </widget>
+   </item>
+   <item>
+    <spacer name="detailsBottomSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
    </item>
   </layout>
  </widget>

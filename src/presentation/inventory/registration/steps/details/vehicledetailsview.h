@@ -61,6 +61,11 @@ public:
     bool focusField(const QString &field) override;
     void setReadOnly(bool readOnly, const QStringList &lockedFields) override;
 
+    // La página va dentro de un área con scroll, que la encoge hasta este
+    // mínimo cuando no cabe. Se pide el alto natural para que haga scroll en
+    // vez de aplastar la descripción o el historial.
+    QSize minimumSizeHint() const override;
+
 signals:
     // Cambió cualquier campo.
     void edited();

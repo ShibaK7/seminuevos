@@ -219,6 +219,17 @@ void VehicleDetailsView::showEvent(QShowEvent *event)
                                    ui->consignmentSection->grid()});
 }
 
+QSize VehicleDetailsView::minimumSizeHint() const
+{
+    QSize size = QWidget::minimumSizeHint();
+    // Con mensajes de error que se parten en renglones, el layout calcula su
+    // alto según el ancho, y el área con scroll ya toma el alto al ancho
+    // real. El natural se calcula a otro ancho y dejaría un hueco abajo.
+    if (layout() && !layout()->hasHeightForWidth())
+        size.setHeight(qMax(size.height(), sizeHint().height()));
+    return size;
+}
+
 QList<domain::ValidationError>
 VehicleDetailsView::showFieldErrors(const QList<domain::ValidationError> &errors)
 {
