@@ -25,6 +25,25 @@ bool sameName(const QString &a, const QString &b)
     return QString::compare(a.simplified(), b.simplified(), Qt::CaseInsensitive) == 0;
 }
 
+// Hasta que termine la transacción, nadie más busca ni da de alta a una
+// persona con esta identificación. Sin esto, dos sesiones que no la encuentran
+// al mismo tiempo crearían dos personas con ella: la tabla no la tiene como
+// UNIQUE. Es un candado consultivo y no uno de renglón porque lo que se cuida
+// es un renglón que todavía no existe. La primera llave (la tabla) lo aparta
+// de cualquier otro candado consultivo; la segunda es la identificación.
+bool lockNationalId(QSqlDatabase &db, const QString &nationalId, QString &errorMessage)
+{
+    QSqlQuery lock(db);
+    lock.prepare(QStringLiteral("SELECT pg_advisory_xact_lock("
+                                "CAST('counterparties'::regclass AS integer), hashtext(:national_id))"));
+    lock.bindValue(QStringLiteral(":national_id"), nationalId);
+    if (!lock.exec()) {
+        errorMessage = lock.lastError().text();
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 SqlCounterpartyRepository::SqlCounterpartyRepository(QSqlDatabase &db)
@@ -36,6 +55,8 @@ int SqlCounterpartyRepository::findOrCreate(const domain::Counterparty &counterp
                                          QString &errorMessage)
 {
     if (!counterparty.nationalId().isEmpty()) {
+        if (!lockNationalId(m_db, counterparty.nationalId(), errorMessage))
+            return -1;
         // ORDER BY id: si por datos viejos la identificación se repite, siempre
         // se elige la misma persona (la más antigua).
         QSqlQuery lookup(m_db);
@@ -73,31 +94,25 @@ SqlCounterpartyRepository::Relink SqlCounterpartyRepository::keepOrRelink(
     // nadie la corrigió desde que se leyó.
     const QString currentNationalId = current.value(0).toString().trimmed().toUpper();
     if (currentNationalId == edited.nationalId()) {
-        // El candado dura hasta el fin de la transacción, así nadie la cambia
-        // entre revisar su versión y corregirla. Es FOR NO KEY UPDATE y no FOR
-        // UPDATE: este no choca con el FOR KEY SHARE que pide la llave foránea
-        // cuando otra operación se liga a esta persona. Con FOR UPDATE, dos
-        // unidades religadas al mismo tiempo en sentidos opuestos (la 10 a la
-        // persona de la 11 y viceversa) se bloqueaban entre sí.
-        QSqlQuery version(m_db);
-        version.prepare(QStringLiteral("SELECT CAST(xmin AS text) FROM counterparties "
-                                       "WHERE id = :id FOR NO KEY UPDATE"));
-        version.bindValue(QStringLiteral(":id"), currentId);
-        if (!version.exec() || !version.next()) {
-            result.errorMessage = version.lastError().text();
-            return result;
-        }
-        if (version.value(0).toString() != expectedVersion) {
-            result.conflict = true;
-            return result;
-        }
+        // La versión va en el WHERE: revisarla y corregir es un solo paso. Si
+        // otra sesión está corrigiendo a la misma persona, este UPDATE la
+        // espera, y cuando ella confirma PostgreSQL vuelve a evaluar el WHERE
+        // con el renglón nuevo. La versión ya no coincide, no cambia nada y es
+        // un conflicto. Con un SELECT aparte para revisarla, las dos sesiones
+        // podrían leer la misma versión y la segunda pisaría a la primera.
+        //
+        // Como el UPDATE no cambia la llave, su candado es FOR NO KEY UPDATE,
+        // que no choca con el FOR KEY SHARE que pide la llave foránea cuando
+        // otra operación se liga a esta persona. Con FOR UPDATE, dos unidades
+        // religadas al mismo tiempo en sentidos opuestos (la 10 a la persona
+        // de la 11 y viceversa) se bloqueaban entre sí.
         QSqlQuery update(m_db);
         update.prepare(QStringLiteral(
             "UPDATE counterparties "
             "   SET full_name = :full_name, street_address = :street_address, suburb = :suburb, "
             "       locality = :locality, state = :state, postal_code = :postal_code, "
             "       updated_at = CURRENT_TIMESTAMP "
-            " WHERE id = :id"));
+            " WHERE id = :id AND CAST(xmin AS text) = :version"));
         update.bindValue(QStringLiteral(":full_name"), edited.fullName());
         update.bindValue(QStringLiteral(":street_address"), nullIfEmpty(edited.streetAddress()));
         update.bindValue(QStringLiteral(":suburb"), nullIfEmpty(edited.suburb()));
@@ -105,8 +120,15 @@ SqlCounterpartyRepository::Relink SqlCounterpartyRepository::keepOrRelink(
         update.bindValue(QStringLiteral(":state"), nullIfEmpty(edited.state()));
         update.bindValue(QStringLiteral(":postal_code"), nullIfEmpty(edited.postalCode()));
         update.bindValue(QStringLiteral(":id"), currentId);
+        update.bindValue(QStringLiteral(":version"), expectedVersion);
         if (!update.exec()) {
             result.errorMessage = update.lastError().text();
+            return result;
+        }
+        // Ya se vio que existe (y la llave foránea impide borrarla): si no
+        // cambió nada, es que alguien la corrigió desde que se leyó.
+        if (update.numRowsAffected() != 1) {
+            result.conflict = true;
             return result;
         }
         result.id = currentId;
@@ -116,6 +138,8 @@ SqlCounterpartyRepository::Relink SqlCounterpartyRepository::keepOrRelink(
     // Otra identificación: la persona que ya la tiene, si es la misma que se
     // capturó, o una nueva.
     if (!edited.nationalId().isEmpty()) {
+        if (!lockNationalId(m_db, edited.nationalId(), result.errorMessage))
+            return result;
         QSqlQuery owner(m_db);
         owner.prepare(QStringLiteral("SELECT id, full_name FROM counterparties "
                                      "WHERE national_id = :national_id ORDER BY id LIMIT 1"));

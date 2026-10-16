@@ -8,6 +8,7 @@
 
 #include "adapters/contract/pdfcontractgenerator.h"
 #include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/inventory/sqlcounterpartyrepository.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 #include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
@@ -15,19 +16,22 @@
 #include "adapters/storage/localfilestorage.h"
 #include "application/inventory/registration/services/vehiclerecordservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
+#include "domain/inventory/model/counterparty.h"
 
 #include <QDateTime>
+#include <QDeadlineTimer>
 #include <QDir>
 #include <QFile>
 #include <QImage>
 #include <QSqlDatabase>
 #include <QSqlError>
-#include <QScopeGuard>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <QThread>
 #include <QtTest>
 
+#include <atomic>
 #include <memory>
 
 namespace {
@@ -47,6 +51,125 @@ QMap<QString, QString> readEnv()
     }
     return values;
 }
+
+// La sesión de otro usuario: su propia conexión, con una transacción abierta
+// que todavía no confirma. Al destruirse la deshace (si no la confirmó) y se
+// desconecta, así suelta sus candados aunque la prueba falle a la mitad.
+class OtherSession
+{
+public:
+    explicit OtherSession(const DatabaseConfig &config)
+        : m_name(QStringLiteral("otra-sesion-%1").arg(++s_sessions))
+    {
+        m_db = QSqlDatabase::addDatabase(config.driverName, m_name);
+        m_db.setHostName(config.hostName);
+        m_db.setPort(config.port);
+        m_db.setDatabaseName(config.databaseName);
+        m_db.setUserName(config.userName);
+        m_db.setPassword(config.password);
+        m_open = m_db.open() && m_db.transaction();
+    }
+
+    ~OtherSession()
+    {
+        if (m_open && !m_committed)
+            m_db.rollback();
+        m_db.close();
+        m_db = QSqlDatabase(); // soltar la referencia antes de removeDatabase()
+        QSqlDatabase::removeDatabase(m_name);
+    }
+
+    OtherSession(const OtherSession &) = delete;
+    OtherSession &operator=(const OtherSession &) = delete;
+
+    bool isOpen() const { return m_open; }
+    QString lastError() const { return m_db.lastError().text(); }
+    QSqlDatabase &database() { return m_db; }
+
+    bool commit()
+    {
+        m_committed = m_db.commit();
+        return m_committed;
+    }
+
+private:
+    static inline int s_sessions = 0;
+    QString m_name;
+    QSqlDatabase m_db;
+    bool m_open = false;
+    bool m_committed = false;
+};
+
+// Una corrección del expediente en otro hilo, con su propia conexión del pool,
+// como la corre el TaskRunner de la aplicación. Al destruirse espera al hilo.
+// Se declara antes que la OtherSession que la hace esperar: así, si la prueba
+// falla a la mitad, primero la sesión suelta sus candados y después esto
+// espera a que el hilo termine.
+class BackgroundUpdate
+{
+public:
+    BackgroundUpdate() = default;
+    ~BackgroundUpdate() { join(); }
+
+    BackgroundUpdate(const BackgroundUpdate &) = delete;
+    BackgroundUpdate &operator=(const BackgroundUpdate &) = delete;
+
+    void start(ConnectionPool &pool, const application::VehicleRecordService &records,
+               const application::VehicleUpdateDto &update)
+    {
+        m_thread.reset(QThread::create([this, &pool, &records, update] {
+            {
+                ConnectionPool::Handle handle = pool.acquire();
+                QSqlQuery session(handle.database());
+                // Si la prueba falla con el hilo esperando un candado, que no
+                // espere para siempre; más que lo que waitForALock() pregunta,
+                // para que una espera que no se vio no termine en error.
+                session.exec(QStringLiteral("SET lock_timeout = '20s'"));
+                if (session.exec(QStringLiteral("SELECT pg_backend_pid()")) && session.next())
+                    m_backendPid = session.value(0).toInt();
+            }
+            m_result = records.update(update, domain::UserRole::Admin);
+        }));
+        m_thread->start();
+    }
+
+    // Espera, hasta 10 s, a que la corrección se quede esperando un candado,
+    // o a que termine sin haber esperado. Devuelve si llegó a esperar.
+    bool waitForALock(ConnectionPool &pool) const
+    {
+        const QDeadlineTimer deadline(10000);
+        while (!deadline.hasExpired() && !m_thread->isFinished()) {
+            if (m_backendPid > 0) {
+                ConnectionPool::Handle handle = pool.acquire();
+                QSqlQuery waiting(handle.database());
+                waiting.prepare(QStringLiteral("SELECT 1 FROM pg_stat_activity "
+                                               "WHERE pid = :pid AND wait_event_type = 'Lock'"));
+                waiting.bindValue(QStringLiteral(":pid"), m_backendPid.load());
+                if (waiting.exec() && waiting.next())
+                    return true;
+            }
+            QThread::msleep(20);
+        }
+        return false;
+    }
+
+    const application::RecordUpdateResult &result()
+    {
+        join();
+        return m_result;
+    }
+
+private:
+    void join()
+    {
+        if (m_thread)
+            m_thread->wait();
+    }
+
+    std::unique_ptr<QThread> m_thread;
+    std::atomic<int> m_backendPid{0};
+    application::RecordUpdateResult m_result;
+};
 
 } // namespace
 
@@ -129,6 +252,27 @@ private:
             update.files.images << stored.image;
         update.files.documents = record.documents;
         return update;
+    }
+
+    // La persona a la que se le compró la unidad (-1 si no se encuentra).
+    int sellerOf(int folio)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery seller(handle.database());
+        seller.prepare(QStringLiteral(
+            "SELECT seller_id FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
+        seller.bindValue(QStringLiteral(":folio"), folio);
+        return seller.exec() && seller.next() ? seller.value(0).toInt() : -1;
+    }
+
+    // Cuántas personas tienen esa identificación.
+    int peopleWith(const QString &nationalId)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery count(handle.database());
+        count.prepare(QStringLiteral("SELECT count(*) FROM counterparties WHERE national_id = :id"));
+        count.bindValue(QStringLiteral(":id"), nationalId);
+        return count.exec() && count.next() ? count.value(0).toInt() : -1;
     }
 
     // Corre SQL suelto de la prueba (lo que haría otro módulo, o un dato
@@ -701,69 +845,129 @@ private slots:
         const int corrected = registerUnit(dto);
         const int other = registerUnit(registration(uniqueVin()));
         QVERIFY(corrected > 0 && other > 0);
-
-        int personId = -1;
-        {
-            ConnectionPool::Handle handle = m_pool->acquire();
-            QSqlQuery seller(handle.database());
-            seller.prepare(QStringLiteral(
-                "SELECT seller_id FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
-            seller.bindValue(QStringLiteral(":folio"), corrected);
-            QVERIFY(seller.exec() && seller.next());
-            personId = seller.value(0).toInt();
-        }
+        const int personId = sellerOf(corrected);
+        QVERIFY(personId > 0);
 
         // Otra sesión liga la otra unidad a esa persona y deja abierta su
         // transacción.
-        const QString otherName = QStringLiteral("otra-sesion-") + uniqueSuffix();
-        {
-            QSqlDatabase session = QSqlDatabase::addDatabase(m_config.driverName, otherName);
-            session.setHostName(m_config.hostName);
-            session.setPort(m_config.port);
-            session.setDatabaseName(m_config.databaseName);
-            session.setUserName(m_config.userName);
-            session.setPassword(m_config.password);
-            QVERIFY2(session.open(), qPrintable(session.lastError().text()));
-            QVERIFY(session.transaction());
-            // Pase lo que pase, la otra sesión suelta sus candados: si no, la
-            // limpieza del final esperaría por ellos.
-            const auto release = qScopeGuard([&session] {
-                session.rollback();
-                session.close();
-            });
-            QSqlQuery link(session);
-            link.prepare(QStringLiteral("UPDATE vehicle_acquisitions SET seller_id = :person "
-                                        "WHERE vehicle_folio = :folio"));
-            link.bindValue(QStringLiteral(":person"), personId);
-            link.bindValue(QStringLiteral(":folio"), other);
-            QVERIFY2(link.exec(), qPrintable(link.lastError().text()));
+        OtherSession session(m_config);
+        QVERIFY2(session.isOpen(), qPrintable(session.lastError()));
+        QSqlQuery link(session.database());
+        link.prepare(QStringLiteral("UPDATE vehicle_acquisitions SET seller_id = :person "
+                                    "WHERE vehicle_folio = :folio"));
+        link.bindValue(QStringLiteral(":person"), personId);
+        link.bindValue(QStringLiteral(":folio"), other);
+        QVERIFY2(link.exec(), qPrintable(link.lastError().text()));
 
-            // Si la corrección esperara ese candado, fallaría a los 3 s en vez
-            // de colgar la prueba.
-            {
-                ConnectionPool::Handle handle = m_pool->acquire();
-                QSqlQuery timeout(handle.database());
-                QVERIFY(timeout.exec(QStringLiteral("SET lock_timeout = '3s'")));
-            }
-            SqlVehicleRecordReader reader(*m_pool);
-            SqlVehicleRepository vehicles(*m_pool);
-            SqlReferenceDataReader reference(*m_pool);
-            LocalFileStorage files(m_storage.path());
-            const application::VehicleRecordService records(reader, vehicles, files, reference);
-            application::VehicleUpdateDto update =
-                unchanged(records.load(corrected, domain::UserRole::Admin).record);
-            update.details.counterparty.locality = QStringLiteral("Zitácuaro");
-            const application::RecordUpdateResult saved =
-                records.update(update, domain::UserRole::Admin);
-            {
-                ConnectionPool::Handle handle = m_pool->acquire();
-                QSqlQuery reset(handle.database());
-                reset.exec(QStringLiteral("RESET lock_timeout"));
-            }
-            QVERIFY2(saved.status == application::RecordUpdateResult::Status::Saved,
-                     qPrintable(saved.validation.joinedMessages() + saved.errorMessage));
+        // Si la corrección esperara ese candado, fallaría a los 3 s en vez de
+        // colgar la prueba.
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery timeout(handle.database());
+            QVERIFY(timeout.exec(QStringLiteral("SET lock_timeout = '3s'")));
         }
-        QSqlDatabase::removeDatabase(otherName);
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        application::VehicleUpdateDto update =
+            unchanged(records.load(corrected, domain::UserRole::Admin).record);
+        update.details.counterparty.locality = QStringLiteral("Zitácuaro");
+        const application::RecordUpdateResult saved = records.update(update, domain::UserRole::Admin);
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery reset(handle.database());
+            reset.exec(QStringLiteral("RESET lock_timeout"));
+        }
+        QVERIFY2(saved.status == application::RecordUpdateResult::Status::Saved,
+                 qPrintable(saved.validation.joinedMessages() + saved.errorMessage));
+    }
+
+    // Religar una unidad a una identificación que otra sesión está dando de
+    // alta en ese momento espera a que esa termine y la liga a la misma
+    // persona, en vez de crear otra con la misma identificación.
+    void relinkingWaitsForAPersonBeingRegistered()
+    {
+        const int folio = registerUnit(registration(uniqueVin()));
+        QVERIFY(folio > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const QString newId = uniqueNationalId(QStringLiteral("ID-SIMULTANEA-"));
+        application::VehicleUpdateDto update =
+            unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.counterparty.fullName = QStringLiteral("Diego Prueba");
+        update.details.counterparty.nationalId = newId;
+
+        // La otra sesión da de alta a esa persona, como al registrar otra
+        // unidad, y todavía no confirma.
+        BackgroundUpdate relink;
+        OtherSession session(m_config);
+        QVERIFY2(session.isOpen(), qPrintable(session.lastError()));
+        domain::Counterparty person;
+        QVERIFY(person.setFullName(QStringLiteral("Diego Prueba")));
+        QVERIFY(person.setNationalId(newId));
+        QString error;
+        QVERIFY2(SqlCounterpartyRepository(session.database()).findOrCreate(person, error) > 0,
+                 qPrintable(error));
+
+        relink.start(*m_pool, records, update);
+        relink.waitForALock(*m_pool);
+        QVERIFY2(session.commit(), qPrintable(session.lastError()));
+
+        const application::RecordUpdateResult &result = relink.result();
+        QVERIFY2(result.status == application::RecordUpdateResult::Status::Saved,
+                 qPrintable(result.validation.joinedMessages() + result.errorMessage));
+        QCOMPARE(peopleWith(newId), 1);
+        QCOMPARE(records.load(folio, domain::UserRole::Admin).record.details.counterparty.nationalId,
+                 newId);
+    }
+
+    // Dos correcciones de la misma persona al mismo tiempo: la segunda espera
+    // a que la primera confirme y es un conflicto, en vez de pisarla con lo
+    // que leyó antes. Tampoco queda nada de lo demás que corregía.
+    void simultaneousCorrectionsOfAPersonConflict()
+    {
+        const int folio = registerUnit(registration(uniqueVin()));
+        QVERIFY(folio > 0);
+        const int personId = sellerOf(folio);
+        QVERIFY(personId > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const application::VehicleRecordDto read = records.load(folio, domain::UserRole::Admin).record;
+        application::VehicleUpdateDto update = unchanged(read);
+        update.details.model = QStringLiteral("No debe quedar");
+        update.details.counterparty.locality = QStringLiteral("Pátzcuaro");
+
+        // Otro usuario corrige la calle de la misma persona y todavía no
+        // confirma.
+        BackgroundUpdate correction;
+        OtherSession session(m_config);
+        QVERIFY2(session.isOpen(), qPrintable(session.lastError()));
+        QSqlQuery street(session.database());
+        street.prepare(QStringLiteral(
+            "UPDATE counterparties SET street_address = :street WHERE id = :id"));
+        street.bindValue(QStringLiteral(":street"), QStringLiteral("Calle de la otra sesión"));
+        street.bindValue(QStringLiteral(":id"), personId);
+        QVERIFY2(street.exec(), qPrintable(street.lastError().text()));
+
+        correction.start(*m_pool, records, update);
+        correction.waitForALock(*m_pool);
+        QVERIFY2(session.commit(), qPrintable(session.lastError()));
+
+        QCOMPARE(correction.result().status, application::RecordUpdateResult::Status::Conflict);
+        const application::VehicleRecordDto now = records.load(folio, domain::UserRole::Admin).record;
+        QCOMPARE(now.details.counterparty.streetAddress, QStringLiteral("Calle de la otra sesión"));
+        QCOMPARE(now.details.counterparty.locality, read.details.counterparty.locality);
+        QCOMPARE(now.details.model, read.details.model);
     }
 
     // Dos administradores con dos unidades de la misma persona. Lo que uno
