@@ -71,6 +71,11 @@ seminuevos_add_test(tst_uploadformatpolicy
     LIBS seminuevos_domain
 )
 
+seminuevos_add_test(tst_vehiclerecordaccess
+    SOURCES domain/tst_vehiclerecordaccess.cpp
+    LIBS seminuevos_domain
+)
+
 # --- Aplicación -----------------------------------------------------------------
 seminuevos_add_test(tst_authenticationservice
     SOURCES application/tst_authenticationservice.cpp support/fakes.h
@@ -82,8 +87,13 @@ seminuevos_add_test(tst_registrationservice
     LIBS seminuevos_application
 )
 
+<<<<<<< HEAD
 seminuevos_add_test(tst_saleservice
     SOURCES application/tst_saleservice.cpp
+=======
+seminuevos_add_test(tst_vehiclerecordservice
+    SOURCES application/tst_vehiclerecordservice.cpp
+>>>>>>> df55a47 (Decide what each role sees in a vehicle record)
     LIBS seminuevos_application
 )
 
