@@ -119,7 +119,7 @@ void ConditionChecklistRow::showEntry(const std::optional<application::Inspectio
     m_checkBox->setChecked(entry.has_value());
     const bool optimal = !entry || entry->isOptimal;
     (optimal ? m_optimalRadio : m_faultyRadio)->setChecked(true);
-    m_observationsEdit->setText(entry ? entry->observations : QString());
+    formsupport::showText(m_observationsEdit, entry ? entry->observations : QString());
 }
 
 void ConditionChecklistRow::setReadOnly(bool readOnly)

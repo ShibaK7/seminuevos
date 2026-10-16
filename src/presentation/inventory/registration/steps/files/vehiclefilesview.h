@@ -85,6 +85,12 @@ private:
     // estiramiento de las tarjetas mismas.
     void rebuildGallery();
     void rebuildDocuments();
+    // Las fotos y las filas de documentos se rehacen en cada cambio, y Qt
+    // pone cada widget nuevo al final de la cadena de foco de la ventana,
+    // después de los botones del marco. Esto los vuelve a encadenar en su
+    // orden en pantalla: la galería, sus fotos, "+ Agregar fotografía" y los
+    // documentos.
+    void chainTabOrder();
     // Si ese tipo ya tiene archivo. Por la ruta y no por contains(): capturar
     // el número de póliza del Seguro crea su entrada aunque no tenga archivo.
     bool hasDocumentFile(const QString &type) const;

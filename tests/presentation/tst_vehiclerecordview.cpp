@@ -163,6 +163,32 @@ private slots:
         QCOMPARE(notice->text(), QStringLiteral("Cambios guardados."));
     }
 
+    // Las fotos y los documentos se rehacen al cambiar de modo; el Tab los
+    // recorre antes de llegar a los botones del marco.
+    void filesRowsComeBeforeTheFrameButtons()
+    {
+        open(domain::UserRole::Admin);
+        QWidget *files = &m_view->filesView();
+        // Cuál de los dos recibe antes el foco, siguiendo la cadena desde `from`.
+        const auto firstReached = [](QWidget *from, QWidget *a, QWidget *b) -> QWidget * {
+            for (QWidget *w = from->nextInFocusChain(); w != from; w = w->nextInFocusChain()) {
+                if (w == a || w == b)
+                    return w;
+            }
+            return nullptr;
+        };
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        QWidget *check = files->findChild<QWidget *>(QStringLiteral("documentCheck"));
+        QWidget *gallery = files->findChild<QWidget *>(QStringLiteral("galleryScrollArea"));
+        QCOMPARE(firstReached(gallery, check, button("backButton")), check);
+
+        button("editButton")->click();
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        check = files->findChild<QWidget *>(QStringLiteral("documentCheck"));
+        QWidget *addPhoto = files->findChild<QWidget *>(QStringLiteral("addPhotoButton"));
+        QCOMPARE(firstReached(addPhoto, check, button("saveButton")), check);
+    }
+
     // Lo que se capture en el historial de mantenimientos no es una edición
     // de la unidad.
     void maintenanceHistoryIsNotAnEdit()

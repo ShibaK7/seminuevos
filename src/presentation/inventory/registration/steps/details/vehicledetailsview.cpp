@@ -266,7 +266,7 @@ void VehicleDetailsView::setLookups(const application::RegistrationLookupsDto &l
 
 void VehicleDetailsView::showDetails(int folio, const application::VehicleDetailsDto &details)
 {
-    ui->folioEdit->setText(QString::number(folio));
+    formsupport::showText(ui->folioEdit, QString::number(folio));
 
     // El orden importa: la rama decide qué tipos de factura ofrece su combo,
     // y el tipo de vehículo, qué subtipos. Cada uno repuebla al siguiente, así
@@ -278,27 +278,27 @@ void VehicleDetailsView::showDetails(int folio, const application::VehicleDetail
     formsupport::selectEnum(ui->invoiceTypeCombo, details.invoiceType);
 
     formsupport::showDate(ui->dateEdit, details.dealDate);
-    ui->modelEdit->setText(details.model);
+    formsupport::showText(ui->modelEdit, details.model);
     formsupport::showValue(ui->yearModelSpin, details.yearModel);
-    ui->colorEdit->setText(details.color);
+    formsupport::showText(ui->colorEdit, details.color);
     formsupport::showValue(ui->mileageSpin, details.mileage);
     ui->descriptionEdit->setPlainText(details.description);
-    ui->motorNumberEdit->setText(details.motorNumber);
-    ui->serialNumberEdit->setText(details.serialNumber);
-    ui->repuveEdit->setText(details.repuve);
-    ui->platesEdit->setText(details.plates);
-    ui->platesHolderEdit->setText(details.platesHolder);
+    formsupport::showText(ui->motorNumberEdit, details.motorNumber);
+    formsupport::showText(ui->serialNumberEdit, details.serialNumber);
+    formsupport::showText(ui->repuveEdit, details.repuve);
+    formsupport::showText(ui->platesEdit, details.plates);
+    formsupport::showText(ui->platesHolderEdit, details.platesHolder);
 
-    ui->ownerNameEdit->setText(details.counterparty.fullName);
-    ui->ownerIdEdit->setText(details.counterparty.nationalId);
-    ui->ownerAddressEdit->setText(details.counterparty.streetAddress);
-    ui->ownerSuburbEdit->setText(details.counterparty.suburb);
-    ui->ownerLocalityEdit->setText(details.counterparty.locality);
-    ui->ownerStateEdit->setText(details.counterparty.state);
-    ui->ownerPostalCodeEdit->setText(details.counterparty.postalCode);
+    formsupport::showText(ui->ownerNameEdit, details.counterparty.fullName);
+    formsupport::showText(ui->ownerIdEdit, details.counterparty.nationalId);
+    formsupport::showText(ui->ownerAddressEdit, details.counterparty.streetAddress);
+    formsupport::showText(ui->ownerSuburbEdit, details.counterparty.suburb);
+    formsupport::showText(ui->ownerLocalityEdit, details.counterparty.locality);
+    formsupport::showText(ui->ownerStateEdit, details.counterparty.state);
+    formsupport::showText(ui->ownerPostalCodeEdit, details.counterparty.postalCode);
 
-    ui->invoiceNumberEdit->setText(details.invoiceNumber);
-    ui->invoiceIssuerEdit->setText(details.invoiceIssuer);
+    formsupport::showText(ui->invoiceNumberEdit, details.invoiceNumber);
+    formsupport::showText(ui->invoiceIssuerEdit, details.invoiceIssuer);
     showMaintenanceCost(details.maintenanceCost);
     ui->observationsEdit->setPlainText(details.observations);
 

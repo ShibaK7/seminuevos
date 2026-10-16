@@ -208,6 +208,9 @@ void VehicleConditionsView::setChecklist(const QList<application::ChecklistItemD
     // Si ya había un checklist (los catálogos se volvieron a pedir), se
     // reemplaza: sumar filas repetiría renglones en la inspección.
     clearChecklist();
+    // Con el catálogo ya aquí, un aviso de que no estaba disponible (de una
+    // lectura anterior que falló) ya no es cierto.
+    ui->checklistMessageLabel->setVisible(false);
 
     const ConditionChecklistRow::ColumnWidths columns =
         ConditionChecklistRow::measureColumns(items);
