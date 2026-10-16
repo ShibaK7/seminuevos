@@ -81,8 +81,9 @@ seminuevos/
 │   │           │                    (consultarlo y corregirlo)
 │   │           ├── dto/             registrationdtos (lo que captura cada paso y el resultado),
 │   │           │                    catalogdtos (catálogos, checklist y UMA del asistente),
-│   │           │                    recorddtos (expediente: qué deja ver cada rol)
-│   │           ├── ports/           vehiclerepository, referencedatareader, contractgenerator
+│   │           │                    recorddtos (expediente: qué deja ver cada rol y lo guardado)
+│   │           ├── ports/           vehiclerepository, referencedatareader, contractgenerator,
+│   │           │                    vehiclerecordreader (el expediente de un folio, para pintarlo)
 │   │           └── services/        vehicleregistrationservice (valida, revisa VIN, copia archivos, guarda,
 │   │                                deshace lo copiado si algo falla), vehiclerecordservice (el
 │   │                                expediente) y registrationmapping (privado)
@@ -94,7 +95,8 @@ seminuevos/
 │   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
 │   │   │   ├── common/              sqlcounterpartydirectory (búsqueda y actualización de personas compartidas)
 │   │   │   └── inventory/           sqlvehiclerepository (guardado transaccional), sqlcounterpartyrepository,
-│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA)
+│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA),
+│   │   │                            sqlvehiclerecordreader (el expediente de un folio, en una sola lectura)
 │   │   ├── storage/                 Disco local (localfilestorage): almacén por VIN, miniaturas, temporales
 │   │   ├── contract/                PDF del contrato: pdfcontractgenerator, datos de la agencia, número a letras
 │   │   └── security/                Hash PBKDF2 de contraseñas
@@ -130,7 +132,7 @@ seminuevos/
 │   │       ├── record/              Expediente de un vehículo ("Detalles" en una tarjeta): consulta y edición
 │   │       │   └── vehiclerecordview (.ui/.h/.cpp), vehiclerecordpresenter, ivehiclerecordview.h
 │   │       │                        El marco: pestañas libres y Volver; usa las MISMAS tres páginas del
-│   │       │                        alta, y el rol decide qué se ve (operación, historial)
+│   │       │                        alta, pinta lo guardado y el rol decide qué se ve (operación, historial)
 │   │       ├── acquisition/         Solo lo de Adquisición (dentro del Paso 1)
 │   │       │   ├── acquisitiontermssection (.ui/.h/.cpp)   Archivo de factura, precio de compra,
 │   │       │   │                                           tipo y método de pago, precio de venta

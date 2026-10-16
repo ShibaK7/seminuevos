@@ -7,6 +7,11 @@
 #include "adapters/persistence/common/sqlcounterpartydirectory.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
+<<<<<<< HEAD
+=======
+#include "adapters/persistence/auth/sqluserdirectory.h"
+#include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
+>>>>>>> 8bb4177 (Read a vehicle record by folio (#30))
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
 #include "application/auth/services/authenticationservice.h"
@@ -156,6 +161,7 @@ bool CompositionRoot::start()
     m_inventoryReader = std::make_unique<SqlInventoryReader>(pool);
     m_inventory = std::make_unique<application::InventoryService>(*m_inventoryReader, *m_files);
 <<<<<<< HEAD
+<<<<<<< HEAD
     m_counterparties = std::make_unique<SqlCounterpartyDirectory>(pool);
     m_saleRepository = std::make_unique<SqlSaleRepository>(pool);
     m_counterpartyLookup =
@@ -164,6 +170,10 @@ bool CompositionRoot::start()
 =======
     m_records = std::make_unique<application::VehicleRecordService>();
 >>>>>>> 5255cc8 (Open the vehicle record from the inventory)
+=======
+    m_recordReader = std::make_unique<SqlVehicleRecordReader>(pool);
+    m_records = std::make_unique<application::VehicleRecordService>(*m_recordReader, *m_files);
+>>>>>>> 8bb4177 (Read a vehicle record by folio (#30))
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -246,7 +256,9 @@ void CompositionRoot::showMain(const application::SessionDto &session)
             // Historial de mantenimientos: su presenter se arma aquí, sobre
             // view->detailsView().maintenanceHistory() y con este folio, como
             // hijo de `presenter` para que muera antes que las vistas. Cuándo
-            // se ve ya lo decide el expediente según el rol.
+            // se ve ya lo decide el expediente según el rol. Al agregar un
+            // mantenimiento, presenter->showMaintenanceCost(total) repinta el
+            // total sin releer nada.
             presenter->start();
             return view;
         });

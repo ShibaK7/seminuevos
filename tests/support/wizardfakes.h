@@ -102,9 +102,14 @@ public:
     std::optional<application::VehicleDetailsDto> shown;
     std::optional<double> maintenanceCost;
     int showDetailsCalls = 0;
+    int setLookupsCalls = 0;
 
     application::VehicleDetailsDto details() const override { return captured; }
-    void setLookups(const application::RegistrationLookupsDto &value) override { lookups = value; }
+    void setLookups(const application::RegistrationLookupsDto &value) override
+    {
+        ++setLookupsCalls;
+        lookups = value;
+    }
     // Como la vista real: lo pintado es lo que details() devuelve después.
     void showDetails(int folio, const application::VehicleDetailsDto &value) override
     {

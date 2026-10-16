@@ -1,6 +1,7 @@
 #ifndef PRESENTATION_INVENTORY_RECORD_VEHICLERECORDPRESENTER_H
 #define PRESENTATION_INVENTORY_RECORD_VEHICLERECORDPRESENTER_H
 
+#include "application/inventory/registration/dto/catalogdtos.h"
 #include "application/inventory/registration/dto/recorddtos.h"
 #include "domain/common/value_objects/enums.h"
 #include "presentation/common/navigation/wizardnavigator.h"
@@ -9,6 +10,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 
 namespace application {
 class VehicleRecordService;
@@ -51,11 +53,16 @@ public:
     VehicleFilesPresenter &files();
     int folio() const;
 
-    // Aplica lo que el rol deja ver y muestra la primera pestaña.
+    // Aplica lo que el rol deja ver, muestra la primera pestaña y lee los
+    // catálogos y el expediente (fuera del hilo de la interfaz).
     void start();
     // Vuelve a leer el expediente. Es el enganche para quien cambia la unidad
-    // por fuera, como el historial de mantenimientos.
+    // por fuera, como el historial de mantenimientos. Una lectura anterior
+    // que todavía no llega se descarta.
     void refresh();
+    // Repinta solo el total de mantenimientos, que crece con el historial: es
+    // barato y no vuelve a leer nada.
+    void showMaintenanceCost(double total);
 
     // Las pestañas son libres: se entra a cualquiera sin validar nada.
     void onStepClicked(int step);
@@ -71,6 +78,18 @@ signals:
     void closeRequested();
 
 private:
+    // Lo que trae una lectura: los catálogos (solo mientras no hayan llegado
+    // completos) y el expediente.
+    struct Loaded
+    {
+        std::optional<application::RegistrationLookupsDto> lookups;
+        application::RecordLoadResult record;
+    };
+
+    void load();
+    void onLoaded(int generation, const Loaded &loaded);
+    void applyLookups(const application::RegistrationLookupsDto &lookups);
+    void showRecord(const application::VehicleRecordDto &record);
     void showCurrentStep();
     void refreshStepper();
 
@@ -91,6 +110,15 @@ private:
 
     // Navegación libre: las pestañas no se bloquean ni llevan palomita.
     WizardNavigator m_nav;
+
+    // Cada lectura lleva un número; solo se pinta la respuesta de la última.
+    // Así una respuesta vieja o que llega fuera de orden no pisa a una nueva.
+    int m_loadGeneration = 0;
+    // Los catálogos se piden hasta que llegan completos, y se aplican antes
+    // de pintar el expediente (los combos se llenan con ellos).
+    bool m_lookupsComplete = false;
+    // El último expediente leído, tal como se pintó.
+    std::optional<application::VehicleRecordDto> m_loaded;
 };
 
 } // namespace presentation
