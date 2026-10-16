@@ -25,6 +25,11 @@ public:
     // national_id; si viene vacío no hay con qué identificarla, así que se
     // inserta una nueva.
     //
+    // Va dentro de la transacción de la operación: aparta la identificación
+    // hasta que esta termine, así otra sesión que busca a la misma persona
+    // espera y la encuentra en vez de crear otra. Lo mismo vale para
+    // keepOrRelink().
+    //
     // Devuelve -1 en caso de error, con el detalle en errorMessage.
     int findOrCreate(const domain::Counterparty &counterparty, QString &errorMessage);
 
@@ -44,8 +49,9 @@ public:
     //   - Misma identificación: es la misma persona, y sus datos se corrigen
     //     ahí, así que la corrección se ve en todas sus operaciones. Solo si
     //     su renglón sigue en la versión que se leyó (`expectedVersion`); si
-    //     no, es un conflicto: no se pisa lo que otro usuario corrigió. La
-    //     identificación, el teléfono y el correo no se tocan.
+    //     no, es un conflicto: no se pisa lo que otro usuario corrigió, ni
+    //     aunque lo esté corrigiendo en este momento. La identificación, el
+    //     teléfono y el correo no se tocan.
     //   - Otra identificación: la operación pasa a la persona que la tiene,
     //     sin modificarla, o a una nueva. Si esa persona tiene otro nombre no
     //     se liga: se devuelve su nombre en takenBy, para que el usuario lo
