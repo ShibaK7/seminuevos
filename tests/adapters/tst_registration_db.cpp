@@ -22,6 +22,7 @@
 #include <QImage>
 #include <QSqlDatabase>
 #include <QSqlError>
+#include <QScopeGuard>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTextStream>
@@ -55,6 +56,7 @@ class TstRegistrationDb : public QObject
 
 private:
     QTemporaryDir m_storage;
+    DatabaseConfig m_config;
     std::unique_ptr<ConnectionPool> m_pool;
     QStringList m_createdSerials;
     // Identificaciones de contrapartes que crean los casos, además de las
@@ -202,7 +204,7 @@ private slots:
     {
         QVERIFY(m_storage.isValid());
         const QMap<QString, QString> env = readEnv();
-        DatabaseConfig config;
+        DatabaseConfig &config = m_config;
         config.hostName = env.value(QStringLiteral("POSTGRES_HOST"), QStringLiteral("localhost"));
         config.port = env.value(QStringLiteral("POSTGRES_PORT"), QStringLiteral("5432")).toInt();
         config.databaseName = env.value(QStringLiteral("POSTGRES_DB"), QStringLiteral("seminuevos"));
@@ -651,6 +653,117 @@ private slots:
                  UpdateStatus::Saved);
         QCOMPARE(counterpartyOf(first).nationalId, sharedId);
         QCOMPARE(counterpartyOf(first).fullName, QStringLiteral("Ana María Prueba"));
+    }
+
+    // Cambiar solo la identificación (mismo nombre) liga la unidad a otra
+    // persona, nueva aquí, y no toca a la de antes.
+    void changingOnlyTheNationalIdRelinks()
+    {
+        const QString oldId = uniqueNationalId(QStringLiteral("ID-ANTES-"));
+        application::VehicleRegistrationDto dto = registration(uniqueVin());
+        dto.details.counterparty.fullName = QStringLiteral("Carla Prueba");
+        dto.details.counterparty.nationalId = oldId;
+        const int folio = registerUnit(dto);
+        QVERIFY(folio > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+
+        const QString newId = uniqueNationalId(QStringLiteral("ID-DESPUES-"));
+        application::VehicleUpdateDto update =
+            unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.counterparty.nationalId = newId;
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status,
+                 application::RecordUpdateResult::Status::Saved);
+
+        const application::CounterpartyDto now =
+            records.load(folio, domain::UserRole::Admin).record.details.counterparty;
+        QCOMPARE(now.nationalId, newId);
+        QCOMPARE(now.fullName, QStringLiteral("Carla Prueba"));
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery old(handle.database());
+        old.prepare(QStringLiteral("SELECT full_name FROM counterparties WHERE national_id = :id"));
+        old.bindValue(QStringLiteral(":id"), oldId);
+        QVERIFY(old.exec() && old.next());
+        QCOMPARE(old.value(0).toString(), QStringLiteral("Carla Prueba"));
+    }
+
+    // Corregir a una persona en su lugar no espera a que otra operación
+    // termine de ligarse a ella. La llave foránea de esa otra operación pide
+    // FOR KEY SHARE sobre la persona; el candado de la corrección no choca
+    // con ese (FOR UPDATE sí, y dos religados cruzados se bloqueaban).
+    void correctingAPersonDoesNotWaitForItsForeignKeys()
+    {
+        application::VehicleRegistrationDto dto = registration(uniqueVin());
+        const int corrected = registerUnit(dto);
+        const int other = registerUnit(registration(uniqueVin()));
+        QVERIFY(corrected > 0 && other > 0);
+
+        int personId = -1;
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery seller(handle.database());
+            seller.prepare(QStringLiteral(
+                "SELECT seller_id FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
+            seller.bindValue(QStringLiteral(":folio"), corrected);
+            QVERIFY(seller.exec() && seller.next());
+            personId = seller.value(0).toInt();
+        }
+
+        // Otra sesión liga la otra unidad a esa persona y deja abierta su
+        // transacción.
+        const QString otherName = QStringLiteral("otra-sesion-") + uniqueSuffix();
+        {
+            QSqlDatabase session = QSqlDatabase::addDatabase(m_config.driverName, otherName);
+            session.setHostName(m_config.hostName);
+            session.setPort(m_config.port);
+            session.setDatabaseName(m_config.databaseName);
+            session.setUserName(m_config.userName);
+            session.setPassword(m_config.password);
+            QVERIFY2(session.open(), qPrintable(session.lastError().text()));
+            QVERIFY(session.transaction());
+            // Pase lo que pase, la otra sesión suelta sus candados: si no, la
+            // limpieza del final esperaría por ellos.
+            const auto release = qScopeGuard([&session] {
+                session.rollback();
+                session.close();
+            });
+            QSqlQuery link(session);
+            link.prepare(QStringLiteral("UPDATE vehicle_acquisitions SET seller_id = :person "
+                                        "WHERE vehicle_folio = :folio"));
+            link.bindValue(QStringLiteral(":person"), personId);
+            link.bindValue(QStringLiteral(":folio"), other);
+            QVERIFY2(link.exec(), qPrintable(link.lastError().text()));
+
+            // Si la corrección esperara ese candado, fallaría a los 3 s en vez
+            // de colgar la prueba.
+            {
+                ConnectionPool::Handle handle = m_pool->acquire();
+                QSqlQuery timeout(handle.database());
+                QVERIFY(timeout.exec(QStringLiteral("SET lock_timeout = '3s'")));
+            }
+            SqlVehicleRecordReader reader(*m_pool);
+            SqlVehicleRepository vehicles(*m_pool);
+            SqlReferenceDataReader reference(*m_pool);
+            LocalFileStorage files(m_storage.path());
+            const application::VehicleRecordService records(reader, vehicles, files, reference);
+            application::VehicleUpdateDto update =
+                unchanged(records.load(corrected, domain::UserRole::Admin).record);
+            update.details.counterparty.locality = QStringLiteral("Zitácuaro");
+            const application::RecordUpdateResult saved =
+                records.update(update, domain::UserRole::Admin);
+            {
+                ConnectionPool::Handle handle = m_pool->acquire();
+                QSqlQuery reset(handle.database());
+                reset.exec(QStringLiteral("RESET lock_timeout"));
+            }
+            QVERIFY2(saved.status == application::RecordUpdateResult::Status::Saved,
+                     qPrintable(saved.validation.joinedMessages() + saved.errorMessage));
+        }
+        QSqlDatabase::removeDatabase(otherName);
     }
 
     // Dos administradores con dos unidades de la misma persona. Lo que uno

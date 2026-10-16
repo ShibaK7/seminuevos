@@ -57,11 +57,8 @@ SqlCounterpartyRepository::Relink SqlCounterpartyRepository::keepOrRelink(
 {
     Relink result;
 
-    // FOR UPDATE: el renglón queda bloqueado hasta el fin de la transacción,
-    // así nadie lo cambia entre revisar su versión y corregirlo.
     QSqlQuery current(m_db);
-    current.prepare(QStringLiteral("SELECT national_id, CAST(xmin AS text) FROM counterparties "
-                                   "WHERE id = :id FOR UPDATE"));
+    current.prepare(QStringLiteral("SELECT national_id FROM counterparties WHERE id = :id"));
     current.bindValue(QStringLiteral(":id"), currentId);
     if (!current.exec()) {
         result.errorMessage = current.lastError().text();
@@ -76,7 +73,21 @@ SqlCounterpartyRepository::Relink SqlCounterpartyRepository::keepOrRelink(
     // nadie la corrigió desde que se leyó.
     const QString currentNationalId = current.value(0).toString().trimmed().toUpper();
     if (currentNationalId == edited.nationalId()) {
-        if (current.value(1).toString() != expectedVersion) {
+        // El candado dura hasta el fin de la transacción, así nadie la cambia
+        // entre revisar su versión y corregirla. Es FOR NO KEY UPDATE y no FOR
+        // UPDATE: este no choca con el FOR KEY SHARE que pide la llave foránea
+        // cuando otra operación se liga a esta persona. Con FOR UPDATE, dos
+        // unidades religadas al mismo tiempo en sentidos opuestos (la 10 a la
+        // persona de la 11 y viceversa) se bloqueaban entre sí.
+        QSqlQuery version(m_db);
+        version.prepare(QStringLiteral("SELECT CAST(xmin AS text) FROM counterparties "
+                                       "WHERE id = :id FOR NO KEY UPDATE"));
+        version.bindValue(QStringLiteral(":id"), currentId);
+        if (!version.exec() || !version.next()) {
+            result.errorMessage = version.lastError().text();
+            return result;
+        }
+        if (version.value(0).toString() != expectedVersion) {
             result.conflict = true;
             return result;
         }
