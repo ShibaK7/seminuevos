@@ -77,6 +77,7 @@ private slots:
     void readOnlyTextsStaySelectableButDoNotChange();
     void readOnlySpinBoxGetsItsArrowsBackOnlyOnce();
     void readOnlyDateDropsItsCalendarUntilEditable();
+    void editableAgainDateLeavesRoomForItsCalendar();
     void readOnlyComboIgnoresClicksKeysAndWheel();
     void readOnlyCheckBoxDoesNotToggle();
     void lockedFieldsAreDisabledAndOnlyThoseComeBack();
@@ -470,6 +471,42 @@ void TestFormSupport::readOnlyDateDropsItsCalendarUntilEditable()
     formsupport::setReadOnly(&root, false);
     QVERIFY(date->calendarPopup());
     QVERIFY(!plain->calendarPopup());
+}
+
+// Con las reglas de la hoja de la app (el lugar del calendario a la derecha,
+// que en solo lectura se quita), una fecha que vuelve a ser editable deja su
+// campo interno igual que una que nunca dejó de serlo. Si el campo se quedara
+// con el ancho de la solo lectura, taparía el ícono y el clic no abriría el
+// calendario.
+void TestFormSupport::editableAgainDateLeavesRoomForItsCalendar()
+{
+    QWidget window;
+    window.setStyleSheet(QStringLiteral(
+        "QDateEdit { padding: 6px 56px 6px 14px; }"
+        "QDateEdit[readOnly=\"true\"] { padding-right: 14px; }"
+        "QDateEdit::drop-down { subcontrol-origin: margin; subcontrol-position: center right;"
+        "  width: 24px; margin-right: 8px; border: none; }"
+        "QDateEdit[readOnly=\"true\"]::drop-down { width: 0px; margin: 0px; }"));
+    auto *layout = new QVBoxLayout(&window);
+    auto *form = new QWidget(&window);
+    auto *formLayout = new QVBoxLayout(form);
+    formLayout->setContentsMargins(0, 0, 0, 0);
+    auto *date = new QDateEdit(form);
+    date->setCalendarPopup(true);
+    formLayout->addWidget(date);
+    auto *twin = new QDateEdit(&window);
+    twin->setCalendarPopup(true);
+    layout->addWidget(form);
+    layout->addWidget(twin);
+    window.resize(400, 120);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    formsupport::setReadOnly(form, true);
+    formsupport::setReadOnly(form, false);
+    QCoreApplication::processEvents();
+    QCOMPARE(date->width(), twin->width());
+    QCOMPARE(date->findChild<QLineEdit *>()->geometry(), twin->findChild<QLineEdit *>()->geometry());
 }
 
 // QComboBox no tiene readOnly: la guarda se traga flechas y clics, y la rueda

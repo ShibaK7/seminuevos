@@ -643,6 +643,16 @@ void applyReadOnly(QWidget *widget, bool readOnly, QWidget *root)
         plain->setReadOnly(readOnly);
     } else if (auto *spin = qobject_cast<QAbstractSpinBox *>(widget)) {
         changed = spin->isReadOnly() != readOnly;
+        spin->setReadOnly(readOnly);
+        spin->installEventFilter(guardFor(root));
+        if (!changed)
+            return;
+        // Primero el estilo del modo nuevo (el QSS lee readOnly) y después las
+        // flechas y el calendario: cada cambio de esos recalcula el campo
+        // interno con el estilo vigente. Al revés, al volver a editar el campo
+        // se quedaba con el ancho de la solo lectura y tapaba el ícono del
+        // calendario, que dejaba de abrir.
+        repolish(spin);
         // Una fecha con calendario se pinta como deshabilitada cuando es de
         // solo lectura (QDateTimeEdit le quita el estado "enabled" a su marco),
         // así que mientras lo es se queda sin calendario, que de todos modos no
@@ -651,7 +661,7 @@ void applyReadOnly(QWidget *widget, bool readOnly, QWidget *root)
         // Lo original (las flechas, el calendario) se guarda solo al entrar a
         // solo lectura: si se guardara en cada llamada, la segunda guardaría
         // "sin flechas".
-        if (changed && readOnly) {
+        if (readOnly) {
             spin->setProperty(kReadOnlyButtonSymbolsProperty,
                               static_cast<int>(spin->buttonSymbols()));
             spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
@@ -659,7 +669,7 @@ void applyReadOnly(QWidget *widget, bool readOnly, QWidget *root)
                 date->setProperty(kReadOnlyCalendarPopupProperty, date->calendarPopup());
                 date->setCalendarPopup(false);
             }
-        } else if (changed) {
+        } else {
             const QVariant original = spin->property(kReadOnlyButtonSymbolsProperty);
             if (original.isValid())
                 spin->setButtonSymbols(static_cast<QAbstractSpinBox::ButtonSymbols>(original.toInt()));
@@ -671,8 +681,7 @@ void applyReadOnly(QWidget *widget, bool readOnly, QWidget *root)
                 date->setProperty(kReadOnlyCalendarPopupProperty, QVariant());
             }
         }
-        spin->setReadOnly(readOnly);
-        spin->installEventFilter(guardFor(root));
+        return;
     } else {
         // Combos, casillas y radios no tienen un readOnly propio.
         changed = widget->property(kReadOnlyProperty).toBool() != readOnly;
