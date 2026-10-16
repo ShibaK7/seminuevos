@@ -252,6 +252,20 @@ private slots:
         QVERIFY(m_record.notice.isEmpty());
     }
 
+    // La factura guardada se puede abrir desde el expediente, en consulta.
+    void storedInvoiceCanBeViewed()
+    {
+        startPresenter();
+        QVERIFY(m_details.acquisition.attachment.viewVisible);
+        m_presenter->details().acquisitionTerms().onViewInvoice();
+        QCOMPARE(m_details.acquisition.opened,
+                 QStringList{m_recordReader.records.value(7).details.invoiceFilePath});
+
+        m_details.acquisition.openSucceeds = false;
+        m_presenter->details().acquisitionTerms().onViewInvoice();
+        QCOMPARE(m_details.acquisition.warnings.size(), 1);
+    }
+
     // El historial repinta solo el total, sin releer ni repintar lo demás.
     void maintenanceCostRepaintsOnlyTheTotal()
     {

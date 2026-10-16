@@ -228,6 +228,11 @@ private slots:
                  stored.details.counterparty.fullName);
         QCOMPARE(details->findChild<QLabel *>(QStringLiteral("invoiceFileLabel"))->text(),
                  QStringLiteral("factura.pdf"));
+        // En consulta, la factura se abre con "Ver"; subirla, no.
+        QVERIFY(details->findChild<QPushButton *>(QStringLiteral("invoiceViewButton"))
+                    ->isVisibleTo(details));
+        QVERIFY(!details->findChild<QPushButton *>(QStringLiteral("invoiceUploadButton"))
+                     ->isVisibleTo(details));
 
         const application::VehicleConditionsDto conditions = m_view->conditionsView().conditions();
         QCOMPARE(conditions.transmission, stored.conditions.transmission);

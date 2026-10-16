@@ -44,6 +44,9 @@ public:
 
     bool canUpload() const;
     bool showsCfdiButton() const;
+    // Si hay una factura adjunta que abrir. La apartada no cuenta: no es la
+    // que se guardaría.
+    bool canView() const;
     QString label() const;
     QString labelToolTip() const;
     QString uploadToolTip() const;

@@ -122,6 +122,19 @@ private slots:
         QCOMPARE(attachment.attachedPath(), QStringLiteral("C:/almacen/f1.pdf"));
     }
 
+    // "Ver" abre la factura adjunta; la apartada no es la que se guardaría.
+    void onlyTheAttachedInvoiceCanBeViewed()
+    {
+        InvoiceAttachment attachment;
+        QVERIFY(!attachment.canView());
+        attachment.attach(QStringLiteral("/f1.pdf"));
+        QVERIFY(attachment.canView());
+        attachment.setAutofactura(true);
+        QVERIFY(!attachment.canView());
+        attachment.setAutofactura(false);
+        QVERIFY(attachment.canView());
+    }
+
     // Sin factura no hay cómo saber si la solicitud se generó: se pide otra
     // vez antes de subir. Tampoco cuenta una solicitud de antes.
     void restoredAutofacturaWithoutInvoiceAsksForTheRequest()

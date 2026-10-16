@@ -141,7 +141,8 @@ seminuevos/
 │   │       ├── acquisition/         Solo lo de Adquisición (dentro del Paso 1)
 │   │       │   ├── acquisitiontermssection (.ui/.h/.cpp)   Archivo de factura, precio de compra,
 │   │       │   │                                           tipo y método de pago, precio de venta
-│   │       │   ├── acquisitiontermspresenter, iacquisitiontermsview.h   Botones de factura y CFDI
+│   │       │   ├── acquisitiontermspresenter, iacquisitiontermsview.h   Botones de factura (subir,
+│   │       │   │                                           ver) y CFDI
 │   │       │   └── invoiceattachment                       Regla de la autofactura (factura después del CFDI)
 │   │       ├── consignment/         Solo lo de Consignación (dentro del Paso 1)
 │   │       │   └── consignmenttermssection (.ui/.h/.cpp)   Precio base y comisión

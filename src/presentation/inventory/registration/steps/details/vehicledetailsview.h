@@ -69,6 +69,7 @@ signals:
     // reenvían aquí para que el asistente no tenga que conocer la sección.
     void browseInvoiceRequested();
     void cfdiRequestRequested();
+    void viewInvoiceRequested();
 
 protected:
     // Alinea las columnas de las secciones con las de la tarjeta, la primera
