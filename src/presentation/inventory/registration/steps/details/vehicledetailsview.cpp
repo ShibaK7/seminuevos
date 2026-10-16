@@ -193,6 +193,11 @@ void VehicleDetailsView::setMaintenanceHistoryVisible(bool visible)
     ui->maintenanceHistorySection->setVisible(visible);
 }
 
+void VehicleDetailsView::setDealTermsVisible(bool visible)
+{
+    ui->ownerAndAcquisitionCard->setVisible(visible);
+}
+
 void VehicleDetailsView::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);

@@ -102,7 +102,8 @@ seminuevos/
 │   ├── presentation/                FRONT. Solo en src/: el .ui, el .h, el .cpp y el presenter de cada
 │   │   │                            pantalla viven juntos en su carpeta (MVP: el presenter decide, la
 │   │   │                            vista solo pinta y avisa; ninguna vista toca base ni disco)
-│   │   ├── shell/                   mainwindow (.ui/.h/.cpp): la cáscara (menú lateral, barra superior, pila de páginas)
+│   │   ├── shell/                   mainwindow (.ui/.h/.cpp): la cáscara (menú lateral, barra superior, pila de páginas:
+│   │   │                            inventario, asistente de alta y expediente)
 │   │   ├── login/                   loginwindow (.ui/.h/.cpp), loginpresenter, iloginview.h
 │   │   ├── common/                  Lo que usan todos los módulos
 │   │   │   ├── components/          Componentes promovibles en Designer: sidebarmenuitem, navtabitem,
@@ -125,6 +126,10 @@ seminuevos/
 │   │       │       │                vehicleconditionspresenter, ivehicleconditionsview.h
 │   │       │       └── files/       Paso 3: vehiclefilesview (.ui/.h/.cpp), vehiclefilespresenter,
 │   │       │                        ivehiclefilesview.h  (galería y documentos)
+│   │       ├── record/              Expediente de un vehículo ("Detalles" en una tarjeta): consulta y edición
+│   │       │   └── vehiclerecordview (.ui/.h/.cpp), vehiclerecordpresenter, ivehiclerecordview.h
+│   │       │                        El marco: pestañas libres y Volver; usa las MISMAS tres páginas del
+│   │       │                        alta, y el rol decide qué se ve (operación, historial)
 │   │       ├── acquisition/         Solo lo de Adquisición (dentro del Paso 1)
 │   │       │   ├── acquisitiontermssection (.ui/.h/.cpp)   Archivo de factura, precio de compra,
 │   │       │   │                                           tipo y método de pago, precio de venta

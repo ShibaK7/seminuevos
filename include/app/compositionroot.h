@@ -26,8 +26,12 @@ class SqlVehicleRepository;
 namespace application {
 class AuthenticationService;
 class InventoryService;
+<<<<<<< HEAD
 class CounterpartyLookupService;
 class SaleService;
+=======
+class VehicleRecordService;
+>>>>>>> 5255cc8 (Open the vehicle record from the inventory)
 class VehicleRegistrationService;
 }
 namespace presentation {
@@ -70,10 +74,14 @@ private:
     std::unique_ptr<application::VehicleRegistrationService> m_registration;
     std::unique_ptr<SqlInventoryReader> m_inventoryReader;
     std::unique_ptr<application::InventoryService> m_inventory;
+<<<<<<< HEAD
     std::unique_ptr<SqlCounterpartyDirectory> m_counterparties;
     std::unique_ptr<SqlSaleRepository> m_saleRepository;
     std::unique_ptr<application::CounterpartyLookupService> m_counterpartyLookup;
     std::unique_ptr<application::SaleService> m_saleService;
+=======
+    std::unique_ptr<application::VehicleRecordService> m_records;
+>>>>>>> 5255cc8 (Open the vehicle record from the inventory)
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

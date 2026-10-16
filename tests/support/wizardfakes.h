@@ -5,12 +5,15 @@
 // que los widgets reales y anotan lo que el presenter les pidió, así que la
 // navegación, la validación y el registro se prueban sin ventanas.
 
+#include "presentation/inventory/record/ivehiclerecordview.h"
 #include "presentation/inventory/registration/steps/conditions/ivehicleconditionsview.h"
 #include "presentation/inventory/registration/steps/details/ivehicledetailsview.h"
 #include "presentation/inventory/registration/steps/files/ivehiclefilesview.h"
 #include "presentation/inventory/registration/ivehiclewizardview.h"
 
 #include <QStringList>
+
+#include <optional>
 
 namespace fakes {
 
@@ -176,6 +179,30 @@ public:
         ++discardQuestions;
         return discard;
     }
+};
+
+// El marco del expediente: anota título, pestaña, estados, avisos y lo que el
+// rol deja ver.
+class FakeRecordView final : public presentation::IVehicleRecordView
+{
+public:
+    QString title;
+    int shownStep = -1;
+    QList<presentation::StepVisual> states;
+    QString message;
+    QString notice;
+    bool busy = false;
+    std::optional<bool> dealTermsVisible;
+    std::optional<bool> maintenanceHistoryVisible;
+
+    void showTitle(const QString &value) override { title = value; }
+    void showStep(int step) override { shownStep = step; }
+    void showStepStates(const QList<presentation::StepVisual> &value) override { states = value; }
+    void showMessage(const QString &value) override { message = value; }
+    void showNotice(const QString &value) override { notice = value; }
+    void setBusy(bool value) override { busy = value; }
+    void setDealTermsVisible(bool visible) override { dealTermsVisible = visible; }
+    void setMaintenanceHistoryVisible(bool visible) override { maintenanceHistoryVisible = visible; }
 };
 
 } // namespace fakes
