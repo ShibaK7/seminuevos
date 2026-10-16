@@ -41,6 +41,11 @@ application::VehicleConditionsDto VehicleConditionsPresenter::dto() const
     return m_view.conditions();
 }
 
+void VehicleConditionsPresenter::showStored(const application::VehicleConditionsDto &conditions)
+{
+    m_view.showConditions(conditions);
+}
+
 domain::ValidationResult VehicleConditionsPresenter::collectErrors() const
 {
     return m_service.validateConditions(dto());

@@ -59,6 +59,14 @@ void InvoiceAttachment::markCfdiRequestGenerated()
     m_suspendedPath.clear();
 }
 
+void InvoiceAttachment::restore(const QString &path, bool autofactura)
+{
+    m_autofactura = autofactura;
+    m_path = path;
+    m_suspendedPath.clear();
+    m_cfdiRequestGenerated = autofactura && !path.isEmpty();
+}
+
 QString InvoiceAttachment::attachedPath() const
 {
     return m_path;

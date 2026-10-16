@@ -13,6 +13,7 @@ class VehicleRegistrationService;
 namespace presentation {
 
 class IVehicleFilesView;
+struct ImagePreview;
 
 // Paso 3: galería y documentos. La vista solo junta rutas; este presenter
 // decide cuáles se admiten (por el servicio, que conoce la regla de formatos y
@@ -37,6 +38,10 @@ public:
     void onDocumentChosen(const QString &documentType, const QString &path);
 
     application::VehicleFilesDto dto() const;
+    // Pinta lo guardado (el expediente) en lugar de lo que hubiera, de modo
+    // que dto() devuelva lo mismo. Las miniaturas ya vienen leídas.
+    void showStored(const QList<ImagePreview> &images,
+                    const QList<domain::VehicleDocument> &documents);
 
 protected:
     domain::ValidationResult collectErrors() const override;

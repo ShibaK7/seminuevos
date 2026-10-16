@@ -108,7 +108,7 @@ seminuevos/
 │   │   │   ├── components/          Componentes promovibles en Designer: sidebarmenuitem, navtabitem,
 │   │   │   │                        outlinebutton, aspectratioimagelabel, wizardstepper (+ statefultextbutton, base)
 │   │   │   ├── forms/               formsupport: marcar errores, foco, vigilar ediciones, llenar combos,
-│   │   │   │                        solo lectura (consulta) y campos bloqueados al editar
+│   │   │   │                        pintar lo guardado, solo lectura (consulta) y campos bloqueados al editar
 │   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos
 │   │   │   └── tasks/               taskrunner y pooledtaskrunner: trabajo fuera del hilo de la interfaz
 │   │   └── inventory/               Menú Inventario

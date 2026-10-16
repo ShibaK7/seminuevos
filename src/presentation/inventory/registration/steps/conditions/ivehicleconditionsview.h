@@ -20,6 +20,11 @@ public:
     virtual void setChecklist(const QList<application::ChecklistItemDto> &items) = 0;
     // Aviso sobre el checklist (por ejemplo, que el catálogo llegó vacío).
     virtual void showChecklistMessage(const QString &message) = 0;
+
+    // Pinta lo guardado (el expediente), de modo que conditions() devuelva lo
+    // mismo. Del checklist, las filas que no vienen quedan desmarcadas. Puede
+    // llegar antes que el checklist: entonces se aplica al armarlo.
+    virtual void showConditions(const application::VehicleConditionsDto &conditions) = 0;
 };
 
 } // namespace presentation

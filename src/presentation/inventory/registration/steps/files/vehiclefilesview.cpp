@@ -155,6 +155,33 @@ void VehicleFilesView::addImages(const QList<presentation::ImagePreview> &images
         rebuildGallery();
 }
 
+void VehicleFilesView::showFiles(const QList<presentation::ImagePreview> &images,
+                                 const QList<domain::VehicleDocument> &documents)
+{
+    // No pasa por addImages(): esa elige como portada la primera foto, y aquí
+    // la portada es la que se guardó.
+    m_images.clear();
+    for (const presentation::ImagePreview &preview : images) {
+        GalleryImage entry;
+        entry.image.path = preview.path;
+        entry.image.isPrimary = preview.isPrimary;
+        entry.thumbnail.loadFromData(preview.bytes);
+        m_images << entry;
+    }
+
+    m_documents.clear();
+    for (const domain::VehicleDocument &document : documents)
+        m_documents.insert(document.documentType, document);
+    // Las casillas sin archivo eran de lo que se estaba capturando; las filas
+    // con archivo salen marcadas solas.
+    m_checkedDocumentTypes.clear();
+
+    showGalleryMessage(QString());
+    showDocumentsMessage(QString());
+    rebuildGallery();
+    rebuildDocuments();
+}
+
 void VehicleFilesView::showGalleryMessage(const QString &message)
 {
     ui->galleryErrorLabel->setText(message);

@@ -55,6 +55,13 @@ public:
     void setChecked(bool checked);
     bool isChecked() const;
 
+    // El elemento del catálogo que representa la fila.
+    int elementId() const;
+    // Pinta un renglón guardado, de modo que value() lo devuelva igual.
+    // nullopt desmarca la fila y la deja como nueva (óptima y sin
+    // observaciones), por si después se marca.
+    void showEntry(const std::optional<application::InspectionEntryDto> &entry);
+
     // En consulta la fila se ve igual (la desmarcada, en gris) pero no
     // cambia. Al volver a editar, las desmarcadas siguen con sus radios y
     // observaciones deshabilitados, como siempre.

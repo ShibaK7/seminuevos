@@ -7,9 +7,12 @@
 
 #include <QList>
 #include <QString>
+#include <QVariant>
 
 #include <functional>
+#include <optional>
 
+class QDate;
 class QObject;
 class QWidget;
 
@@ -17,8 +20,11 @@ class QWidget;
 // pertenecen a ninguna pantalla: viven aquí para que cada vista no las
 // reescriba a su manera.
 class QComboBox;
+class QDateEdit;
+class QDoubleSpinBox;
 class QGridLayout;
 class QLabel;
+class QSpinBox;
 
 namespace formsupport {
 
@@ -142,6 +148,8 @@ QLabel *requiredLabel(const QString &text, QWidget *parent = nullptr);
 void fillCombo(QComboBox *combo, const QList<application::CatalogOptionDto> &options,
                const QString &placeholder = QStringLiteral("Seleccione una opción..."));
 
+// --- Pintar lo guardado ---
+
 // Elige la opción con el id de `ref`, como se pinta un dato guardado. Si el
 // id ya no está en el combo (se quitó del catálogo después de guardar) y la
 // referencia trae nombre, la agrega con ese nombre: lo guardado se ve tal
@@ -151,6 +159,31 @@ void selectOption(QComboBox *combo, const domain::CatalogRef &ref);
 // Lo mismo por texto, para los combos cuyo texto es el dato (Cilindros,
 // Interiores). Un texto vacío deja el combo sin elegir.
 void selectText(QComboBox *combo, const QString &text);
+// Elige la opción cuyo userData es `data`. Un QVariant inválido, o un dato
+// que el combo no ofrece, lo deja sin elegir.
+void selectData(QComboBox *combo, const QVariant &data);
+
+// Los combos de valores cerrados llevan su enum en el userData, como int (así
+// los llenan las vistas). Sin valor, el combo queda sin elegir.
+template <class Enum>
+void selectEnum(QComboBox *combo, Enum value)
+{
+    selectData(combo, QVariant(static_cast<int>(value)));
+}
+template <class Enum>
+void selectEnum(QComboBox *combo, const std::optional<Enum> &value)
+{
+    selectData(combo, value ? QVariant(static_cast<int>(*value)) : QVariant());
+}
+
+// Un número o una fecha guardados se pintan tal cual aunque se salgan del
+// rango que el campo ofrece al capturar (una unidad de 1975 contra un año
+// mínimo de 1980, un costo que el historial ya acumuló por encima del tope):
+// el rango se amplía, nunca se recorta el valor, que cambiaría al guardar.
+void showValue(QSpinBox *spin, int value);
+void showValue(QDoubleSpinBox *spin, double value);
+// Una fecha inválida no se pinta: el campo se queda como estaba.
+void showDate(QDateEdit *edit, const QDate &date);
 
 // --- Solo lectura ---
 //

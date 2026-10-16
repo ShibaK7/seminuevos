@@ -8,6 +8,8 @@
 #include <QList>
 #include <QWidget>
 
+#include <optional>
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
     class VehicleConditionsView;
@@ -53,6 +55,7 @@ public:
     // Mensaje visible en el panel del checklist. Sin esto, un fallo de la
     // consulta dejaba media pantalla en blanco sin explicación.
     void showChecklistMessage(const QString &message) override;
+    void showConditions(const application::VehicleConditionsDto &conditions) override;
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
@@ -67,9 +70,15 @@ private:
     // Quita lo que armó setChecklist(), para poder armarlo otra vez sin
     // duplicar filas (y sin duplicar renglones de la inspección al guardar).
     void clearChecklist();
+    // Pinta en las filas la inspección guardada, si se pintó una.
+    void applyShownInspection();
 
     Ui::VehicleConditionsView *ui;
     QList<ConditionChecklistRow *> m_checklistRows;
+    // La inspección guardada que pintó showConditions(). Se recuerda porque
+    // las filas se arman con los catálogos, que pueden llegar después; sin
+    // ella (el alta), las filas nacen marcadas y en estado óptimo.
+    std::optional<QList<application::InspectionEntryDto>> m_shownInspection;
     // Los "Marcar todo" de cada grupo: se ocultan en consulta.
     QList<QWidget *> m_markAllButtons;
     // El modo del paso, para aplicarlo también a las filas que se arman

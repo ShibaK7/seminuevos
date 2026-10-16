@@ -47,6 +47,12 @@ void AcquisitionTermsPresenter::onCfdiRequest()
     refresh();
 }
 
+void AcquisitionTermsPresenter::restoreInvoice(const QString &path, bool autofactura)
+{
+    m_attachment.restore(path, autofactura);
+    refresh();
+}
+
 QString AcquisitionTermsPresenter::attachedInvoice() const
 {
     return m_attachment.attachedPath();

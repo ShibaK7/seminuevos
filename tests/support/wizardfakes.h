@@ -97,9 +97,29 @@ public:
     application::VehicleDetailsDto captured;
     application::RegistrationLookupsDto lookups;
     FakeAcquisitionTermsView acquisition;
+    // Lo último que se pintó de una unidad guardada.
+    std::optional<int> shownFolio;
+    std::optional<application::VehicleDetailsDto> shown;
+    std::optional<double> maintenanceCost;
+    int showDetailsCalls = 0;
 
     application::VehicleDetailsDto details() const override { return captured; }
     void setLookups(const application::RegistrationLookupsDto &value) override { lookups = value; }
+    // Como la vista real: lo pintado es lo que details() devuelve después.
+    void showDetails(int folio, const application::VehicleDetailsDto &value) override
+    {
+        ++showDetailsCalls;
+        shownFolio = folio;
+        shown = value;
+        captured = value;
+        captured.invoiceFilePath.clear();
+        maintenanceCost = value.maintenanceCost;
+    }
+    void showMaintenanceCost(double cost) override
+    {
+        maintenanceCost = cost;
+        captured.maintenanceCost = cost;
+    }
     presentation::IAcquisitionTermsView &acquisitionTerms() override { return acquisition; }
 };
 
@@ -111,10 +131,22 @@ public:
     QList<application::ChecklistItemDto> checklist;
     QString checklistMessage;
 
+    std::optional<application::VehicleConditionsDto> shown;
+    int setChecklistCalls = 0;
+
     application::VehicleConditionsDto conditions() const override { return captured; }
     void setFuelTypes(const QList<application::CatalogOptionDto> &value) override { fuelTypes = value; }
-    void setChecklist(const QList<application::ChecklistItemDto> &items) override { checklist = items; }
+    void setChecklist(const QList<application::ChecklistItemDto> &items) override
+    {
+        ++setChecklistCalls;
+        checklist = items;
+    }
     void showChecklistMessage(const QString &message) override { checklistMessage = message; }
+    void showConditions(const application::VehicleConditionsDto &value) override
+    {
+        shown = value;
+        captured = value;
+    }
 };
 
 class FakeFilesView final : public FakeStepView<presentation::IVehicleFilesView>
@@ -142,6 +174,23 @@ public:
         attachedDocuments.insert(documentType, path);
     }
     void showDocumentsMessage(const QString &message) override { documentsMessage = message; }
+    // Lo último que se pintó de una unidad guardada.
+    QList<presentation::ImagePreview> shownImages;
+    QList<domain::VehicleDocument> shownDocuments;
+    int showFilesCalls = 0;
+    void showFiles(const QList<presentation::ImagePreview> &images,
+                   const QList<domain::VehicleDocument> &documents) override
+    {
+        ++showFilesCalls;
+        shownImages = images;
+        shownDocuments = documents;
+        captured = application::VehicleFilesDto();
+        for (const presentation::ImagePreview &image : images)
+            captured.images << domain::VehicleImage{image.path, image.isPrimary};
+        captured.documents = documents;
+        galleryMessage.clear();
+        documentsMessage.clear();
+    }
 };
 
 class FakeWizardView final : public presentation::IVehicleWizardView

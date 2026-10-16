@@ -6,6 +6,8 @@
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "fakes.h"
 #include "presentation/inventory/record/vehiclerecordpresenter.h"
+#include "presentation/inventory/registration/steps/details/vehicledetailspresenter.h"
+#include "registrationfixtures.h"
 #include "wizardfakes.h"
 
 #include <QSignalSpy>
@@ -119,6 +121,27 @@ private slots:
         m_presenter->onStepClicked(5);
         m_presenter->onStepClicked(-1);
         QCOMPARE(m_record.shownStep, 0);
+    }
+
+    // El Paso 1 pinta lo guardado con su factura: la que se guardó es la
+    // adjunta, y una autofactura con factura ya pasó por la solicitud.
+    void storedDetailsBringTheirInvoice()
+    {
+        startPresenter();
+        application::VehicleDetailsDto stored =
+            fixtures::validRegistration(domain::AcquisitionType::Adquisicion).details;
+        stored.invoiceType = domain::InvoiceType::Autofactura;
+        stored.invoiceFilePath = QStringLiteral("C:/almacen/VIN1/factura.pdf");
+
+        m_presenter->details().showStored(12, stored);
+        QCOMPARE(m_details.shownFolio, std::optional(12));
+        QCOMPARE(m_details.acquisition.attachment.fileLabel, QStringLiteral("factura.pdf"));
+        QVERIFY(m_details.acquisition.attachment.cfdiButtonVisible);
+        QVERIFY(m_details.acquisition.attachment.uploadEnabled);
+        QCOMPARE(m_presenter->details().dto().invoiceFilePath, stored.invoiceFilePath);
+
+        m_presenter->details().showMaintenanceCost(2500.0);
+        QCOMPARE(m_details.maintenanceCost, std::optional(2500.0));
     }
 
     // En consulta no hay nada que perder: Volver cierra sin preguntar.

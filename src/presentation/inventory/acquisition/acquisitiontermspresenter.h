@@ -30,6 +30,11 @@ public:
     void onBrowseInvoice();
     void onCfdiRequest();
 
+    // Pinta la factura de una compra ya guardada (el expediente). Va al final
+    // de pintar el paso: los cambios de rama y de tipo de factura que pasaron
+    // mientras se pintaba ya no cuentan.
+    void restoreInvoice(const QString &path, bool autofactura);
+
     // La factura que cuenta como adjunta; vacía si no hay o si está apartada.
     QString attachedInvoice() const;
 
