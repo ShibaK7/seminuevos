@@ -99,6 +99,9 @@ struct RecordUpdateResult
         Conflict, // otro usuario la cambió desde que se leyó; no se guardó nada
         NotFound, // ya no existe
         Failed,   // falló el disco o la base; se puede reintentar
+        // Falló el COMMIT: no se sabe si quedó guardado. Reintentar sobre la
+        // versión vieja daría un conflicto falso; hay que releer.
+        Unconfirmed,
     };
     Status status = Status::Failed;
     domain::ValidationResult validation; // en Rejected, qué campo y por qué

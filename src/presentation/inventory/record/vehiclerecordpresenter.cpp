@@ -46,6 +46,18 @@ QString recordTitle(int folio, const application::VehicleDetailsDto &details)
     return title + QStringLiteral(" · ") + vehicle.join(QLatin1Char(' '));
 }
 
+QString conflictMessage()
+{
+    return QStringLiteral("Otro usuario modificó esta unidad, o los datos de su vendedor o "
+                          "propietario, mientras la editabas: tus cambios no se guardaron.");
+}
+
+QString unconfirmedMessage()
+{
+    return QStringLiteral("No se pudo confirmar si los cambios se guardaron: se perdió la "
+                          "conexión con la base al confirmarlos.");
+}
+
 // El nombre del archivo sin su carpeta, sin preguntarle nada al disco.
 QString fileNameOf(const QString &path)
 {
@@ -155,7 +167,10 @@ void VehicleRecordPresenter::onLoaded(int generation, const Loaded &loaded)
     if (generation != m_loadGeneration)
         return;
     m_loading = false;
-    m_record.setBusy(false);
+    // Una lectura no le quita el ocupado a un guardado en curso: la página
+    // sigue deshabilitada hasta saber cómo terminó.
+    if (!m_saving)
+        m_record.setBusy(false);
 
     using Status = application::RecordLoadResult::Status;
 
@@ -170,8 +185,6 @@ void VehicleRecordPresenter::onLoaded(int generation, const Loaded &loaded)
     }
 
     QStringList problems;
-    if (!m_reloadReason.isEmpty())
-        problems << std::exchange(m_reloadReason, QString());
     if (loaded.lookups) {
         applyLookups(*loaded.lookups);
         // Sin el checklist, guardar borraría la inspección: los catálogos se
@@ -188,24 +201,51 @@ void VehicleRecordPresenter::onLoaded(int generation, const Loaded &loaded)
     case Status::Loaded:
         m_loaded = loaded.record.record;
         m_pendingReload.reset();
-        m_rereadPending = false;
+        if (m_reread == Reread::AfterConflict) {
+            problems << conflictMessage() + QStringLiteral(" Se cargaron los datos actuales.");
+        } else if (m_reread == Reread::AfterUnconfirmedSave) {
+            problems << unconfirmedMessage()
+                            + QStringLiteral(" Se volvió a leer el expediente: revisa si tus "
+                                             "cambios están.");
+        }
+        m_reread = Reread::None;
         break;
     case Status::NotFound:
         m_loaded.reset();
         m_pendingReload.reset();
+        m_reread = Reread::None;
         problems << QStringLiteral("La unidad con folio %1 ya no existe: quizá otro usuario la "
                                    "dio de baja.")
                         .arg(m_folio);
         // El inventario de atrás todavía la muestra.
         emit vehicleChanged(m_folio);
         break;
-    case Status::Failed:
-        problems << (m_rereadPending
-                         ? QStringLiteral("Los cambios se guardaron, pero no se pudo releer el "
-                                          "expediente; vuelve a abrirlo:\n")
-                         : QStringLiteral("No se pudo leer el expediente:\n"))
-                        + loaded.record.errorMessage;
+    case Status::Failed: {
+        // Lo que hay en memoria sigue con la versión de antes: mientras no
+        // llegue una lectura buena, no se edita (m_reread se queda).
+        QString head;
+        switch (m_reread) {
+        case Reread::None:
+            head = QStringLiteral("No se pudo leer el expediente:");
+            break;
+        case Reread::AfterSave:
+            head = QStringLiteral("Los cambios se guardaron, pero no se pudo releer el "
+                                  "expediente; vuelve a abrirlo:");
+            break;
+        case Reread::AfterConflict:
+            head = conflictMessage()
+                   + QStringLiteral(" Tampoco se pudieron leer los datos actuales; vuelve a "
+                                    "abrir el expediente:");
+            break;
+        case Reread::AfterUnconfirmedSave:
+            head = unconfirmedMessage()
+                   + QStringLiteral(" Tampoco se pudo releer el expediente; vuelve a abrirlo "
+                                    "para revisarlo:");
+            break;
+        }
+        problems << head + QLatin1Char('\n') + loaded.record.errorMessage;
         break;
+    }
     }
 
     // Aplicar los catálogos vuelve a llenar los combos, así que lo que ya se
@@ -293,6 +333,8 @@ void VehicleRecordPresenter::onSave()
     // marcar errores en datos que nadie tocó.
     if (!m_session.isDirty()) {
         enterView();
+        // Una lectura que llegó a media edición se pinta ahora.
+        showStoredRecord();
         showNotice(QStringLiteral("No hubo cambios que guardar."));
         return;
     }
@@ -343,7 +385,7 @@ void VehicleRecordPresenter::onSaved(const application::RecordUpdateResult &resu
         // El inventario de atrás se relee, y el expediente también: se ve como
         // quedó en la base.
         emit vehicleChanged(m_folio);
-        m_rereadPending = true;
+        m_reread = Reread::AfterSave;
         enterView();
         showNotice(QStringLiteral("Cambios guardados."));
         load();
@@ -359,12 +401,23 @@ void VehicleRecordPresenter::onSaved(const application::RecordUpdateResult &resu
         return;
     }
     case Status::Conflict:
-        // Lo capturado ya no se puede poner encima: se lee lo del otro usuario.
+        // Lo capturado ya no se puede poner encima: se lee lo del otro
+        // usuario. Mientras llega, se ve lo último que se leyó, no lo
+        // rechazado, y no se puede volver a editar.
         enterView();
-        m_pendingReload.reset();
-        m_reloadReason = QStringLiteral("Otro usuario modificó esta unidad mientras la editabas: "
-                                        "tus cambios no se guardaron y se cargaron los suyos.");
-        m_record.showMessage(m_reloadReason);
+        showStoredRecord();
+        m_reread = Reread::AfterConflict;
+        m_record.showMessage(conflictMessage());
+        load();
+        return;
+    case Status::Unconfirmed:
+        // No se sabe si quedó: reintentar sobre la versión vieja daría un
+        // conflicto falso. Se vuelve a leer lo que haya en la base.
+        emit vehicleChanged(m_folio);
+        enterView();
+        showStoredRecord();
+        m_reread = Reread::AfterUnconfirmedSave;
+        m_record.showMessage(unconfirmedMessage());
         load();
         return;
     case Status::NotFound:
@@ -395,7 +448,12 @@ void VehicleRecordPresenter::onCancel()
 
     enterView();
     // Lo guardado otra vez en pantalla, desde memoria: no hace falta ir a la
-    // base. Si a media edición llegó una lectura más nueva, es esa.
+    // base.
+    showStoredRecord();
+}
+
+void VehicleRecordPresenter::showStoredRecord()
+{
     if (m_pendingReload) {
         m_loaded = std::move(m_pendingReload);
         m_pendingReload.reset();
@@ -445,9 +503,10 @@ bool VehicleRecordPresenter::editAvailable() const
     // Con el expediente leído tal como está en la base: con sus catálogos
     // completos (sin el checklist, guardar borraría la inspección), con la
     // operación de su rama, sin una lectura o un guardado en curso y sin una
-    // relectura pendiente (lo que hay en memoria tendría la versión vieja).
+    // relectura pendiente después de guardar (lo que hay en memoria tendría
+    // la versión vieja).
     return m_access.canEdit && m_loaded && m_loaded->hasDealTerms && m_lookupsComplete
-           && !m_loading && !m_saving && !m_rereadPending;
+           && !m_loading && !m_saving && m_reread == Reread::None;
 }
 
 void VehicleRecordPresenter::refreshMode()

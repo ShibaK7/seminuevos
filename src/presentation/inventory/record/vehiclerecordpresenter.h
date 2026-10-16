@@ -110,6 +110,9 @@ private:
     void onLoaded(int generation, const Loaded &loaded);
     void onSaved(const application::RecordUpdateResult &result);
     void showRecord(const application::VehicleRecordDto &record);
+    // Pinta otra vez lo guardado, desde memoria: si a media edición llegó una
+    // lectura más nueva, esa.
+    void showStoredRecord();
     // De vuelta a consulta: sin errores marcados ni intentos, en solo
     // lectura y sin cambios pendientes.
     void enterView();
@@ -143,9 +146,16 @@ private:
     // Mientras el presenter pinta, los campos avisan cambios que no son del
     // usuario.
     bool m_painting = false;
-    // Se guardó y todavía no llega la relectura: lo que hay en memoria tiene
-    // la versión vieja, así que no se puede volver a editar.
-    bool m_rereadPending = false;
+    // Por qué se está releyendo después de guardar. Mientras no llegue una
+    // lectura buena, lo que hay en memoria tiene una versión vieja, así que
+    // no se puede volver a editar; y lo que se dice al llegar depende de esto.
+    enum class Reread {
+        None,
+        AfterSave,     // se guardó
+        AfterConflict, // otro usuario la cambió: no se guardó
+        AfterUnconfirmedSave, // falló el COMMIT: no se sabe si se guardó
+    };
+    Reread m_reread = Reread::None;
     // Los catálogos se piden hasta que llegan completos, y se aplican antes
     // de pintar el expediente (los combos se llenan con ellos).
     bool m_lookupsComplete = false;
@@ -154,9 +164,6 @@ private:
     // Una lectura que llegó a media edición: se pinta al volver a consulta.
     std::optional<application::VehicleRecordDto> m_pendingReload;
     QString m_notice;
-    // Por qué se volvió a leer (otro usuario la cambió): el aviso se queda
-    // también cuando llega la lectura.
-    QString m_reloadReason;
 };
 
 } // namespace presentation

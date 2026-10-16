@@ -342,7 +342,8 @@ private slots:
     }
 
     // Si falló el COMMIT no se sabe si quedó guardado: no se borra nada, ni
-    // lo copiado ni lo que dejó de usarse.
+    // lo copiado ni lo que dejó de usarse, y se dice que no está confirmado
+    // (no que falló): reintentar sobre la versión vieja no sirve.
     void commitFailureRemovesNothing()
     {
         application::VehicleRepository::UpdateOutcome failure;
@@ -355,7 +356,7 @@ private slots:
         update.files.images << domain::VehicleImage{QStringLiteral("C:/nuevas/3.jpg"), false};
 
         const auto result = service().update(update, UserRole::Admin);
-        QCOMPARE(result.status, UpdateStatus::Failed);
+        QCOMPARE(result.status, UpdateStatus::Unconfirmed);
         QCOMPARE(result.errorMessage, QStringLiteral("could not commit"));
         QVERIFY(m_files.removed.isEmpty());
     }
