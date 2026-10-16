@@ -651,6 +651,27 @@ QDateEdit::down-button {
     background: transparent;
 }
 
+/* Data tables
+   Por clase (class="data-table") y no por tipo: una regla sobre QTableView a
+   secas también pintaría la tabla interna del calendario de QDateEdit. */
+QTableView[class="data-table"] {
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+    gridline-color: #E9ECEF;
+    alternate-background-color: #F8F9FA;
+    selection-background-color: #E6E9FC;
+    selection-color: #0A25C9;
+}
+
+QTableView[class="data-table"] QHeaderView::section {
+    background-color: #F8F9FA;
+    color: #495057;
+    font-weight: 600;
+    border: none;
+    border-bottom: 1px solid #DEE2E6;
+    padding: 6px 10px;
+}
+
 
 /* ============================================================================
    3. IDENTIFIERS / SPECIFIC INSTANCES
