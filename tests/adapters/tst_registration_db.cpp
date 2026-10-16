@@ -1,7 +1,8 @@
-// Prueba de integración del registro contra el PostgreSQL de Docker, con los
-// adaptadores reales (SqlVehicleRepository, SqlReferenceDataReader y
-// LocalFileStorage sobre una carpeta temporal). Es opcional: solo se compila
-// con -DSEMINUEVOS_DB_TESTS=ON y necesita `docker compose up -d`.
+// Prueba de integración del registro y del expediente contra el PostgreSQL de
+// Docker, con los adaptadores reales (SqlVehicleRepository,
+// SqlVehicleRecordReader, SqlReferenceDataReader y LocalFileStorage sobre una
+// carpeta temporal). Es opcional: solo se compila con -DSEMINUEVOS_DB_TESTS=ON
+// y necesita `docker compose up -d`.
 //
 // Cada caso registra una unidad con un VIN único y la borra al terminar.
 
@@ -9,13 +10,18 @@
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
+#include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
+#include "application/inventory/registration/services/vehiclerecordservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 
 #include <QDateTime>
+#include <QDir>
 #include <QFile>
+#include <QImage>
 #include <QSqlDatabase>
+#include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTextStream>
@@ -54,7 +60,29 @@ private:
 
     application::RegistrationLookupsDto m_lookups;
 
-    application::VehicleRegistrationDto registration(const QString &vin)
+    // Un VIN que no choca con el de otra corrida ni con el de otro caso.
+    QString uniqueVin()
+    {
+        static int sequence = 0;
+        const QString vin = QStringLiteral("TST%1%2")
+                                .arg(QDateTime::currentMSecsSinceEpoch())
+                                .arg(++sequence);
+        m_createdSerials << vin;
+        return vin;
+    }
+
+    // Una foto real (el almacén la recomprime) en la carpeta temporal.
+    QString sourcePhoto()
+    {
+        const QString path = m_storage.filePath(QStringLiteral("origen.png"));
+        QImage image(40, 30, QImage::Format_RGB32);
+        image.fill(Qt::darkBlue);
+        image.save(path);
+        return path;
+    }
+
+    application::VehicleRegistrationDto registration(
+        const QString &vin, domain::AcquisitionType type = domain::AcquisitionType::Adquisicion)
     {
         // Un archivo real para que el almacén tenga qué copiar.
         const QString source = m_storage.filePath(QStringLiteral("origen.pdf"));
@@ -65,7 +93,7 @@ private:
 
         application::VehicleRegistrationDto dto;
         auto &d = dto.details;
-        d.acquisitionType = domain::AcquisitionType::Adquisicion;
+        d.acquisitionType = type;
         d.dealDate = QDate::currentDate();
         // Ids reales de los catálogos sembrados por init-db.
         const application::CatalogOptionDto subtype = m_lookups.vehicleSubtypes.first();
@@ -81,11 +109,17 @@ private:
         d.platesHolder = QStringLiteral("Titular de prueba");
         d.counterparty.fullName = QStringLiteral("Vendedor de prueba");
         d.counterparty.nationalId = QStringLiteral("ID-") + vin;
-        d.invoiceType = domain::InvoiceType::Facturado;
         d.invoiceNumber = QStringLiteral("F-PRUEBA");
-        d.purchasePrice = 100000.0;
-        d.salePrice = 120000.0;
-        d.paymentMethod = domain::PaymentMethod::Transferencia;
+        if (type == domain::AcquisitionType::Adquisicion) {
+            d.invoiceType = domain::InvoiceType::Facturado;
+            d.purchasePrice = 100000.0;
+            d.salePrice = 120000.0;
+            d.paymentMethod = domain::PaymentMethod::Transferencia;
+        } else {
+            d.invoiceType = domain::InvoiceType::FacturadoReal;
+            d.basePrice = 200000.0;
+            d.commissionRate = 12.5;
+        }
 
         auto &c = dto.conditions;
         c.fuelType = {m_lookups.fuelTypes.first().id, m_lookups.fuelTypes.first().name};
@@ -130,8 +164,9 @@ private slots:
         }
         m_lookups.brands = reference.brands(&error);
         m_lookups.fuelTypes = reference.fuelTypes(&error);
+        m_lookups.checklist = reference.conditionChecklist(&error);
         QVERIFY2(!m_lookups.vehicleSubtypes.isEmpty() && !m_lookups.brands.isEmpty()
-                     && !m_lookups.fuelTypes.isEmpty(),
+                     && !m_lookups.fuelTypes.isEmpty() && m_lookups.checklist.size() >= 2,
                  qPrintable(error));
     }
 
@@ -154,8 +189,7 @@ private slots:
         PdfContractGenerator contracts;
         const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
 
-        const QString vin = QStringLiteral("TST%1").arg(QDateTime::currentMSecsSinceEpoch());
-        m_createdSerials << vin;
+        const QString vin = uniqueVin();
 
         const auto first = service.registerVehicle(registration(vin));
         QVERIFY2(first.status == application::RegistrationResult::Status::Registered,
@@ -195,6 +229,175 @@ private slots:
         QVERIFY(!lookups.brands.isEmpty());
         QVERIFY(!lookups.checklist.isEmpty());
         QVERIFY(lookups.umaDailyValue.has_value());
+    }
+
+    // #30: el expediente se relee completo, con los nombres de sus catálogos y
+    // las rutas relativas que guarda la base, en las dos ramas.
+    void readsTheRecordBack_data()
+    {
+        QTest::addColumn<int>("type");
+        QTest::newRow("compra") << static_cast<int>(domain::AcquisitionType::Adquisicion);
+        QTest::newRow("consignación") << static_cast<int>(domain::AcquisitionType::Consignacion);
+    }
+
+    void readsTheRecordBack()
+    {
+        QFETCH(int, type);
+        const auto branch = static_cast<domain::AcquisitionType>(type);
+        const bool isAcquisition = branch == domain::AcquisitionType::Adquisicion;
+
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        PdfContractGenerator contracts;
+        const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
+
+        application::VehicleRegistrationDto dto = registration(uniqueVin(), branch);
+        dto.files.images << domain::VehicleImage{sourcePhoto(), true};
+        if (isAcquisition)
+            dto.details.invoiceFilePath = dto.files.documents.first().path;
+        dto.details.color = QStringLiteral("Rojo");
+        dto.details.counterparty.locality = QStringLiteral("Morelia");
+        dto.details.observations = QStringLiteral("Sin detalles");
+        const int faulty = m_lookups.checklist.at(1).id;
+        dto.conditions.inspection = {{m_lookups.checklist.at(0).id, true, QString()},
+                                     {faulty, false, QStringLiteral("Rayón")}};
+        const auto registered = service.registerVehicle(dto);
+        QVERIFY2(registered.status == application::RegistrationResult::Status::Registered,
+                 qPrintable(registered.validation.joinedMessages() + registered.errorMessage));
+
+        SqlVehicleRecordReader reader(*m_pool);
+        QString error;
+        const std::optional<application::VehicleRecordDto> record =
+            reader.findByFolio(registered.folio, &error);
+        QVERIFY2(record.has_value(), qPrintable(error));
+        QCOMPARE(record->folio, registered.folio);
+        QVERIFY(!record->version.isEmpty());
+        QVERIFY(record->hasDealTerms);
+
+        const application::VehicleDetailsDto &d = record->details;
+        const application::VehicleDetailsDto &expected = dto.details;
+        QCOMPARE(d.acquisitionType, branch);
+        QCOMPARE(d.dealDate, expected.dealDate);
+        QCOMPARE(d.serialNumber, expected.serialNumber);
+        QCOMPARE(d.model, expected.model);
+        QCOMPARE(d.yearModel, expected.yearModel);
+        QCOMPARE(d.color, expected.color);
+        QCOMPARE(d.plates, expected.plates);
+        // Los nombres salen de los catálogos, no de lo que se capturó.
+        QCOMPARE(d.subtype.id, expected.subtype.id);
+        QCOMPARE(d.subtype.name, expected.subtype.name);
+        QCOMPARE(d.vehicleType.id, expected.vehicleType.id);
+        QVERIFY(!d.vehicleType.name.isEmpty());
+        QCOMPARE(d.brand.name, expected.brand.name);
+        QCOMPARE(d.counterparty.fullName, expected.counterparty.fullName);
+        QCOMPARE(d.counterparty.nationalId, expected.counterparty.nationalId);
+        QCOMPARE(d.counterparty.locality, expected.counterparty.locality);
+        QCOMPARE(d.invoiceType, expected.invoiceType);
+        QCOMPARE(d.invoiceNumber, expected.invoiceNumber);
+        QCOMPARE(d.observations, expected.observations);
+        if (isAcquisition) {
+            QCOMPARE(d.purchasePrice, expected.purchasePrice);
+            QCOMPARE(d.salePrice, expected.salePrice);
+            QCOMPARE(d.paymentMethod, expected.paymentMethod);
+            QVERIFY(!d.invoiceFilePath.isEmpty());
+            QVERIFY(QDir::isRelativePath(d.invoiceFilePath));
+        } else {
+            QCOMPARE(d.basePrice, expected.basePrice);
+            QCOMPARE(d.commissionRate, expected.commissionRate);
+            QVERIFY(d.invoiceFilePath.isEmpty());
+        }
+
+        const application::VehicleConditionsDto &c = record->conditions;
+        QCOMPARE(c.fuelType.id, dto.conditions.fuelType.id);
+        QCOMPARE(c.fuelType.name, dto.conditions.fuelType.name);
+        QCOMPARE(c.cylinders, dto.conditions.cylinders);
+        QCOMPARE(c.transmission, dto.conditions.transmission);
+        QCOMPARE(c.interiorMaterial, dto.conditions.interiorMaterial);
+        QCOMPARE(c.windowRegulators, dto.conditions.windowRegulators);
+        QCOMPARE(c.airConditioning, dto.conditions.airConditioning);
+        QCOMPARE(c.inspection.size(), 2);
+        for (const application::InspectionEntryDto &entry : c.inspection) {
+            QCOMPARE(entry.isOptimal, entry.elementId != faulty);
+            if (entry.elementId == faulty)
+                QCOMPARE(entry.observations, QStringLiteral("Rayón"));
+        }
+
+        QCOMPARE(record->images.size(), 1);
+        QVERIFY(record->images.first().image.isPrimary);
+        QVERIFY(QDir::isRelativePath(record->images.first().image.path));
+        QCOMPARE(record->documents.size(), 1);
+        QCOMPARE(record->documents.first().documentType, QStringLiteral("Tarjeta de circulación"));
+        QVERIFY(QDir::isRelativePath(record->documents.first().path));
+
+        // El servicio las entrega absolutas: son archivos del almacén.
+        const application::VehicleRecordService records(reader, files);
+        const application::RecordLoadResult loaded =
+            records.load(registered.folio, domain::UserRole::Admin);
+        QCOMPARE(loaded.status, application::RecordLoadResult::Status::Loaded);
+        QVERIFY(QFile::exists(loaded.record.images.first().image.path));
+        QVERIFY(!loaded.record.images.first().thumbnail.isEmpty());
+        QVERIFY(QFile::exists(loaded.record.documents.first().path));
+        if (isAcquisition)
+            QVERIFY(QFile::exists(loaded.record.details.invoiceFilePath));
+    }
+
+    // Solo cuenta la subtabla de la rama de la unidad, aunque por un dato
+    // corrupto exista también la otra; y sin la suya, la unidad se lee igual,
+    // sin operación y con la fecha en que se agregó.
+    void onlyTheUnitsBranchCounts()
+    {
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        PdfContractGenerator contracts;
+        const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
+        const auto registered = service.registerVehicle(registration(uniqueVin()));
+        QVERIFY2(registered.status == application::RegistrationResult::Status::Registered,
+                 qPrintable(registered.validation.joinedMessages() + registered.errorMessage));
+
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral(
+                "INSERT INTO vehicle_consignments (vehicle_folio, owner_id, invoice_type, "
+                "base_price, commission_rate) "
+                "SELECT vehicle_folio, seller_id, 'No Facturado', 999, 50 "
+                "FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
+            query.bindValue(QStringLiteral(":folio"), registered.folio);
+            QVERIFY2(query.exec(), qPrintable(query.lastError().text()));
+        }
+
+        SqlVehicleRecordReader reader(*m_pool);
+        QString error;
+        std::optional<application::VehicleRecordDto> record =
+            reader.findByFolio(registered.folio, &error);
+        QVERIFY2(record.has_value(), qPrintable(error));
+        QCOMPARE(record->details.purchasePrice, 100000.0);
+        QCOMPARE(record->details.basePrice, 0.0);
+        QCOMPARE(record->details.invoiceType, std::optional(domain::InvoiceType::Facturado));
+
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral(
+                "DELETE FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
+            query.bindValue(QStringLiteral(":folio"), registered.folio);
+            QVERIFY2(query.exec(), qPrintable(query.lastError().text()));
+        }
+        record = reader.findByFolio(registered.folio, &error);
+        QVERIFY2(record.has_value(), qPrintable(error));
+        QVERIFY(!record->hasDealTerms);
+        QVERIFY(record->details.counterparty.fullName.isEmpty());
+        QCOMPARE(record->details.dealDate, QDate::currentDate());
+    }
+
+    void missingFolioReadsAsNotFound()
+    {
+        SqlVehicleRecordReader reader(*m_pool);
+        QString error;
+        QVERIFY(!reader.findByFolio(-1, &error).has_value());
+        QVERIFY2(error.isEmpty(), qPrintable(error));
     }
 };
 

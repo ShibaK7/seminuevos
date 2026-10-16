@@ -4,6 +4,7 @@
 // Una captura completa y válida del asistente, para las pruebas del servicio y
 // del presenter. Los ids coinciden con FakeReferenceDataReader.
 
+#include "application/inventory/registration/dto/recorddtos.h"
 #include "application/inventory/registration/dto/registrationdtos.h"
 
 #include <QDate>
@@ -52,6 +53,30 @@ inline application::VehicleRegistrationDto validRegistration(domain::Acquisition
     dto.files.documents << domain::VehicleDocument{QStringLiteral("Tarjeta de circulación"),
                                                    QStringLiteral("tarjeta.pdf"), QString()};
     return dto;
+}
+
+// La misma captura ya guardada con un folio, como la entrega el lector del
+// expediente: rutas relativas al almacén, dos fotos (la portada es la
+// segunda), un documento y, en una compra, la factura.
+inline application::VehicleRecordDto storedRecord(int folio, domain::AcquisitionType type)
+{
+    const application::VehicleRegistrationDto captured = validRegistration(type);
+    application::VehicleRecordDto record;
+    record.folio = folio;
+    record.version = QStringLiteral("1001");
+    record.hasDealTerms = true;
+    record.details = captured.details;
+    record.details.dealDate = QDate(2024, 3, 15);
+    record.details.maintenanceCost = 2500.0;
+    if (type == domain::AcquisitionType::Adquisicion)
+        record.details.invoiceFilePath = QStringLiteral("vehicles/VIN1/documents/factura.pdf");
+    record.conditions = captured.conditions;
+    record.conditions.inspection = {{7, false, QStringLiteral("Ponchada")}};
+    record.images = {{{QStringLiteral("vehicles/VIN1/images/1.jpg"), false}, {}},
+                     {{QStringLiteral("vehicles/VIN1/images/2.jpg"), true}, {}}};
+    record.documents = {{QStringLiteral("Tarjeta de circulación"),
+                         QStringLiteral("vehicles/VIN1/documents/tarjeta.pdf"), QString()}};
+    return record;
 }
 
 } // namespace fixtures

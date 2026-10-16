@@ -19,6 +19,7 @@ class LocalFileStorage;
 class SqlInventoryReader;
 class SqlReferenceDataReader;
 class SqlUserDirectory;
+class SqlVehicleRecordReader;
 class SqlVehicleRepository;
 
 namespace application {
@@ -67,6 +68,7 @@ private:
     std::unique_ptr<application::VehicleRegistrationService> m_registration;
     std::unique_ptr<SqlInventoryReader> m_inventoryReader;
     std::unique_ptr<application::InventoryService> m_inventory;
+    std::unique_ptr<SqlVehicleRecordReader> m_recordReader;
     std::unique_ptr<application::VehicleRecordService> m_records;
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;

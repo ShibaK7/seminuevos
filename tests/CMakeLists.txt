@@ -88,7 +88,7 @@ seminuevos_add_test(tst_registrationservice
 )
 
 seminuevos_add_test(tst_vehiclerecordservice
-    SOURCES application/tst_vehiclerecordservice.cpp
+    SOURCES application/tst_vehiclerecordservice.cpp support/fakes.h support/registrationfixtures.h
     LIBS seminuevos_application
 )
 
@@ -132,6 +132,7 @@ seminuevos_add_test(tst_vehiclewizardpresenter
 
 seminuevos_add_test(tst_vehiclerecordpresenter
     SOURCES presentation/tst_vehiclerecordpresenter.cpp support/fakes.h support/wizardfakes.h
+            support/registrationfixtures.h
     LIBS seminuevos_presentation
 )
 
@@ -148,13 +149,13 @@ seminuevos_add_test(tst_inventoryview
 
 # Humo del asistente con sus widgets reales.
 seminuevos_add_test(tst_vehiclewizardview
-    SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h
+    SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h support/registrationfixtures.h
     LIBS seminuevos_views
 )
 
 # Humo del expediente con sus widgets reales.
 seminuevos_add_test(tst_vehiclerecordview
-    SOURCES presentation/tst_vehiclerecordview.cpp support/fakes.h
+    SOURCES presentation/tst_vehiclerecordview.cpp support/fakes.h support/registrationfixtures.h
     LIBS seminuevos_views
 )
 

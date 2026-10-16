@@ -12,6 +12,7 @@
 #include "application/auth/ports/passwordhasher.h"
 #include "application/inventory/registration/ports/referencedatareader.h"
 #include "application/auth/ports/userdirectory.h"
+#include "application/inventory/registration/ports/vehiclerecordreader.h"
 #include "application/inventory/registration/ports/vehiclerepository.h"
 #include "domain/inventory/model/vehicle.h"
 #include "presentation/inventory/iinventoryview.h"
@@ -190,7 +191,13 @@ public:
         removed << relativePath;
         return true;
     }
-    QString absolutePath(const QString &relativePath) const override { return relativePath; }
+    // La raíz del almacén, que absolutePath() antepone. Vacía, devuelve la
+    // ruta tal cual.
+    QString root;
+    QString absolutePath(const QString &relativePath) const override
+    {
+        return root.isEmpty() ? relativePath : root + QLatin1Char('/') + relativePath;
+    }
 
     // Lo que inspect() responde por ruta. Sin entrada, el archivo "existe",
     // se abre y su contenido es PNG.
@@ -235,6 +242,8 @@ class FakeReferenceDataReader final : public application::ReferenceDataReader
 {
 public:
     std::optional<double> uma = 117.31;
+    // Si no está vacío, el checklist "falla" con este error.
+    QString checklistError;
 
     QList<application::CatalogOptionDto> vehicleCategories(QString *) override
     {
@@ -248,11 +257,39 @@ public:
     {
         return {{1, QStringLiteral("Gasolina"), -1}};
     }
-    QList<application::ChecklistItemDto> conditionChecklist(QString *) override
+    QList<application::ChecklistItemDto> conditionChecklist(QString *error) override
     {
+        if (!checklistError.isEmpty()) {
+            if (error)
+                *error = checklistError;
+            return {};
+        }
         return {{7, QStringLiteral("Exterior"), QStringLiteral("Llantas")}};
     }
     std::optional<double> umaDailyValue(QString *) override { return uma; }
+};
+
+// Los expedientes "guardados", por folio. Un folio que no está no existe;
+// failWith hace fallar la lectura con ese error.
+class FakeVehicleRecordReader final : public application::VehicleRecordReader
+{
+public:
+    QMap<int, application::VehicleRecordDto> records;
+    QString failWith;
+    QList<int> reads;
+
+    std::optional<application::VehicleRecordDto> findByFolio(int folio, QString *error) override
+    {
+        reads << folio;
+        if (!failWith.isEmpty()) {
+            if (error)
+                *error = failWith;
+            return std::nullopt;
+        }
+        if (!records.contains(folio))
+            return std::nullopt;
+        return records.value(folio);
+    }
 };
 
 class FakeContractGenerator final : public application::ContractGenerator
