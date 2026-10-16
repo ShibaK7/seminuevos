@@ -63,6 +63,13 @@ void VehicleRecordPresenter::start()
     m_access = m_records.accessFor(m_role);
     m_record.setDealTermsVisible(m_access.showsDealTerms);
     m_record.setMaintenanceHistoryVisible(m_access.showsMaintenanceHistory);
+
+    // Consulta: las tres páginas en solo lectura desde el principio, así lo
+    // que cada una arme después (el checklist llega con los catálogos) nace
+    // igual.
+    for (WizardStepPresenter *step : m_steps)
+        step->setReadOnly(true);
+
     m_record.showTitle(QStringLiteral("Folio %1").arg(m_folio));
     showCurrentStep();
 }

@@ -68,15 +68,28 @@ QGridLayout *AcquisitionTermsSection::grid() const
 
 void AcquisitionTermsSection::showInvoiceAttachment(const presentation::InvoiceAttachmentState &state)
 {
-    // Ocultar el botón por su cuenta no choca con que la sección entera se
+    m_invoiceState = state;
+    ui->invoiceFileLabel->setText(state.fileLabel);
+    ui->invoiceFileLabel->setToolTip(state.fileToolTip);
+    applyInvoiceButtons();
+}
+
+void AcquisitionTermsSection::setReadOnly(bool readOnly)
+{
+    m_readOnly = readOnly;
+    applyInvoiceButtons();
+}
+
+void AcquisitionTermsSection::applyInvoiceButtons()
+{
+    // Ocultar un botón por su cuenta no choca con que la sección entera se
     // oculte en la consignación: un hijo ocultado explícitamente sigue oculto
     // cuando su padre se vuelve a mostrar, así que un mecanismo no deshace al
     // otro.
-    ui->cfdiRequestButton->setVisible(state.cfdiButtonVisible);
-    ui->invoiceUploadButton->setEnabled(state.uploadEnabled);
-    ui->invoiceUploadButton->setToolTip(state.uploadToolTip);
-    ui->invoiceFileLabel->setText(state.fileLabel);
-    ui->invoiceFileLabel->setToolTip(state.fileToolTip);
+    ui->cfdiRequestButton->setVisible(m_invoiceState.cfdiButtonVisible && !m_readOnly);
+    ui->invoiceUploadButton->setVisible(!m_readOnly);
+    ui->invoiceUploadButton->setEnabled(m_invoiceState.uploadEnabled);
+    ui->invoiceUploadButton->setToolTip(m_invoiceState.uploadToolTip);
 }
 
 QString AcquisitionTermsSection::askInvoiceFile()

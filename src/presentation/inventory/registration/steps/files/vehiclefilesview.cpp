@@ -178,6 +178,17 @@ bool VehicleFilesView::focusField(const QString &field)
     return formsupport::focusField(this, field);
 }
 
+void VehicleFilesView::setReadOnly(bool readOnly, const QStringList &)
+{
+    // Este paso no tiene campos que se bloqueen al editar: todo o nada.
+    m_readOnly = readOnly;
+    setAcceptDrops(!readOnly);
+    ui->addPhotoButton->setVisible(!readOnly);
+    ui->documentFormatsHint->setVisible(!readOnly);
+    rebuildGallery();
+    rebuildDocuments();
+}
+
 void VehicleFilesView::rebuildGallery()
 {
     QLayoutItem *item;
@@ -237,6 +248,7 @@ void VehicleFilesView::rebuildGallery()
         cellLayout->addWidget(thumbnail);
 
         auto *actionsLayout = new QHBoxLayout;
+<<<<<<< HEAD
         /*auto *deleteButton = new QPushButton(QStringLiteral("🗑"), cell);
         deleteButton->setProperty("class", QStringLiteral("icon-flat"));
         connect(deleteButton, &QPushButton::clicked, this, [this, i]() {
@@ -259,6 +271,42 @@ void VehicleFilesView::rebuildGallery()
         actionsLayout->addWidget(deleteButton, 0, Qt::AlignLeft);
         actionsLayout->addStretch();
         actionsLayout->addWidget(starButton, 0, Qt::AlignRight);*/
+=======
+        // En consulta no se quita nada: sin bote.
+        if (!m_readOnly) {
+            auto *deleteButton = new QPushButton(QStringLiteral("🗑"), cell);
+            deleteButton->setProperty("class", QStringLiteral("icon-flat"));
+            connect(deleteButton, &QPushButton::clicked, this, [this, i]() {
+                m_images.removeAt(i);
+                if (!m_images.isEmpty() && std::none_of(m_images.cbegin(), m_images.cend(),
+                                                          [](const GalleryImage &img) { return img.image.isPrimary; })) {
+                    m_images.first().image.isPrimary = true;
+                }
+                rebuildGallery();
+            });
+            actionsLayout->addWidget(deleteButton, 0, Qt::AlignLeft);
+        }
+        actionsLayout->addStretch();
+
+        // En consulta la estrella solo dice cuál es la portada: va en ella
+        // sola y no responde a clics.
+        if (!m_readOnly || entry.image.isPrimary) {
+            auto *starButton = new QPushButton(entry.image.isPrimary ? QStringLiteral("★") : QStringLiteral("☆"), cell);
+            starButton->setProperty("class", QStringLiteral("icon-flat"));
+            if (m_readOnly) {
+                starButton->setAttribute(Qt::WA_TransparentForMouseEvents);
+                starButton->setFocusPolicy(Qt::NoFocus);
+                starButton->setToolTip(QStringLiteral("Portada"));
+            } else {
+                connect(starButton, &QPushButton::clicked, this, [this, i]() {
+                    for (int j = 0; j < m_images.size(); ++j)
+                        m_images[j].image.isPrimary = (j == i);
+                    rebuildGallery();
+                });
+            }
+            actionsLayout->addWidget(starButton, 0, Qt::AlignRight);
+        }
+>>>>>>> 0b52297 (Lock the wizard steps for viewing)
         cellLayout->addLayout(actionsLayout);
 
         rowLayout->addWidget(cell);
@@ -326,20 +374,24 @@ void VehicleFilesView::rebuildDocuments()
             rowLayout->addWidget(policyEdit);
         }
 
+        // En consulta solo queda "Ver": ni reemplazar ni subir.
         QPushButton *uploadButton = nullptr;
         if (hasFile) {
             auto *viewButton = new QPushButton(QStringLiteral("Ver"), row);
+            viewButton->setObjectName(QStringLiteral("documentViewButton"));
             viewButton->setProperty("class", QStringLiteral("secondary"));
             connect(viewButton, &QPushButton::clicked, this, [this, type]() {
                 QDesktopServices::openUrl(QUrl::fromLocalFile(m_documents.value(type).path));
             });
             rowLayout->addWidget(viewButton);
 
-            auto *replaceButton = new QPushButton(QStringLiteral("Reemplazar"), row);
-            replaceButton->setProperty("class", QStringLiteral("secondary"));
-            connect(replaceButton, &QPushButton::clicked, this, [this, type]() { chooseDocument(type); });
-            rowLayout->addWidget(replaceButton);
-        } else {
+            if (!m_readOnly) {
+                auto *replaceButton = new QPushButton(QStringLiteral("Reemplazar"), row);
+                replaceButton->setProperty("class", QStringLiteral("secondary"));
+                connect(replaceButton, &QPushButton::clicked, this, [this, type]() { chooseDocument(type); });
+                rowLayout->addWidget(replaceButton);
+            }
+        } else if (!m_readOnly) {
             uploadButton = new QPushButton(QStringLiteral("Subir documento"), row);
             uploadButton->setObjectName(QStringLiteral("documentUploadButton"));
             uploadButton->setProperty("class", QStringLiteral("secondary"));
@@ -392,6 +444,9 @@ void VehicleFilesView::rebuildDocuments()
         });
 
         ui->documentsLayout->addWidget(row);
+        // La casilla y la póliza se ven, pero no cambian.
+        if (m_readOnly)
+            formsupport::setReadOnly(row, true);
     }
 }
 
@@ -430,6 +485,13 @@ bool VehicleFilesView::isImageCandidate(const QString &path) const
 
 void VehicleFilesView::dragEnterEvent(QDragEnterEvent *event)
 {
+    // En consulta no se agregan fotos (setAcceptDrops ya lo impide; esto es
+    // por si algo la vuelve a encender).
+    if (m_readOnly) {
+        event->ignore();
+        return;
+    }
+
     // Solo se acepta el arrastre si trae al menos una foto candidata, para que
     // el cursor avise desde antes de soltar que un PDF o un video no entran a
     // la galería. Aquí basta la extensión: abrir cada archivo en pleno
@@ -458,6 +520,11 @@ void VehicleFilesView::dragMoveEvent(QDragMoveEvent *event)
 
 void VehicleFilesView::dropEvent(QDropEvent *event)
 {
+    if (m_readOnly) {
+        event->ignore();
+        return;
+    }
+
     // Primero se responde como copia: si el origen no la permite, se rechaza
     // el arrastre entero y no se agrega ninguna foto.
     if (!acceptAsCopy(event))

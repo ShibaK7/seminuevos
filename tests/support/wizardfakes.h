@@ -29,6 +29,15 @@ public:
     // Campos que la vista "no tiene" en pantalla: focusField() responde false
     // y showFieldErrors() devuelve sus errores como no mostrados.
     QStringList hiddenFields;
+    // El último modo que pidió el presenter (nullopt = nunca lo pidió).
+    std::optional<bool> readOnly;
+    QStringList lockedFields;
+
+    void setReadOnly(bool value, const QStringList &locked) override
+    {
+        readOnly = value;
+        lockedFields = locked;
+    }
 
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override

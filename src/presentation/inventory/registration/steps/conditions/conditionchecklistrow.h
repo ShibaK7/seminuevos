@@ -55,6 +55,11 @@ public:
     void setChecked(bool checked);
     bool isChecked() const;
 
+    // En consulta la fila se ve igual (la desmarcada, en gris) pero no
+    // cambia. Al volver a editar, las desmarcadas siguen con sus radios y
+    // observaciones deshabilitados, como siempre.
+    void setReadOnly(bool readOnly);
+
 private slots:
     void updateRowState();
 

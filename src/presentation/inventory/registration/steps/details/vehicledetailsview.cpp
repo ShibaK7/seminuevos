@@ -95,6 +95,8 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     for (domain::AcquisitionType value : domain::allAcquisitionTypes())
         ui->acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
+    setUpBrandSearch();
+
     // Los botones de la factura viven en la sección de Adquisición.
     connect(ui->acquisitionSection, &AcquisitionTermsSection::browseInvoiceRequested, this,
             &VehicleDetailsView::browseInvoiceRequested);
@@ -226,6 +228,17 @@ bool VehicleDetailsView::focusField(const QString &field)
     return formsupport::focusField(this, field);
 }
 
+void VehicleDetailsView::setReadOnly(bool readOnly, const QStringList &lockedFields)
+{
+    // Solo las dos tarjetas (las secciones de cada rama van en la segunda): el
+    // historial de mantenimientos, que va entre ellas, no es parte de la
+    // captura de la unidad.
+    for (QFrame *card : {ui->generalInfoCard, ui->ownerAndAcquisitionCard})
+        formsupport::setReadOnly(card, readOnly, lockedFields);
+    // Los botones de la factura (CFDI y subir) se ocultan en consulta.
+    ui->acquisitionSection->setReadOnly(readOnly);
+}
+
 void VehicleDetailsView::reloadSubtypes()
 {
     ui->subtypeCombo->clear();
@@ -247,7 +260,10 @@ void VehicleDetailsView::setLookups(const application::RegistrationLookupsDto &l
     m_subtypes = lookups.vehicleSubtypes;
     formsupport::fillCombo(ui->vehicleTypeCombo, lookups.vehicleTypes);
     formsupport::fillCombo(ui->brandCombo, lookups.brands);
+}
 
+void VehicleDetailsView::setUpBrandSearch()
+{
     ui->brandCombo->setEditable(true);
 
     QCompleter* completer = ui->brandCombo->completer();
