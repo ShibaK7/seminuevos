@@ -2,6 +2,7 @@
 #define PRESENTATION_COMMON_FORMS_FORMSUPPORT_H
 
 #include "application/common/dto/catalogoptiondto.h"
+#include "domain/common/value_objects/catalogref.h"
 #include "domain/common/value_objects/validationresult.h"
 
 #include <QList>
@@ -140,6 +141,40 @@ QLabel *requiredLabel(const QString &text, QWidget *parent = nullptr);
 // lo deja sin elegir (índice -1) con el placeholder dado.
 void fillCombo(QComboBox *combo, const QList<application::CatalogOptionDto> &options,
                const QString &placeholder = QStringLiteral("Seleccione una opción..."));
+
+// Elige la opción con el id de `ref`, como se pinta un dato guardado. Si el
+// id ya no está en el combo (se quitó del catálogo después de guardar) y la
+// referencia trae nombre, la agrega con ese nombre: lo guardado se ve tal
+// cual en vez de convertirse en "sin elegir". Una referencia inválida deja el
+// combo sin elegir.
+void selectOption(QComboBox *combo, const domain::CatalogRef &ref);
+// Lo mismo por texto, para los combos cuyo texto es el dato (Cilindros,
+// Interiores). Un texto vacío deja el combo sin elegir.
+void selectText(QComboBox *combo, const QString &text);
+
+// --- Solo lectura ---
+//
+// Pone en solo lectura (o vuelve editables) todos los editores bajo root,
+// tengan o no "field": textos, spinbox y fechas, combos y casillas o radios.
+// Los editores internos de un spinbox o de un combo se manejan desde su dueño.
+// Los botones normales no se tocan: cada vista oculta los suyos.
+//
+// En solo lectura los campos se ven como siempre y se pueden seleccionar y
+// copiar, pero no cambian: los textos y spinbox usan su readOnly real (y los
+// spinbox pierden sus flechas); los combos, casillas y radios, que no tienen
+// uno, llevan la propiedad dinámica "readOnly" y un filtro de eventos que se
+// traga los clics y las teclas (salvo Tab) y deja pasar la rueda al área con
+// scroll. El QSS lee "readOnly" para quitarles el hover y las flechas.
+//
+// lockedFields son claves "field" que no se pueden cambiar aunque readOnly
+// sea false (al editar el expediente, la rama y el costo de mantenimientos):
+// esos se deshabilitan, en gris y con un tooltip que lo explica. Solo se
+// rehabilitan los que deshabilitó esta función, así que un campo que ya venía
+// deshabilitado (Folio) nunca se habilita.
+//
+// Se puede llamar las veces que sea: lo original (las flechas de un spinbox,
+// el tooltip de un campo bloqueado) se guarda solo al cambiar de estado.
+void setReadOnly(QWidget *root, bool readOnly, const QStringList &lockedFields = {});
 
 } // namespace formsupport
 
