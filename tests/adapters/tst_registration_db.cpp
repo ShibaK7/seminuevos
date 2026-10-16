@@ -109,6 +109,8 @@ private:
         application::VehicleUpdateDto update;
         update.folio = record.folio;
         update.version = record.version;
+        update.loadedCounterparty = record.details.counterparty;
+        update.counterpartyVersion = record.counterpartyVersion;
         update.details = record.details;
         update.conditions = record.conditions;
         for (const application::StoredImageDto &stored : record.images)
@@ -628,6 +630,54 @@ private slots:
                  UpdateStatus::Saved);
         QCOMPARE(counterpartyOf(first).nationalId, sharedId);
         QCOMPARE(counterpartyOf(first).fullName, QStringLiteral("Ana María Prueba"));
+    }
+
+    // Dos administradores con dos unidades de la misma persona. Lo que uno
+    // corrige de ella no lo deshace el otro con lo que leyó antes: si el otro
+    // no tocó la contraparte, se guarda sin escribirla; si la cambió, es un
+    // conflicto.
+    void staleFormsDoNotUndoACounterpartyCorrection()
+    {
+        const QString sharedId = QStringLiteral("ID-COMPARTIDA-") + uniqueSuffix();
+        application::VehicleRegistrationDto dto = registration(uniqueVin());
+        dto.details.counterparty.fullName = QStringLiteral("Paula Prueba");
+        dto.details.counterparty.nationalId = sharedId;
+        dto.details.counterparty.streetAddress = QStringLiteral("Calle 1");
+        const int first = registerUnit(dto);
+        dto.details.serialNumber = uniqueVin();
+        const int second = registerUnit(dto);
+        QVERIFY(first > 0 && second > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        using UpdateStatus = application::RecordUpdateResult::Status;
+
+        // B abre la segunda unidad; A corrige la calle desde la primera.
+        const application::VehicleRecordDto staleSecond =
+            records.load(second, domain::UserRole::Admin).record;
+        application::VehicleUpdateDto fromFirst =
+            unchanged(records.load(first, domain::UserRole::Admin).record);
+        fromFirst.details.counterparty.streetAddress = QStringLiteral("Calle 2");
+        QCOMPARE(records.update(fromFirst, domain::UserRole::Admin).status, UpdateStatus::Saved);
+
+        // B cambia la colonia con lo que leyó antes: conflicto, nada se guarda.
+        application::VehicleUpdateDto staleCounterparty = unchanged(staleSecond);
+        staleCounterparty.details.counterparty.suburb = QStringLiteral("Centro");
+        QCOMPARE(records.update(staleCounterparty, domain::UserRole::Admin).status,
+                 UpdateStatus::Conflict);
+
+        // B cambia solo el kilometraje: se guarda, y la calle sigue corregida.
+        application::VehicleUpdateDto mileageOnly = unchanged(staleSecond);
+        mileageOnly.details.mileage = 61000;
+        QCOMPARE(records.update(mileageOnly, domain::UserRole::Admin).status, UpdateStatus::Saved);
+        const application::VehicleRecordDto reread =
+            records.load(second, domain::UserRole::Admin).record;
+        QCOMPARE(reread.details.mileage, 61000);
+        QCOMPARE(reread.details.counterparty.streetAddress, QStringLiteral("Calle 2"));
+        QVERIFY(reread.details.counterparty.suburb.isEmpty());
     }
 };
 

@@ -43,14 +43,15 @@ public:
 
     // La corrección toca las mismas seis tablas que el alta, en una
     // transacción: la unidad (solo si su versión, xmin, sigue siendo la que
-    // se leyó), la contraparte, la subtabla de su rama, las condiciones y,
-    // reemplazados, la inspección, las fotos y los documentos con archivo.
-    UpdateOutcome update(domain::Vehicle &vehicle, const QString &expectedVersion) override;
+    // se leyó), la contraparte (solo si se cambió, y con su propia versión),
+    // la subtabla de su rama, las condiciones y, reemplazados, la inspección,
+    // las fotos y los documentos con archivo.
+    UpdateOutcome update(domain::Vehicle &vehicle, const Expected &expected) override;
 
 private:
     static SaveOutcome save(QSqlDatabase &db, domain::Vehicle &vehicle);
     static UpdateOutcome rewrite(QSqlDatabase &db, domain::Vehicle &vehicle,
-                                 const QString &expectedVersion);
+                                 const Expected &expected);
 
     ConnectionPool &m_pool;
 };

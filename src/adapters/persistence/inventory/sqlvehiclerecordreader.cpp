@@ -53,6 +53,7 @@ enum Column {
     ColCounterpartyLocality,
     ColCounterpartyState,
     ColCounterpartyPostalCode,
+    ColCounterpartyVersion,
     ColFuelTypeId,
     ColFuelTypeName,
     ColCylinders,
@@ -74,7 +75,9 @@ enum Column {
 // La fecha cae a added_date cuando falta la subtabla, para que el campo no
 // muestre la fecha de hoy como si fuera la del trato. La versión es xmin, la
 // transacción que escribió por última vez el renglón de la unidad: cambia en
-// cada UPDATE, sin agregar columnas al esquema.
+// cada UPDATE, sin agregar columnas al esquema. La contraparte lleva la suya:
+// su renglón lo comparten todas las operaciones de esa persona, y otra unidad
+// puede corregirlo sin tocar el de esta.
 constexpr auto kRecordSelect = R"SQL(
 SELECT v.folio,
        CAST(v.xmin AS text) AS row_version,
@@ -95,7 +98,7 @@ SELECT v.folio,
        COALESCE(acq.maintenance_cost, csg.maintenance_cost),
        COALESCE(acq.observations, csg.observations),
        cp.full_name, cp.national_id, cp.street_address, cp.suburb, cp.locality, cp.state,
-       cp.postal_code,
+       cp.postal_code, CAST(cp.xmin AS text) AS counterparty_version,
        cond.fuel_type_id, f.name, cond.cylinders, cond.transmission, cond.interior_material,
        cond.window_regulators, cond.air_conditioning
   FROM vehicles v
@@ -284,6 +287,7 @@ std::optional<application::VehicleRecordDto> SqlVehicleRecordReader::read(QSqlDa
     d.counterparty.locality = query.value(ColCounterpartyLocality).toString();
     d.counterparty.state = query.value(ColCounterpartyState).toString();
     d.counterparty.postalCode = query.value(ColCounterpartyPostalCode).toString();
+    record.counterpartyVersion = query.value(ColCounterpartyVersion).toString();
 
     application::VehicleConditionsDto &c = record.conditions;
     c.fuelType = catalogRef(query.value(ColFuelTypeId), query.value(ColFuelTypeName));

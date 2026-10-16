@@ -89,6 +89,14 @@ RecordUpdateResult failed(const QString &message)
     return result;
 }
 
+// Si lo capturado de la contraparte es lo mismo que se leyó, campo por campo.
+bool sameCounterparty(const CounterpartyDto &a, const CounterpartyDto &b)
+{
+    return a.fullName == b.fullName && a.nationalId == b.nationalId
+           && a.streetAddress == b.streetAddress && a.suburb == b.suburb
+           && a.locality == b.locality && a.state == b.state && a.postalCode == b.postalCode;
+}
+
 RecordUpdateResult duplicateSerialNumber()
 {
     return rejected(QStringLiteral("serialNumber"),
@@ -308,7 +316,12 @@ RecordUpdateResult VehicleRecordService::update(const VehicleUpdateDto &update,
     }
 
     // 5. Todo o nada.
-    const VehicleRepository::UpdateOutcome outcome = m_vehicles.update(*vehicle, update.version);
+    VehicleRepository::Expected expected;
+    expected.vehicleVersion = update.version;
+    expected.counterpartyEdited = !sameCounterparty(update.details.counterparty,
+                                                    update.loadedCounterparty);
+    expected.counterpartyVersion = update.counterpartyVersion;
+    const VehicleRepository::UpdateOutcome outcome = m_vehicles.update(*vehicle, expected);
     if (!outcome.ok) {
         // Si falló el COMMIT no se sabe si quedó guardado: se deja todo.
         if (!outcome.commitFailed)

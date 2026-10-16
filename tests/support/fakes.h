@@ -159,6 +159,7 @@ public:
     int updates = 0;
     int updatedFolio = -1;
     QString updatedVersion;
+    Expected updatedExpected;
     QString updatedSerialNumber;
     QString updatedInvoicePath;
     QList<domain::VehicleImage> updatedImages;
@@ -173,11 +174,12 @@ public:
     {
         return existingSerialNumbers.contains(serialNumber);
     }
-    UpdateOutcome update(domain::Vehicle &vehicle, const QString &expectedVersion) override
+    UpdateOutcome update(domain::Vehicle &vehicle, const Expected &expected) override
     {
         ++updates;
         updatedFolio = vehicle.folio();
-        updatedVersion = expectedVersion;
+        updatedVersion = expected.vehicleVersion;
+        updatedExpected = expected;
         updatedSerialNumber = vehicle.serialNumber();
         updatedInvoicePath = vehicle.invoiceFilePath();
         updatedImages = vehicle.images();
