@@ -339,6 +339,9 @@ void InventoryView::showVehicles(const QList<application::InventoryItemDto> &veh
         item->setSizeHint(QSize(0, card->sizeHint().height()));
         item->setData(Qt::UserRole, vehicle.folio);
         ui->vehicleList->setItemWidget(item, card);
+        // La conexión muere con la tarjeta, en el próximo clear().
+        connect(card, &VehicleItemList::detailsRequested, this,
+                &InventoryView::vehicleDetailsRequested);
     }
 }
 

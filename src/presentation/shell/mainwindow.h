@@ -19,11 +19,13 @@ class InventoryPresenter;
 }
 
 class InventoryView;
+class VehicleRecordView;
 class VehicleWizardView;
 
 // Ventana principal: la cáscara. Barra lateral de módulos, barra superior con
 // el rol y, dentro del área de contenido, una pila que alterna entre la página
-// del inventario (InventoryView, con su propio .ui) y el asistente de registro.
+// del inventario (InventoryView, con su propio .ui), el asistente de registro
+// y el expediente de un vehículo.
 //
 // El menú lateral y el logo vienen de mainwindow.ui como widgets promovidos
 // ("Promover a…"). Esta clase solo los conecta y decide qué página se
@@ -42,6 +44,11 @@ public:
     using WizardFactory = std::function<VehicleWizardView *(QWidget *parent)>;
     void setWizardFactory(WizardFactory factory);
 
+    // Cómo se crea el expediente de un folio (US-03.3). También lo pone la
+    // raíz de composición: es quien tiene los servicios y el rol de la sesión.
+    using RecordFactory = std::function<VehicleRecordView *(QWidget *parent, int folio)>;
+    void setRecordFactory(RecordFactory factory);
+
     // Quién entró: la barra superior muestra su rol.
     void setSession(const application::SessionDto &session);
 
@@ -55,6 +62,7 @@ public:
 
 private:
     WizardFactory m_wizardFactory;
+    RecordFactory m_recordFactory;
 
     // --- Asistente ---
     // Hay a lo más un asistente. "Agregar Vehículo" retoma el que ya exista,
@@ -64,6 +72,19 @@ private:
     void openVehicleWizard();
     void closeVehicleWizard();
     void onVehicleRegistered(int folio);
+
+    // --- Expediente ---
+    // Hay a lo más uno, independiente del asistente: un alta a medias sigue
+    // viva mientras se consulta otra unidad. Reabrir el mismo folio lo vuelve
+    // a mostrar y lo relee; abrir otro reemplaza al actual, si este lo
+    // permite (no tiene cambios sin guardar, o el usuario los descarta).
+    void openVehicleRecord(int folio);
+    void closeVehicleRecord();
+    void onVehicleChanged(int folio);
+    // Quita una página de la pila y la destruye. Solo vuelve al inventario si
+    // esa página era la visible: un registro que termina en segundo plano no
+    // debe tapar lo que el usuario está viendo.
+    void dropPage(QWidget *page);
 
     void showModulePending(const QString &moduleName);
 
@@ -76,6 +97,12 @@ private:
     // destruyera por otro camino que closeVehicleWizard() (al destruirse el
     // stack, por ejemplo), el puntero queda en nulo en vez de colgando.
     QPointer<VehicleWizardView> m_wizard;
+
+    // El expediente abierto y su folio, o nulo y -1. El folio se guarda aquí y
+    // no se le pregunta a la vista: así basta una vista sin presenter (en las
+    // pruebas de la cáscara) para saber cuál está abierto.
+    QPointer<VehicleRecordView> m_record;
+    int m_recordFolio = -1;
 
     // El presenter de la rejilla. Su dueño es esta ventana (es su hijo).
     QPointer<presentation::InventoryPresenter> m_inventory;

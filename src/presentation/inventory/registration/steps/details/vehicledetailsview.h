@@ -45,6 +45,10 @@ public:
     // decide según el rol si se ve.
     MaintenanceHistoryTableWidget &maintenanceHistory();
     void setMaintenanceHistoryVisible(bool visible);
+    // La tarjeta de la operación (tipo, contraparte, factura, precios,
+    // mantenimientos y observaciones). El expediente la oculta a quien su rol
+    // no se la deja ver; el alta siempre la muestra.
+    void setDealTermsVisible(bool visible);
 
     // --- IVehicleDetailsView ---
     application::VehicleDetailsDto details() const override;

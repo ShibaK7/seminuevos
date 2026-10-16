@@ -130,6 +130,11 @@ seminuevos_add_test(tst_vehiclewizardpresenter
     LIBS seminuevos_presentation
 )
 
+seminuevos_add_test(tst_vehiclerecordpresenter
+    SOURCES presentation/tst_vehiclerecordpresenter.cpp support/fakes.h support/wizardfakes.h
+    LIBS seminuevos_presentation
+)
+
 # Las de vistas enlazan seminuevos_views: widgets reales, sin base ni disco.
 seminuevos_add_test(tst_formsupport
     SOURCES presentation/tst_formsupport.cpp
@@ -144,6 +149,12 @@ seminuevos_add_test(tst_inventoryview
 # Humo del asistente con sus widgets reales.
 seminuevos_add_test(tst_vehiclewizardview
     SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h
+    LIBS seminuevos_views
+)
+
+# Humo del expediente con sus widgets reales.
+seminuevos_add_test(tst_vehiclerecordview
+    SOURCES presentation/tst_vehiclerecordview.cpp support/fakes.h
     LIBS seminuevos_views
 )
 

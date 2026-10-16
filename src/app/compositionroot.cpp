@@ -9,8 +9,11 @@
 #include "adapters/storage/localfilestorage.h"
 #include "application/auth/services/authenticationservice.h"
 #include "application/inventory/services/inventoryservice.h"
+#include "application/inventory/registration/services/vehiclerecordservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "presentation/inventory/inventorypresenter.h"
+#include "presentation/inventory/record/vehiclerecordpresenter.h"
+#include "presentation/inventory/record/vehiclerecordview.h"
 #include "presentation/login/loginpresenter.h"
 #include "presentation/inventory/registration/vehiclewizardpresenter.h"
 #include "presentation/inventory/inventoryview.h"
@@ -140,6 +143,7 @@ bool CompositionRoot::start()
         *m_vehicles, *m_files, *m_referenceData, m_contracts);
     m_inventoryReader = std::make_unique<SqlInventoryReader>(pool);
     m_inventory = std::make_unique<application::InventoryService>(*m_inventoryReader, *m_files);
+    m_records = std::make_unique<application::VehicleRecordService>();
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -186,6 +190,22 @@ void CompositionRoot::showMain(const application::SessionDto &session)
                 *view, view->detailsView(), view->conditionsView(), view->filesView(),
                 *m_registration, m_runner, m_settings.wizardFreeNavigation, view);
             view->bind(*presenter);
+            presenter->start();
+            return view;
+        });
+
+        // El expediente de un folio (US-03.3 y US-03.4). El rol se captura por
+        // valor: la sesión no se guarda en ningún otro lado.
+        mainWindow->setRecordFactory([this, role = session.role](QWidget *parent, int folio) {
+            auto *view = new VehicleRecordView(parent);
+            auto *presenter = new presentation::VehicleRecordPresenter(
+                *view, view->detailsView(), view->conditionsView(), view->filesView(),
+                *m_registration, *m_records, m_runner, folio, role, view);
+            view->bind(*presenter);
+            // Historial de mantenimientos: su presenter se arma aquí, sobre
+            // view->detailsView().maintenanceHistory() y con este folio, como
+            // hijo de `presenter` para que muera antes que las vistas. Cuándo
+            // se ve ya lo decide el expediente según el rol.
             presenter->start();
             return view;
         });
