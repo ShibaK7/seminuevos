@@ -38,7 +38,7 @@ private slots:
 
         QCOMPARE(spy.count(), 1);
         const auto session = spy.at(0).at(0).value<application::SessionDto>();
-        QCOMPARE(session.role, QStringLiteral("Vendedor"));
+        QCOMPARE(session.role, domain::UserRole::SalesAgent);
         QCOMPARE(view.busyChanges, (QList<bool>{true, false}));
         QVERIFY(view.errors.isEmpty());
     }

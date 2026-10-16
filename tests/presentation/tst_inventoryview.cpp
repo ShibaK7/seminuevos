@@ -229,11 +229,15 @@ private slots:
         application::SessionDto session;
         session.username = QStringLiteral("ana");
         session.displayName = QStringLiteral("Ana López");
-        session.role = QStringLiteral("vendedor");
+        session.role = domain::UserRole::SalesAgent;
         window.setSession(session);
         auto *role = window.findChild<QLabel *>(QStringLiteral("userRoleLabel"));
         QVERIFY(role);
         QCOMPARE(role->text(), QStringLiteral("Vendedor"));
+
+        session.role = domain::UserRole::Admin;
+        window.setSession(session);
+        QCOMPARE(role->text(), QStringLiteral("Administrador"));
     }
 };
 

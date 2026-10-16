@@ -30,8 +30,37 @@ private slots:
         QVERIFY(result.ok);
         QCOMPARE(result.session.username, QStringLiteral("ana"));
         QCOMPARE(result.session.displayName, QStringLiteral("Ana López"));
+<<<<<<< HEAD
         QCOMPARE(result.session.role, QStringLiteral("Vendedor"));
         QCOMPARE(m_users.successfulLogins, 1);
+=======
+        QCOMPARE(result.session.role, domain::UserRole::SalesAgent);
+    }
+
+    // El texto de la base se traduce al rol del dominio: nadie más compara
+    // "Administrador" a mano.
+    void theRoleComesTranslated()
+    {
+        m_users.users.insert(QStringLiteral("root"),
+                             {m_hasher.hash(QStringLiteral("clave")),
+                              QStringLiteral("Dueño"), QStringLiteral("Administrador")});
+        const application::AuthenticationService auth(m_users, m_hasher);
+        const auto result = auth.login(QStringLiteral("root"), QStringLiteral("clave"));
+        QVERIFY(result.ok);
+        QCOMPARE(result.session.role, domain::UserRole::Admin);
+    }
+
+    // Un rol que la aplicación no conoce no entra: no se le adivinan permisos.
+    void unknownRoleIsRejected()
+    {
+        m_users.users.insert(QStringLiteral("raro"),
+                             {m_hasher.hash(QStringLiteral("clave")),
+                              QStringLiteral("Raro"), QStringLiteral("administrador")});
+        const application::AuthenticationService auth(m_users, m_hasher);
+        const auto result = auth.login(QStringLiteral("raro"), QStringLiteral("clave"));
+        QVERIFY(!result.ok);
+        QVERIFY(result.errorMessage.contains(QStringLiteral("rol")));
+>>>>>>> 1041035 (Carry the session role as a domain enum)
     }
 
     // "No existe" y "contraseña equivocada" dan el mismo mensaje: distinguirlos

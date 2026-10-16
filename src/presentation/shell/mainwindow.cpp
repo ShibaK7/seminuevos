@@ -81,12 +81,7 @@ void MainWindow::bindInventory(presentation::InventoryPresenter &presenter)
 
 void MainWindow::setSession(const application::SessionDto &session)
 {
-    // El rol tal como lo guarda la base ("administrador"), con mayúscula
-    // inicial para la barra.
-    QString role = session.role;
-    if (!role.isEmpty())
-        role[0] = role.at(0).toUpper();
-    ui->userRoleLabel->setText(role);
+    ui->userRoleLabel->setText(domain::displayLabel(session.role));
     ui->userRoleLabel->setToolTip(session.displayName);
 }
 
