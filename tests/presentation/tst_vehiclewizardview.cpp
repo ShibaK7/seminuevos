@@ -15,6 +15,7 @@
 #include "presentation/inventory/registration/vehiclewizardview.h"
 
 #include <QAbstractSpinBox>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFrame>
@@ -437,6 +438,118 @@ private slots:
         QCOMPARE(nextTabStop(named("addMaintenanceButton")), named("historyTable"));
         QCOMPARE(nextTabStop(named("historyTable")), named("printReceiptsButton"));
         QCOMPARE(nextTabStop(named("printReceiptsButton")), named("acquisitionTypeCombo"));
+    }
+
+    // #28: cada paso se pone en solo lectura (el expediente en consulta) y
+    // vuelve a ser editable. Los valores no cambian; los botones de captura
+    // se ocultan y "Ver" se queda.
+    void stepsTurnReadOnlyAndBack()
+    {
+        QWidget *details = &m_view->detailsView();
+        QWidget *conditions = &m_view->conditionsView();
+        QWidget *files = &m_view->filesView();
+        auto *vin = fieldWidget<QLineEdit>(details, QStringLiteral("serialNumber"));
+        vin->setText(QStringLiteral("VIN123"));
+        auto *brand = fieldWidget<QComboBox>(details, QStringLiteral("brand"));
+        auto *fuel = fieldWidget<QComboBox>(conditions, QStringLiteral("conditions.fuelType"));
+        auto *upload = details->findChild<QPushButton *>(QStringLiteral("invoiceUploadButton"));
+        auto *addPhoto = files->findChild<QPushButton *>(QStringLiteral("addPhotoButton"));
+        const auto visibleButtons = [](QWidget *root, const QString &text) {
+            int count = 0;
+            for (QPushButton *button : root->findChildren<QPushButton *>()) {
+                if (button->text() == text && button->isVisibleTo(root))
+                    ++count;
+            }
+            return count;
+        };
+        QVERIFY(visibleButtons(conditions, QStringLiteral("Marcar todo")) > 0);
+        QVERIFY(visibleButtons(files, QStringLiteral("Subir documento")) > 0);
+
+        m_view->detailsView().setReadOnly(true, {});
+        m_view->conditionsView().setReadOnly(true, {});
+        m_view->filesView().setReadOnly(true, {});
+        QVERIFY(vin->isReadOnly());
+        QCOMPARE(vin->text(), QStringLiteral("VIN123"));
+        QVERIFY(brand->property("readOnly").toBool());
+        QVERIFY(brand->lineEdit()->isReadOnly());
+        QVERIFY(!upload->isVisibleTo(details));
+        QVERIFY(fuel->property("readOnly").toBool());
+        QCOMPARE(visibleButtons(conditions, QStringLiteral("Marcar todo")), 0);
+        for (QCheckBox *check : conditions->findChildren<QCheckBox *>())
+            QVERIFY(check->property("readOnly").toBool());
+        QVERIFY(!addPhoto->isVisibleTo(files));
+        QVERIFY(!files->acceptDrops());
+        QCOMPARE(visibleButtons(files, QStringLiteral("Subir documento")), 0);
+        // Las filas viejas se retiran con deleteLater(): se borran antes de revisar.
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        for (QCheckBox *check : files->findChildren<QCheckBox *>())
+            QVERIFY(check->property("readOnly").toBool());
+        // El historial de mantenimientos no es parte de la captura.
+        QVERIFY(!m_view->detailsView().maintenanceHistory().findChild<QPushButton *>(
+                    QStringLiteral("addMaintenanceButton"))->property("readOnly").isValid());
+
+        m_view->detailsView().setReadOnly(false, {});
+        m_view->conditionsView().setReadOnly(false, {});
+        m_view->filesView().setReadOnly(false, {});
+        QVERIFY(!vin->isReadOnly());
+        QVERIFY(!brand->property("readOnly").toBool());
+        QVERIFY(upload->isVisibleTo(details));
+        QVERIFY(visibleButtons(conditions, QStringLiteral("Marcar todo")) > 0);
+        QVERIFY(addPhoto->isVisibleTo(files));
+        QVERIFY(files->acceptDrops());
+        QVERIFY(visibleButtons(files, QStringLiteral("Subir documento")) > 0);
+    }
+
+    // Lo que un paso arma en código después de ponerse en solo lectura nace
+    // igual: el checklist que llega con los catálogos y las filas de
+    // documentos que se rehacen al adjuntar uno. Volver a armar el checklist
+    // tampoco duplica filas.
+    void rebuiltRowsStayReadOnly()
+    {
+        QWidget *conditions = &m_view->conditionsView();
+        m_view->conditionsView().setReadOnly(true, {});
+        m_view->conditionsView().setChecklist(
+            {{7, QStringLiteral("Exterior"), QStringLiteral("Llantas")},
+             {8, QStringLiteral("Exterior"), QStringLiteral("Faros")}});
+        const QList<QCheckBox *> checks = conditions->findChildren<QCheckBox *>();
+        QCOMPARE(checks.size(), 2);
+        for (QCheckBox *check : checks)
+            QVERIFY(check->property("readOnly").toBool());
+        for (QPushButton *button : conditions->findChildren<QPushButton *>())
+            QVERIFY(!button->isVisibleTo(conditions));
+
+        QWidget *files = &m_view->filesView();
+        m_view->filesView().setReadOnly(true, {});
+        m_view->filesView().attachDocument(QStringLiteral("Placas"), QStringLiteral("C:/x/placas.pdf"));
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        auto *view = files->findChild<QPushButton *>(QStringLiteral("documentViewButton"));
+        QVERIFY(view);
+        QVERIFY(!buttonWithText(files, QStringLiteral("Reemplazar")));
+        for (QCheckBox *check : files->findChildren<QCheckBox *>())
+            QVERIFY(check->property("readOnly").toBool());
+    }
+
+    // El presenter de la factura puede repintar su fila en cualquier momento;
+    // en solo lectura sus botones siguen ocultos, y al volver a editar se ven
+    // según su último estado.
+    void invoiceButtonsStayHiddenWhileReadOnly()
+    {
+        QWidget *details = &m_view->detailsView();
+        auto *cfdi = details->findChild<QPushButton *>(QStringLiteral("cfdiRequestButton"));
+        auto *upload = details->findChild<QPushButton *>(QStringLiteral("invoiceUploadButton"));
+        m_view->detailsView().setReadOnly(true, {});
+
+        presentation::InvoiceAttachmentState state;
+        state.cfdiButtonVisible = true;
+        state.uploadEnabled = false;
+        m_view->detailsView().acquisitionTerms().showInvoiceAttachment(state);
+        QVERIFY(!cfdi->isVisibleTo(details));
+        QVERIFY(!upload->isVisibleTo(details));
+
+        m_view->detailsView().setReadOnly(false, {});
+        QVERIFY(cfdi->isVisibleTo(details));
+        QVERIFY(upload->isVisibleTo(details));
+        QVERIFY(!upload->isEnabled());
     }
 };
 

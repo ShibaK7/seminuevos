@@ -57,6 +57,7 @@ public:
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
+    void setReadOnly(bool readOnly, const QStringList &lockedFields) override;
 
 signals:
     // Cambió cualquier campo.
@@ -79,6 +80,10 @@ private slots:
 
 private:
     domain::AcquisitionType selectedAcquisitionType() const;
+    // La marca se busca escribiendo: combo editable con autocompletado. Se
+    // configura una vez, al construir, para que su línea exista desde el
+    // principio (y quede en solo lectura cuando el paso lo esté).
+    void setUpBrandSearch();
 
     Ui::VehicleDetailsView *ui;
 

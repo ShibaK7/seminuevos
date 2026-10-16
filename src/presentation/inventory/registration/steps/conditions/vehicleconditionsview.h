@@ -56,6 +56,7 @@ public:
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
+    void setReadOnly(bool readOnly, const QStringList &lockedFields) override;
 
 signals:
     // Cambió cualquier campo, incluidas las filas del checklist.
@@ -63,9 +64,17 @@ signals:
 
 private:
     void markAllInGroup(const QString &category, bool checked);
+    // Quita lo que armó setChecklist(), para poder armarlo otra vez sin
+    // duplicar filas (y sin duplicar renglones de la inspección al guardar).
+    void clearChecklist();
 
     Ui::VehicleConditionsView *ui;
     QList<ConditionChecklistRow *> m_checklistRows;
+    // Los "Marcar todo" de cada grupo: se ocultan en consulta.
+    QList<QWidget *> m_markAllButtons;
+    // El modo del paso, para aplicarlo también a las filas que se arman
+    // después (setChecklist llega con los catálogos).
+    bool m_readOnly = false;
 };
 
 #endif // PRESENTATION_INVENTORY_REGISTRATION_STEPS_CONDITIONS_VEHICLECONDITIONSVIEW_H

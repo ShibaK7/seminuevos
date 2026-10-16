@@ -51,6 +51,7 @@ public:
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
+    void setReadOnly(bool readOnly, const QStringList &lockedFields) override;
 
 signals:
     void imagesChosen(const QStringList &paths);
@@ -103,6 +104,11 @@ private:
     // archivo sale marcada de todos modos: solo pudo subirse con la casilla
     // puesta.
     QSet<QString> m_checkedDocumentTypes;
+
+    // En consulta: sin agregar, quitar, cambiar portada, subir ni reemplazar;
+    // solo "Ver". Lo consultan rebuildGallery() y rebuildDocuments(), así que
+    // vale también para las filas que se rehacen.
+    bool m_readOnly = false;
 
     static const QStringList &documentTypes();
 };

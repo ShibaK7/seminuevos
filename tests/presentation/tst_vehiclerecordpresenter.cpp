@@ -72,6 +72,17 @@ private slots:
                  (QList<StepVisual>{StepVisual::Current, StepVisual::Pending, StepVisual::Pending}));
     }
 
+    // #28: el expediente se abre en consulta, con los tres pasos en solo
+    // lectura y sin campos bloqueados.
+    void opensWithEveryStepReadOnly()
+    {
+        startPresenter();
+        QCOMPARE(m_details.readOnly, std::optional(true));
+        QCOMPARE(m_conditions.readOnly, std::optional(true));
+        QCOMPARE(m_filesView.readOnly, std::optional(true));
+        QVERIFY(m_details.lockedFields.isEmpty());
+    }
+
     // Lo que el rol deja ver se decide al abrir, antes de pintar nada.
     void adminSeesTheDealAndTheHistory()
     {

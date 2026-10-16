@@ -5,6 +5,7 @@
 
 #include <QList>
 #include <QString>
+#include <QStringList>
 
 namespace presentation {
 
@@ -26,6 +27,14 @@ public:
     // Le da el foco al campo con esa clave. Devuelve false si no hay un widget
     // visible para ella (la UMA, por ejemplo, no se captura en pantalla).
     virtual bool focusField(const QString &field) = 0;
+
+    // Solo lectura (el expediente en consulta, #28): los campos muestran su
+    // valor pero no cambian, y los botones que capturan (subir, quitar,
+    // agregar, reemplazar...) se ocultan; "Ver" sigue. lockedFields son claves
+    // "field" que no se pueden cambiar aunque readOnly sea false (al editar el
+    // expediente). Vale también para lo que el paso arme después en código:
+    // cada paso recuerda su modo.
+    virtual void setReadOnly(bool readOnly, const QStringList &lockedFields) = 0;
 
 protected:
     IStepView() = default;

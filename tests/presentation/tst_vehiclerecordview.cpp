@@ -131,6 +131,18 @@ private slots:
         QVERIFY(fieldWidget<QLineEdit>(page, QStringLiteral("serialNumber"))->isVisibleTo(page));
     }
 
+    // Con los widgets reales: los campos no se editan y la captura de
+    // archivos no se ofrece.
+    void opensReadOnly()
+    {
+        open(domain::UserRole::Admin);
+        QWidget *details = &m_view->detailsView();
+        QVERIFY(fieldWidget<QLineEdit>(details, QStringLiteral("serialNumber"))->isReadOnly());
+        QWidget *files = &m_view->filesView();
+        QVERIFY(!files->findChild<QPushButton *>(QStringLiteral("addPhotoButton"))->isVisibleTo(files));
+        QVERIFY(!files->acceptDrops());
+    }
+
     void tabsSwitchPages()
     {
         open(domain::UserRole::SalesAgent);
