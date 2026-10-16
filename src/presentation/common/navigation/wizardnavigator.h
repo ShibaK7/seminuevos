@@ -52,6 +52,10 @@ public:
     void markAttempted(int step);
     void markAllAttempted();
     bool isAttempted(int step) const;
+    // Olvida los intentos, como al abrir: ningún paso vuelve a pintarse en
+    // rojo hasta que se intente otra vez. El paso actual y la validez se
+    // quedan. Lo usa el expediente al volver a consulta.
+    void resetAttempts();
 
     // Si se puede entrar a `target`: con navegación libre, siempre; si no, si
     // es el paso actual o uno anterior, o si todos los pasos anteriores a él

@@ -111,7 +111,8 @@ seminuevos/
 │   │   │   │                        outlinebutton, aspectratioimagelabel, wizardstepper (+ statefultextbutton, base)
 │   │   │   ├── forms/               formsupport: marcar errores, foco, vigilar ediciones, llenar combos,
 │   │   │   │                        pintar lo guardado, solo lectura (consulta) y campos bloqueados al editar
-│   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos
+│   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos;
+│   │   │   │                        editsession: consulta o edición (FormMode) y si hay cambios sin guardar
 │   │   │   └── tasks/               taskrunner y pooledtaskrunner: trabajo fuera del hilo de la interfaz
 │   │   └── inventory/               Menú Inventario
 │   │       ├── inventoryview (.ui/.h/.cpp), inventorypresenter, iinventoryview.h
