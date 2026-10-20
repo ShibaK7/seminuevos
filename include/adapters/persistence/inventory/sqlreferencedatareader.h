@@ -21,6 +21,7 @@ public:
     QList<application::CatalogOptionDto> fuelTypes(QString *error) override;
     QList<application::ChecklistItemDto> conditionChecklist(QString *error) override;
     std::optional<double> umaDailyValue(QString *error) override;
+    QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override;
 
 private:
     QList<application::CatalogOptionDto> readOptions(const QString &sql, QString *error);

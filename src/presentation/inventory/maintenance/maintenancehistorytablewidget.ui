@@ -84,13 +84,16 @@
       <item>
        <widget class="QTableWidget" name="historyTable">
         <property name="editTriggers">
-         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+         <set>QAbstractItemView::EditTrigger::DoubleClicked</set>
         </property>
         <property name="tabKeyNavigation">
          <bool>false</bool>
         </property>
         <property name="alternatingRowColors">
          <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
         </property>
         <property name="selectionBehavior">
          <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>

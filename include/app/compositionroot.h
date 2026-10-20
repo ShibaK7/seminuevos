@@ -2,6 +2,7 @@
 #define APP_COMPOSITIONROOT_H
 
 #include "adapters/contract/pdfcontractgenerator.h"
+#include "adapters/contract/pdfmaintenancereceiptgenerator.h"
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/security/pbkdf2passwordhasher.h"
 #include "app/appsettings.h"
@@ -17,6 +18,7 @@ class LoginWindow;
 class MainWindow;
 class LocalFileStorage;
 class SqlInventoryReader;
+class SqlMaintenanceRepository;
 class SqlReferenceDataReader;
 class SqlUserDirectory;
 class SqlVehicleRecordReader;
@@ -25,6 +27,7 @@ class SqlVehicleRepository;
 namespace application {
 class AuthenticationService;
 class InventoryService;
+class MaintenanceService;
 class VehicleRecordService;
 class VehicleRegistrationService;
 }
@@ -70,6 +73,9 @@ private:
     std::unique_ptr<application::InventoryService> m_inventory;
     std::unique_ptr<SqlVehicleRecordReader> m_recordReader;
     std::unique_ptr<application::VehicleRecordService> m_records;
+    std::unique_ptr<SqlMaintenanceRepository> m_maintenanceRepository;
+    PdfMaintenanceReceiptGenerator m_receipts;
+    std::unique_ptr<application::MaintenanceService> m_maintenance;
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;
