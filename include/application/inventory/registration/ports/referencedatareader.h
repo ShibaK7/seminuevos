@@ -31,6 +31,8 @@ public:
     virtual QList<ChecklistItemDto> conditionChecklist(QString *error) = 0;
     // nullopt si no está configurada.
     virtual std::optional<double> umaDailyValue(QString *error) = 0;
+    // Los tipos del historial de mantenimientos (vehicle_maintenance_cat).
+    virtual QList<CatalogOptionDto> maintenanceTypes(QString *error) = 0;
 
 protected:
     ReferenceDataReader() = default;

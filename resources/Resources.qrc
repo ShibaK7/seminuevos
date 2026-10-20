@@ -2,6 +2,7 @@
     <qresource prefix="/resources/images">
         <file>images/background.png</file>
         <file>images/logo-seminuevos.jpeg</file>
+        <file>images/logo-seminuevos-watermark.png</file>
         <file>images/logo-seminuevos.svg</file>
         <file>images/background.png</file>
     </qresource>
@@ -34,6 +35,7 @@
     </qresource>
     <qresource prefix="/templates">
         <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
+        <file alias="receipt_maintenance.html">templates/receipt_maintenance.html</file>
         <file>request_issuance_cfdi.html</file>
     </qresource>
 </RCC>

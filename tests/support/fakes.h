@@ -8,6 +8,8 @@
 
 #include "application/inventory/registration/ports/contractgenerator.h"
 #include "application/common/ports/filestorage.h"
+#include "application/inventory/maintenance/ports/maintenancereceiptgenerator.h"
+#include "application/inventory/maintenance/ports/maintenancerepository.h"
 #include "application/inventory/ports/inventoryreader.h"
 #include "application/auth/ports/passwordhasher.h"
 #include "application/inventory/registration/ports/referencedatareader.h"
@@ -16,6 +18,7 @@
 #include "application/inventory/registration/ports/vehiclerepository.h"
 #include "domain/inventory/model/vehicle.h"
 #include "presentation/inventory/iinventoryview.h"
+#include "presentation/inventory/maintenance/imaintenancehistoryview.h"
 #include "presentation/login/iloginview.h"
 #include "presentation/common/tasks/taskrunner.h"
 
@@ -314,6 +317,17 @@ public:
         return {{7, QStringLiteral("Exterior"), QStringLiteral("Llantas")}};
     }
     std::optional<double> umaDailyValue(QString *) override { return uma; }
+    // Si no está vacío, el catálogo de mantenimientos "falla" con este error.
+    QString maintenanceTypesError;
+    QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override
+    {
+        if (!maintenanceTypesError.isEmpty()) {
+            if (error)
+                *error = maintenanceTypesError;
+            return {};
+        }
+        return {{1, QStringLiteral("Mecánica"), -1}, {5, QStringLiteral("Llantas"), -1}};
+    }
 };
 
 // Los expedientes "guardados", por folio. Un folio que no está no existe;
@@ -358,6 +372,168 @@ public:
 
     void setBusy(bool busy) override { busyChanges.append(busy); }
     void showLoginError(const QString &message) override { errors.append(message); }
+};
+
+// El historial "guardado", por folio. Cada alta recibe un id nuevo y suma su
+// costo al total de su folio, como la subtabla de la operación; un folio sin
+// total en `totals` es una unidad sin ese renglón. failWith hace fallar las
+// dos operaciones con ese error.
+class InMemoryMaintenanceRepository final : public application::MaintenanceRepository
+{
+public:
+    QMap<int, QList<application::MaintenanceItemDto>> byFolio;
+    QMap<int, double> totals;
+    QString failWith;
+    int nextId = 100;
+    QList<domain::MaintenanceRecord> added;
+
+    QList<application::MaintenanceItemDto> listForVehicle(int folio, QString *error) override
+    {
+        if (!failWith.isEmpty()) {
+            if (error)
+                *error = failWith;
+            return {};
+        }
+        return byFolio.value(folio);
+    }
+
+    AddOutcome add(const domain::MaintenanceRecord &record) override
+    {
+        AddOutcome outcome;
+        if (!failWith.isEmpty()) {
+            outcome.errorMessage = failWith;
+            return outcome;
+        }
+        added << record;
+        application::MaintenanceItemDto item;
+        item.id = nextId++;
+        item.date = record.date();
+        item.typeName = QStringLiteral("Tipo %1").arg(record.typeId());
+        item.cost = record.cost().toDouble();
+        item.description = record.description();
+        byFolio[record.vehicleFolio()].prepend(item);
+        if (totals.contains(record.vehicleFolio())) {
+            totals[record.vehicleFolio()] += item.cost;
+            outcome.maintenanceCostTotal = totals.value(record.vehicleFolio());
+        }
+        outcome.ok = true;
+        outcome.id = item.id;
+        return outcome;
+    }
+
+    bool updateDescription(int id, const QString &description, QString *error) override
+    {
+        if (failWith.isEmpty()) {
+            for (auto &items : byFolio) {
+                for (application::MaintenanceItemDto &item : items) {
+                    if (item.id == id) {
+                        item.description = description;
+                        return true;
+                    }
+                }
+            }
+        }
+        if (error)
+            *error = failWith.isEmpty() ? QStringLiteral("no existe") : failWith;
+        return false;
+    }
+
+    bool markReceiptPrinted(int id, QString *error) override
+    {
+        if (failWith.isEmpty()) {
+            for (auto &items : byFolio) {
+                for (application::MaintenanceItemDto &item : items) {
+                    if (item.id == id) {
+                        item.receiptPrinted = true;
+                        markedPrinted << id;
+                        return true;
+                    }
+                }
+            }
+        }
+        if (error)
+            *error = failWith.isEmpty() ? QStringLiteral("no existe") : failWith;
+        return false;
+    }
+    QList<int> markedPrinted;
+};
+
+// Anota cada recibo que se le pidió; failWith lo hace fallar con ese error.
+class FakeMaintenanceReceiptGenerator final : public application::MaintenanceReceiptGenerator
+{
+public:
+    QList<application::MaintenanceItemDto> generated;
+    QStringList paths;
+    QString failWith;
+
+    Outcome generate(const application::MaintenanceItemDto &maintenance,
+                     const QString &outputPath) override
+    {
+        Outcome outcome;
+        if (!failWith.isEmpty()) {
+            outcome.errorMessage = failWith;
+            return outcome;
+        }
+        generated << maintenance;
+        paths << outputPath;
+        outcome.ok = true;
+        return outcome;
+    }
+};
+
+// Anota lo que el presenter le pidió al historial y a su formulario de alta.
+class FakeMaintenanceHistoryView final : public presentation::IMaintenanceHistoryView
+{
+public:
+    QList<bool> busyChanges;
+    QList<QList<application::CatalogOptionDto>> openedForms;
+    QStringList warnings;
+    QList<QList<application::MaintenanceItemDto>> shownHistories;
+    QList<int> checkedReceipts;
+    QList<bool> formBusyChanges;
+    QList<QList<domain::ValidationError>> formErrors;
+    int formsClosed = 0;
+    // El renglón "seleccionado" y la ruta que "elige" el usuario (vacía es
+    // cancelar).
+    int selectedId = -1;
+    QString receiptPath = QStringLiteral("C:/recibos/recibo.pdf");
+    QStringList suggestedReceiptNames;
+    QStringList openedDocuments;
+    // Lo que "contesta" el usuario a "¿Desea actualizar el campo Descripción?".
+    bool acceptDescriptionUpdate = true;
+    int descriptionConfirmations = 0;
+    QStringList informations;
+
+    void setBusy(bool busy) override { busyChanges.append(busy); }
+    void showMaintenances(const QList<application::MaintenanceItemDto> &items) override
+    {
+        shownHistories.append(items);
+    }
+    void checkReceipt(int maintenanceId) override { checkedReceipts.append(maintenanceId); }
+    int selectedMaintenanceId() override { return selectedId; }
+    QString askReceiptPath(const QString &suggestedName) override
+    {
+        suggestedReceiptNames << suggestedName;
+        return receiptPath;
+    }
+    void openDocument(const QString &path) override { openedDocuments << path; }
+    void showWarning(const QString &title, const QString &) override { warnings.append(title); }
+    void showInformation(const QString &message) override { informations.append(message); }
+    bool confirmDescriptionUpdate() override
+    {
+        ++descriptionConfirmations;
+        return acceptDescriptionUpdate;
+    }
+    void askNewMaintenance(const QList<application::CatalogOptionDto> &maintenanceTypes) override
+    {
+        openedForms.append(maintenanceTypes);
+    }
+    void setMaintenanceFormBusy(bool busy) override { formBusyChanges.append(busy); }
+    void showMaintenanceFormErrors(const QList<domain::ValidationError> &errors) override
+    {
+        formErrors.append(errors);
+    }
+    void closeMaintenanceForm() override { ++formsClosed; }
 };
 
 } // namespace fakes

@@ -1,19 +1,22 @@
-// Prueba de integración del registro y del expediente contra el PostgreSQL de
-// Docker, con los adaptadores reales (SqlVehicleRepository,
-// SqlVehicleRecordReader, SqlReferenceDataReader y LocalFileStorage sobre una
-// carpeta temporal). Es opcional: solo se compila con -DSEMINUEVOS_DB_TESTS=ON
+// Prueba de integración del registro, del expediente y de su historial de
+// mantenimientos contra el PostgreSQL de Docker, con los adaptadores reales
+// (SqlVehicleRepository, SqlVehicleRecordReader, SqlReferenceDataReader,
+// SqlMaintenanceRepository y LocalFileStorage sobre una carpeta temporal). Es opcional: solo se compila con -DSEMINUEVOS_DB_TESTS=ON
 // y necesita `docker compose up -d`.
 //
 // Cada caso registra una unidad con un VIN único y la borra al terminar.
 
 #include "adapters/contract/pdfcontractgenerator.h"
+#include "adapters/contract/pdfmaintenancereceiptgenerator.h"
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/inventory/sqlcounterpartyrepository.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
+#include "adapters/persistence/inventory/sqlmaintenancerepository.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 #include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
+#include "application/inventory/maintenance/services/maintenanceservice.h"
 #include "application/inventory/registration/services/vehiclerecordservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "domain/inventory/model/counterparty.h"
@@ -1019,6 +1022,87 @@ private slots:
         QCOMPARE(reread.details.mileage, 61000);
         QCOMPARE(reread.details.counterparty.streetAddress, QStringLiteral("Calle 2"));
         QVERIFY(reread.details.counterparty.suburb.isEmpty());
+    }
+
+    // #46: el mantenimiento se guarda y su costo se suma al total de la
+    // subtabla de la rama, en la misma transacción; el historial lo trae.
+    void maintenanceAddsToItsBranchTotal_data()
+    {
+        QTest::addColumn<int>("type");
+        QTest::newRow("compra") << static_cast<int>(domain::AcquisitionType::Adquisicion);
+        QTest::newRow("consignación") << static_cast<int>(domain::AcquisitionType::Consignacion);
+    }
+
+    void maintenanceAddsToItsBranchTotal()
+    {
+        QFETCH(int, type);
+        const auto branch = static_cast<domain::AcquisitionType>(type);
+        const QString table = branch == domain::AcquisitionType::Adquisicion
+            ? QStringLiteral("vehicle_acquisitions")
+            : QStringLiteral("vehicle_consignments");
+        application::VehicleRegistrationDto dto = registration(uniqueVin(), branch);
+        dto.details.maintenanceCost = 250.0;
+        const int folio = registerUnit(dto);
+        QVERIFY(folio > 0);
+
+        SqlMaintenanceRepository repository(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        PdfMaintenanceReceiptGenerator receipts;
+        const application::MaintenanceService service(repository, reference, receipts);
+        QString error;
+        const auto types = reference.maintenanceTypes(&error);
+        QVERIFY2(!types.isEmpty(), qPrintable(error));
+
+        application::NewMaintenanceDto maintenance;
+        maintenance.vehicleFolio = folio;
+        maintenance.date = QDate(2026, 10, 19);
+        maintenance.maintenanceTypeId = types.first().id;
+        maintenance.cost = QStringLiteral("1234.56");
+        maintenance.description = QStringLiteral("Prueba de integración");
+        const auto added = service.add(maintenance, domain::UserRole::Admin);
+        QVERIFY2(added.status == application::MaintenanceAddResult::Status::Saved,
+                 qPrintable(added.errorMessage));
+        QVERIFY(added.id > 0);
+        // Se sumó al costo del alta, no se recalculó desde el historial.
+        QCOMPARE(added.maintenanceCostTotal, std::optional(1484.56));
+
+        const auto history = service.history(folio, domain::UserRole::Admin);
+        QCOMPARE(history.status, application::MaintenanceHistoryResult::Status::Loaded);
+        QCOMPARE(history.items.size(), 1);
+        QCOMPARE(history.items.first().id, added.id);
+        QCOMPARE(history.items.first().date, QDate(2026, 10, 19));
+        QCOMPARE(history.items.first().typeName, types.first().name);
+        QCOMPARE(history.items.first().description, QStringLiteral("Prueba de integración"));
+        // Nace sin recibo impreso; "Imprimir" lo anota.
+        QVERIFY(!history.items.first().receiptPrinted);
+        QCOMPARE(service.markReceiptPrinted(added.id, domain::UserRole::Admin).status,
+                 application::MaintenanceReceiptMarkResult::Status::Marked);
+        QVERIFY(service.history(folio, domain::UserRole::Admin).items.first().receiptPrinted);
+        // La descripción se corrige en su renglón.
+        QCOMPARE(service.updateDescription(added.id, QStringLiteral("Corregida"),
+                                           domain::UserRole::Admin).status,
+                 application::MaintenanceDescriptionUpdateResult::Status::Updated);
+        QCOMPARE(service.history(folio, domain::UserRole::Admin).items.first().description,
+                 QStringLiteral("Corregida"));
+        QCOMPARE(service.updateDescription(-1, QStringLiteral("x"), domain::UserRole::Admin).status,
+                 application::MaintenanceDescriptionUpdateResult::Status::Failed);
+        // Un id que no existe no se da por anotado.
+        QCOMPARE(service.markReceiptPrinted(-1, domain::UserRole::Admin).status,
+                 application::MaintenanceReceiptMarkResult::Status::Failed);
+
+        // Un costo que cabe en su columna pero desborda el total de la unidad:
+        // el UPDATE falla y se deshace también el INSERT.
+        maintenance.cost = QStringLiteral("9999999999.99");
+        const auto failed = service.add(maintenance, domain::UserRole::Admin);
+        QCOMPARE(failed.status, application::MaintenanceAddResult::Status::Failed);
+        QCOMPARE(service.history(folio, domain::UserRole::Admin).items.size(), 1);
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery total(handle.database());
+        total.prepare(QStringLiteral("SELECT maintenance_cost FROM %1 WHERE vehicle_folio = :folio")
+                          .arg(table));
+        total.bindValue(QStringLiteral(":folio"), folio);
+        QVERIFY2(total.exec() && total.next(), qPrintable(total.lastError().text()));
+        QCOMPARE(total.value(0).toString(), QStringLiteral("1484.56"));
     }
 };
 

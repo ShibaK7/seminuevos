@@ -2,6 +2,7 @@
 #define APP_COMPOSITIONROOT_H
 
 #include "adapters/contract/pdfcontractgenerator.h"
+#include "adapters/contract/pdfmaintenancereceiptgenerator.h"
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/security/pbkdf2passwordhasher.h"
 #include "app/appsettings.h"
@@ -17,6 +18,7 @@ class LoginWindow;
 class MainWindow;
 class LocalFileStorage;
 class SqlInventoryReader;
+class SqlMaintenanceRepository;
 class SqlReferenceDataReader;
 class SqlCounterpartyDirectory;
 class SqlSaleRepository;
@@ -28,9 +30,13 @@ namespace application {
 class AuthenticationService;
 class InventoryService;
 <<<<<<< HEAD
+<<<<<<< HEAD
 class CounterpartyLookupService;
 class SaleService;
 =======
+=======
+class MaintenanceService;
+>>>>>>> d8d4186 (add Maintenance section and generation receipt template)
 class VehicleRecordService;
 >>>>>>> 5255cc8 (Open the vehicle record from the inventory)
 class VehicleRegistrationService;
@@ -86,7 +92,13 @@ private:
     std::unique_ptr<SqlVehicleRecordReader> m_recordReader;
 >>>>>>> 8bb4177 (Read a vehicle record by folio (#30))
     std::unique_ptr<application::VehicleRecordService> m_records;
+<<<<<<< HEAD
 >>>>>>> 5255cc8 (Open the vehicle record from the inventory)
+=======
+    std::unique_ptr<SqlMaintenanceRepository> m_maintenanceRepository;
+    PdfMaintenanceReceiptGenerator m_receipts;
+    std::unique_ptr<application::MaintenanceService> m_maintenance;
+>>>>>>> d8d4186 (add Maintenance section and generation receipt template)
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

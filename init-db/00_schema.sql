@@ -217,7 +217,9 @@ CREATE TABLE vehicle_maintenance (
     maintenance_date DATE NOT NULL,
     maintenance_type_id INTEGER REFERENCES vehicle_maintenance_cat(id),
     cost NUMERIC(12, 2) NOT NULL,
-    description TEXT
+    description TEXT,
+    -- TODO: Actualización para historial de mantenimientos, eliminar una vez dado el vobo de la integración de cambios.
+    receipt_printed BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- ===========================================================================

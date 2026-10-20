@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AddMaintenanceDialog</class>
+ <widget class="QDialog" name="AddMaintenanceDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>480</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Agregar Mantenimiento</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="addMaintenanceLayout">
+   <property name="spacing">
+    <number>16</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <layout class="QGridLayout" name="maintenanceFormGrid" columnstretch="0,1">
+     <property name="horizontalSpacing">
+      <number>25</number>
+     </property>
+     <property name="verticalSpacing">
+      <number>12</number>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="dateLabel">
+       <property name="text">
+        <string>Fecha:</string>
+       </property>
+       <property name="buddy">
+        <cstring>maintenanceDate</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QDateEdit" name="maintenanceDate">
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+       <property name="field" stdset="0">
+        <string notr="true">maintenanceDate</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="maintenanceTypeLabel">
+       <property name="text">
+        <string>Tipo de Mantenimiento:</string>
+       </property>
+       <property name="buddy">
+        <cstring>maintenanceTypeCombo</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="maintenanceTypeCombo">
+       <property name="field" stdset="0">
+        <string notr="true">maintenanceType</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="costLabel">
+       <property name="text">
+        <string>Costo ($ M.N)</string>
+       </property>
+       <property name="buddy">
+        <cstring>maintenanceCost</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="maintenanceCost">
+       <property name="placeholderText">
+        <string>0.00</string>
+       </property>
+       <property name="field" stdset="0">
+        <string notr="true">cost</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="descriptionLabel">
+       <property name="text">
+        <string>Descripción:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+       </property>
+       <property name="buddy">
+        <cstring>maintenanceDescription</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QTextEdit" name="maintenanceDescription">
+       <property name="tabChangesFocus">
+        <bool>true</bool>
+       </property>
+       <property name="acceptRichText">
+        <bool>false</bool>
+       </property>
+       <property name="field" stdset="0">
+        <string notr="true">description</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="dialogButtonsLayout">
+     <property name="spacing">
+      <number>12</number>
+     </property>
+     <item>
+      <spacer name="dialogButtonsSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="maintenanceAcceptButton">
+       <property name="text">
+        <string>Aceptar</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+       <property name="class" stdset="0">
+        <string notr="true">primary</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="maintenanceCancelButton">
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="class" stdset="0">
+        <string notr="true">secondary</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>maintenanceDate</tabstop>
+  <tabstop>maintenanceTypeCombo</tabstop>
+  <tabstop>maintenanceCost</tabstop>
+  <tabstop>maintenanceDescription</tabstop>
+  <tabstop>maintenanceAcceptButton</tabstop>
+  <tabstop>maintenanceCancelButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
