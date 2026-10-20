@@ -76,3 +76,4 @@ build-*/
 .qtcreator/*.user
 .qtcreator/*.user.*
 
+.claude/*
