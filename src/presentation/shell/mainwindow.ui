@@ -117,6 +117,9 @@
        </item>
        <item>
         <widget class="SidebarMenuItem" name="inventoryItem">
+         <property name="autoExclusive">
+          <bool>true</bool>
+         </property>
          <property name="title" stdset="0">
           <string>Inventario</string>
          </property>
@@ -127,6 +130,9 @@
        </item>
        <item>
         <widget class="SidebarMenuItem" name="commercialItem">
+         <property name="autoExclusive">
+          <bool>true</bool>
+         </property>
          <property name="title" stdset="0">
           <string>Comercial</string>
          </property>
@@ -137,6 +143,9 @@
        </item>
        <item>
         <widget class="SidebarMenuItem" name="financeItem">
+         <property name="autoExclusive">
+          <bool>true</bool>
+         </property>
          <property name="title" stdset="0">
           <string>Finanzas</string>
          </property>
@@ -147,6 +156,9 @@
        </item>
        <item>
         <widget class="SidebarMenuItem" name="reportItem">
+         <property name="autoExclusive">
+          <bool>true</bool>
+         </property>
          <property name="title" stdset="0">
           <string>Reportes</string>
          </property>
@@ -326,7 +338,11 @@
      <x>0</x>
      <y>0</y>
      <width>1060</width>
+<<<<<<< HEAD
      <height>30</height>
+=======
+     <height>33</height>
+>>>>>>> 19a583e (Initial front view commercial module)
     </rect>
    </property>
   </widget>
