@@ -50,8 +50,11 @@ MainWindow::MainWindow(QWidget *parent)
     // Los otros tres módulos no existen todavía. Se avisa y se devuelve el
     // resaltado a Inventario: con autoExclusive, un manejador vacío dejaría la
     // barra lateral marcando un módulo en el que el usuario no está.
-    connect(ui->commercialItem, &QPushButton::clicked, this,
-            [this] { showModulePending(QStringLiteral("Comercial")); });
+    connect(ui->commercialItem, &QPushButton::clicked, this,[this]
+    {
+        ui->commercialItem->setChecked(true);
+        ui->mainContentStack->setCurrentWidget(ui->commercial_main_view);
+    });
     connect(ui->financeItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Finanzas")); });
     connect(ui->reportItem, &QPushButton::clicked, this,
