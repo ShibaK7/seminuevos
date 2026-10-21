@@ -106,6 +106,18 @@ application::MaintenanceReceiptGenerator::Outcome PdfMaintenanceReceiptGenerator
     printer.setOutputFileName(outputPath);
     printer.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
 
+    // El documento se pagina aquí, a la resolución en que está pensada la
+    // plantilla (96 px por pulgada, la de un navegador), en el área imprimible
+    // de la hoja. Sin tamaño de página, print() lo vuelve a acomodar a la
+    // resolución de la impresora (1200 ppp): agrega su propio margen y un
+    // número de página, escala las <img> pero no el fondo de una celda, y la
+    // marca de agua sale como un mosaico de logos diminutos. Paginado, print()
+    // escala la hoja entera por igual y sale como en el navegador.
+    constexpr qreal kTemplateDpi = 96.0;
+    const QSizeF printable = printer.pageRect(QPrinter::Inch).size();
+    document.setDocumentMargin(0);
+    document.setPageSize(printable * kTemplateDpi);
+
     document.print(&printer);
 
     result.ok = true;
