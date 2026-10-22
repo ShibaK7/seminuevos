@@ -1,6 +1,7 @@
 #include "presentation/inventory/inventoryview.h"
 #include "ui_inventoryview.h"
 
+#include "presentation/common/forms/formsupport.h"
 #include "presentation/inventory/inventorypresenter.h"
 #include "presentation/common/components/navtabitem.h"
 #include "presentation/inventory/vehicleitemlist.h"
@@ -319,6 +320,7 @@ void InventoryView::showVehicles(const QList<application::InventoryItemDto> &veh
 
     for (const application::InventoryItemDto &vehicle : vehicles) {
         auto *card = new VehicleItemList(ui->vehicleList);
+        formsupport::applyFloatingShadow(card);
         card->setItem(vehicle);
         card->setImage(thumbnailFor(vehicle));
 
