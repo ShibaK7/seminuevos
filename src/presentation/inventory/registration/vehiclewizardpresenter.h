@@ -4,14 +4,8 @@
 #include "application/inventory/registration/dto/catalogdtos.h"
 #include "application/inventory/registration/dto/registrationdtos.h"
 #include "domain/inventory/value_objects/contractdata.h"
-#include "presentation/common/navigation/wizardnavigator.h"
+#include "presentation/inventory/registration/vehicleformpresenter.h"
 
-#include <QObject>
-#include <QSet>
-#include <QTimer>
-
-#include <array>
-#include <memory>
 #include <optional>
 
 namespace application {
@@ -25,15 +19,12 @@ class IVehicleDetailsView;
 class IVehicleFilesView;
 class IVehicleWizardView;
 class TaskRunner;
-class VehicleConditionsPresenter;
-class VehicleDetailsPresenter;
-class VehicleFilesPresenter;
-class WizardStepPresenter;
 
 // Presenter del asistente de registro (US-03.2). Lleva la navegación entre
 // pasos, la validación en vivo y el registro; las vistas solo muestran lo que
 // este presenter les dice y le avisan lo que hace el usuario. Sin widgets
-// (solo QtCore), así que se prueba con vistas falsas.
+// (solo QtCore), así que se prueba con vistas falsas. Los pasos, el ruteo de
+// errores y la revalidación los comparte con el expediente (VehicleFormPresenter).
 //
 // Navegación (el estado lo lleva un WizardNavigator):
 //   - Regresar a un paso anterior siempre se puede, sin validar nada.
@@ -49,7 +40,7 @@ class WizardStepPresenter;
 //     bloqueos del stepper.
 // Qué hace válido a un paso no se decide aquí: lo dice el dominio, a través
 // del servicio.
-class VehicleWizardPresenter final : public QObject
+class VehicleWizardPresenter final : public VehicleFormPresenter
 {
     Q_OBJECT
 
@@ -59,9 +50,6 @@ public:
                            const application::VehicleRegistrationService &service,
                            TaskRunner &runner, bool freeNavigation, QObject *parent = nullptr);
     ~VehicleWizardPresenter() override;
-
-    VehicleDetailsPresenter &details();
-    VehicleFilesPresenter &files();
 
     // Pide los catálogos (fuera del hilo de la interfaz) y, al llegar, llena
     // los pasos y hace la validación inicial en silencio.
@@ -74,15 +62,8 @@ public:
     // El botón primario: "Siguiente" en los dos primeros pasos y "Guardar" en
     // el último.
     void onPrimaryAction();
-    // Algo cambió en el paso `step`. No revalida en el acto: arranca (o
-    // reinicia) un debounce, y la revalidación corre cuando el usuario deja de
-    // teclear.
-    void onStepEdited(int step);
     void onCancel();
     void onPrintContract();
-
-    // Corre ya la revalidación pendiente, sin esperar el debounce.
-    void revalidateEditedSteps();
 
 signals:
     // Se emite en cuanto la unidad queda guardada, antes de cerrar, para que
@@ -92,26 +73,22 @@ signals:
     void closeRequested();
 
 private:
+    // --- VehicleFormPresenter ---
+    // Mientras se llenan los catálogos, los combos también avisan cambios (la
+    // validación inicial ya los cubre), y ya registrada la unidad nada cambia.
+    bool editCounts() const override;
+    void refreshStepper() override;
+    // Si el paso inválido no es el que se ve, el aviso dice por qué se llevó
+    // al usuario ahí y no al paso que pidió.
+    QString invalidStepTitle(int step, bool alreadyVisible) const override;
+    void showCurrentStep() override;
+
     void onLookupsLoaded(const application::RegistrationLookupsDto &lookups);
     void onRegistrationFinished(const application::RegistrationResult &result);
     void onRegistrationSucceeded(int folio);
     void advanceTo(int target);
-    // Lleva al usuario al paso `step`, que no pasó la validación, lo explica
-    // en el aviso y le da el foco al primer campo que falla. Solo para
-    // intentos explícitos (avanzar o guardar).
-    void showInvalidStep(int step, const domain::ValidationResult &result);
-    // Marca en el paso `step` los campos que fallaron y limpia los demás. Solo
-    // con pasos ya intentados: antes de eso no se pinta nada en rojo.
-    // Devuelve los errores que no quedaron a la vista bajo ningún campo.
-    domain::ValidationResult markStepFields(int step, const domain::ValidationResult &result);
-    // El aviso bajo las páginas: el título y, si hay, los errores que no se
-    // ven bajo ningún campo (unshown, lo que devuelve markStepFields()).
-    void showValidationErrors(const QString &title, const domain::ValidationResult &unshown);
-    void showCurrentStep();
-    void refreshStepper();
     void refreshPrimaryAction();
     void setBusy(bool busy);
-    int stepOwning(const domain::ValidationResult &result) const;
     QString blockedHint(int blockingStep) const;
     // Pide destino y genera el PDF. Devuelve false si el usuario canceló o si
     // falló, para que quien lo llama lo deje intentar de nuevo.
@@ -120,19 +97,6 @@ private:
     IVehicleWizardView &m_wizard;
     const application::VehicleRegistrationService &m_service;
     TaskRunner &m_runner;
-
-    std::unique_ptr<VehicleDetailsPresenter> m_details;
-    std::unique_ptr<VehicleConditionsPresenter> m_conditions;
-    std::unique_ptr<VehicleFilesPresenter> m_files;
-    // Los tres en el orden en que se muestran.
-    std::array<WizardStepPresenter *, 3> m_steps{};
-
-    WizardNavigator m_nav;
-
-    // Debounce de la revalidación en vivo: un solo temporizador y los pasos
-    // que se editaron mientras corría.
-    QTimer m_revalidateTimer;
-    QSet<int> m_editedSteps;
 
     bool m_loaded = false;
     bool m_saving = false;

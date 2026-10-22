@@ -111,6 +111,12 @@ application::VehicleFilesDto VehicleFilesPresenter::dto() const
     return m_view.files();
 }
 
+void VehicleFilesPresenter::showStored(const QList<ImagePreview> &images,
+                                       const QList<domain::VehicleDocument> &documents)
+{
+    m_view.showFiles(images, documents);
+}
+
 domain::ValidationResult VehicleFilesPresenter::collectErrors() const
 {
     // El Paso 3 todavía no tiene reglas propias: las fotos y los documentos

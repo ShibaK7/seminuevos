@@ -19,28 +19,6 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-namespace {
-
-// El valor de la propiedad stepState que el stepper le pasa al QSS.
-QString stepStateName(presentation::StepVisual visual)
-{
-    switch (visual) {
-    case presentation::StepVisual::Current:
-        return QStringLiteral("current");
-    case presentation::StepVisual::Locked:
-        return QStringLiteral("locked");
-    case presentation::StepVisual::Error:
-        return QStringLiteral("error");
-    case presentation::StepVisual::Done:
-        return QStringLiteral("done");
-    case presentation::StepVisual::Pending:
-        break;
-    }
-    return QStringLiteral("pending");
-}
-
-} // namespace
-
 VehicleWizardView::VehicleWizardView(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::VehicleWizardView)
@@ -137,6 +115,8 @@ void VehicleWizardView::bind(presentation::VehicleWizardPresenter &presenter)
             [p] { p->details().acquisitionTerms().onBrowseInvoice(); });
     connect(ui->detailsPage, &VehicleDetailsView::cfdiRequestRequested, p,
             [p] { p->details().acquisitionTerms().onCfdiRequest(); });
+    connect(ui->detailsPage, &VehicleDetailsView::viewInvoiceRequested, p,
+            [p] { p->details().acquisitionTerms().onViewInvoice(); });
     connect(ui->filesPage, &VehicleFilesView::imagesChosen, p,
             [p](const QStringList &paths) { p->files().onImagesChosen(paths); });
     connect(ui->filesPage, &VehicleFilesView::documentChosen, p,
@@ -155,8 +135,7 @@ void VehicleWizardView::showStepIndicators(const QList<presentation::StepIndicat
 {
     for (int step = 0; step < indicators.size(); ++step) {
         const presentation::StepIndicator &indicator = indicators.at(step);
-        ui->stepper->setStepState(step, stepStateName(indicator.visual), indicator.complete,
-                                indicator.hint);
+        ui->stepper->setStepVisual(step, indicator.visual, indicator.complete, indicator.hint);
     }
 }
 

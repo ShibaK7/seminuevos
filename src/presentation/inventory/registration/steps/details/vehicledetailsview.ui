@@ -10,7 +10,7 @@
     <height>760</height>
    </rect>
   </property>
-  <layout class="QVBoxLayout" name="detailsLayout">
+  <layout class="QVBoxLayout" name="detailsLayout" stretch="0,0,0,1">
    <item>
     <widget class="QFrame" name="generalInfoCard">
      <layout class="QGridLayout" name="generalInfoGrid">
@@ -346,6 +346,9 @@
     </widget>
    </item>
    <item>
+    <widget class="MaintenanceHistoryTableWidget" name="maintenanceHistorySection" native="true"/>
+   </item>
+   <item>
     <widget class="QFrame" name="ownerAndAcquisitionCard">
      <layout class="QGridLayout" name="ownerAndAcquisitionGrid" columnstretch="0,1,0,1">
       <property name="leftMargin">
@@ -632,6 +635,19 @@
      </layout>
     </widget>
    </item>
+   <item>
+    <spacer name="detailsBottomSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -645,6 +661,12 @@
    <class>ConsignmentTermsSection</class>
    <extends>QWidget</extends>
    <header>presentation/inventory/consignment/consignmenttermssection.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>MaintenanceHistoryTableWidget</class>
+   <extends>QWidget</extends>
+   <header>presentation/inventory/maintenance/maintenancehistorytablewidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

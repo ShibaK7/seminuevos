@@ -59,7 +59,8 @@ seminuevos/
 │   │       │       └── consignedvehicle  Rama consignación: precio base y comisión
 │   │       ├── value_objects/       VehicleImage, VehicleDocument, ContractData
 │   │       └── rules/
-│   │           └── uploadformatpolicy  Formatos admitidos de fotos y documentos
+│   │           ├── uploadformatpolicy  Formatos admitidos de fotos y documentos
+│   │           └── vehiclerecordaccess Qué ve y qué puede hacer cada rol en el expediente (único lugar)
 │   │
 │   ├── application/                 NÚCLEO: casos de uso. Solo QtCore; no conoce adaptadores ni widgets.
 │   │   │                            En cada módulo: dto/ (datos que cruzan la frontera, uno por caso de uso),
@@ -76,20 +77,27 @@ seminuevos/
 │   │       ├── dto/                 inventorydtos: filtro y tarjeta de la rejilla
 │   │       ├── ports/               inventoryreader
 │   │       ├── services/            inventoryservice: consultar el inventario con sus miniaturas
-│   │       └── registration/        Registrar un vehículo (las dos ramas)
+│   │       └── registration/        El formulario del vehículo: alta (las dos ramas) y expediente
+│   │           │                    (consultarlo y corregirlo)
 │   │           ├── dto/             registrationdtos (lo que captura cada paso y el resultado),
-│   │           │                    catalogdtos (catálogos, checklist y UMA del asistente)
-│   │           ├── ports/           vehiclerepository, referencedatareader, contractgenerator
+│   │           │                    catalogdtos (catálogos, checklist y UMA del asistente),
+│   │           │                    recorddtos (expediente: qué deja ver cada rol y lo guardado)
+│   │           ├── ports/           vehiclerepository, referencedatareader, contractgenerator,
+│   │           │                    vehiclerecordreader (el expediente de un folio, para pintarlo)
 │   │           └── services/        vehicleregistrationservice (valida, revisa VIN, copia archivos, guarda,
-│   │                                deshace lo copiado si algo falla) y registrationmapping (privado)
+│   │                                deshace lo copiado si algo falla), vehiclerecordservice (el
+│   │                                expediente: leerlo y corregirlo, conservando, copiando y
+│   │                                borrando archivos) y registrationmapping (privado)
 │   │
 │   ├── adapters/                    Implementan los puertos. Primero la tecnología (cada una es su
 │   │   │                            biblioteca, con solo su módulo de Qt), luego el módulo
 │   │   ├── persistence/             PostgreSQL (Qt Sql)
 │   │   │   ├── connectionpool        Una conexión por hilo; en Debug prohíbe SQL en el hilo de la interfaz
 │   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
-│   │   │   └── inventory/           sqlvehiclerepository (guardado transaccional), sqlcounterpartyrepository,
-│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA)
+│   │   │   └── inventory/           sqlvehiclerepository (alta y corrección transaccionales, con versión),
+│   │   │                            sqlcounterpartyrepository (contraparte: buscar, crear, corregir o religar),
+│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA),
+│   │   │                            sqlvehiclerecordreader (el expediente de un folio, en una sola lectura)
 │   │   ├── storage/                 Disco local (localfilestorage): almacén por VIN, miniaturas, temporales
 │   │   ├── contract/                PDF del contrato: pdfcontractgenerator, datos de la agencia, número a letras
 │   │   └── security/                Hash PBKDF2 de contraseñas
@@ -97,13 +105,16 @@ seminuevos/
 │   ├── presentation/                FRONT. Solo en src/: el .ui, el .h, el .cpp y el presenter de cada
 │   │   │                            pantalla viven juntos en su carpeta (MVP: el presenter decide, la
 │   │   │                            vista solo pinta y avisa; ninguna vista toca base ni disco)
-│   │   ├── shell/                   mainwindow (.ui/.h/.cpp): la cáscara (menú lateral, barra superior, pila de páginas)
+│   │   ├── shell/                   mainwindow (.ui/.h/.cpp): la cáscara (menú lateral, barra superior, pila de páginas:
+│   │   │                            inventario, asistente de alta y expediente)
 │   │   ├── login/                   loginwindow (.ui/.h/.cpp), loginpresenter, iloginview.h
 │   │   ├── common/                  Lo que usan todos los módulos
 │   │   │   ├── components/          Componentes promovibles en Designer: sidebarmenuitem, navtabitem,
 │   │   │   │                        outlinebutton, aspectratioimagelabel, wizardstepper (+ statefultextbutton, base)
-│   │   │   ├── forms/               formsupport: marcar errores, foco, vigilar ediciones, llenar combos
-│   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos
+│   │   │   ├── forms/               formsupport: marcar errores, foco, vigilar ediciones, llenar combos,
+│   │   │   │                        pintar lo guardado, solo lectura (consulta) y campos bloqueados al editar
+│   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos;
+│   │   │   │                        editsession: consulta o edición (FormMode) y si hay cambios sin guardar
 │   │   │   └── tasks/               taskrunner y pooledtaskrunner: trabajo fuera del hilo de la interfaz
 │   │   └── inventory/               Menú Inventario
 │   │       ├── inventoryview (.ui/.h/.cpp), inventorypresenter, iinventoryview.h
@@ -112,6 +123,8 @@ seminuevos/
 │   │       ├── registration/        Asistente "Registrar Vehículo", común a Adquisición y Consignación
 │   │       │   ├── vehiclewizardview (.ui/.h/.cpp), vehiclewizardpresenter, ivehiclewizardview.h
 │   │       │   │                    El marco: stepper, pasos, aviso y botones; navegación y registro
+│   │       │   ├── vehicleformpresenter, ivehicleformview.h   Base abstracta del formulario por
+│   │       │   │                    pasos que comparten el alta y el expediente (Template Method)
 │   │       │   ├── wizardsteppresenter, istepview.h   Base abstracta de un paso
 │   │       │   └── steps/
 │   │       │       ├── details/     Paso 1: vehicledetailsview (.ui/.h/.cpp), vehicledetailspresenter,
@@ -120,13 +133,23 @@ seminuevos/
 │   │       │       │                vehicleconditionspresenter, ivehicleconditionsview.h
 │   │       │       └── files/       Paso 3: vehiclefilesview (.ui/.h/.cpp), vehiclefilespresenter,
 │   │       │                        ivehiclefilesview.h  (galería y documentos)
+│   │       ├── record/              Expediente de un vehículo ("Detalles" en una tarjeta): consulta y edición
+│   │       │   └── vehiclerecordview (.ui/.h/.cpp), vehiclerecordpresenter, ivehiclerecordview.h
+│   │       │                        El marco: pestañas libres, Volver y, para el Administrador, Editar
+│   │       │                        (Guardar cambios / Cancelar); usa las MISMAS tres páginas del alta,
+│   │       │                        pinta lo guardado y el rol decide qué se ve (operación, historial)
 │   │       ├── acquisition/         Solo lo de Adquisición (dentro del Paso 1)
 │   │       │   ├── acquisitiontermssection (.ui/.h/.cpp)   Archivo de factura, precio de compra,
 │   │       │   │                                           tipo y método de pago, precio de venta
-│   │       │   ├── acquisitiontermspresenter, iacquisitiontermsview.h   Botones de factura y CFDI
+│   │       │   ├── acquisitiontermspresenter, iacquisitiontermsview.h   Botones de factura (subir,
+│   │       │   │                                           ver) y CFDI
 │   │       │   └── invoiceattachment                       Regla de la autofactura (factura después del CFDI)
-│   │       └── consignment/         Solo lo de Consignación (dentro del Paso 1)
-│   │           └── consignmenttermssection (.ui/.h/.cpp)   Precio base y comisión
+│   │       ├── consignment/         Solo lo de Consignación (dentro del Paso 1)
+│   │       │   └── consignmenttermssection (.ui/.h/.cpp)   Precio base y comisión
+│   │       └── maintenance/         Historial de mantenimientos (dentro del Paso 1, entre sus dos
+│   │           │                    tarjetas; el alta lo oculta)
+│   │           └── maintenancehistorytablewidget (.ui/.h/.cpp)   La tabla con "Agregar Mantenimiento"
+│   │                                                             e "Imprimir"
 │   │
 │   └── app/                         Raíz de composición: lo único que conoce todas las capas
 │       ├── appsettings              Lee el .env (conexión, almacén, banderas de desarrollo)

@@ -3,14 +3,22 @@
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/auth/devseeder.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
+#include "adapters/persistence/inventory/sqlmaintenancerepository.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 #include "adapters/persistence/auth/sqluserdirectory.h"
+#include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
 #include "application/auth/services/authenticationservice.h"
+#include "application/inventory/maintenance/services/maintenanceservice.h"
 #include "application/inventory/services/inventoryservice.h"
+#include "application/inventory/registration/services/vehiclerecordservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "presentation/inventory/inventorypresenter.h"
+#include "presentation/inventory/maintenance/maintenancehistorypresenter.h"
+#include "presentation/inventory/maintenance/maintenancehistorytablewidget.h"
+#include "presentation/inventory/record/vehiclerecordpresenter.h"
+#include "presentation/inventory/record/vehiclerecordview.h"
 #include "presentation/login/loginpresenter.h"
 #include "presentation/inventory/registration/vehiclewizardpresenter.h"
 #include "presentation/inventory/inventoryview.h"
@@ -140,6 +148,12 @@ bool CompositionRoot::start()
         *m_vehicles, *m_files, *m_referenceData, m_contracts);
     m_inventoryReader = std::make_unique<SqlInventoryReader>(pool);
     m_inventory = std::make_unique<application::InventoryService>(*m_inventoryReader, *m_files);
+    m_recordReader = std::make_unique<SqlVehicleRecordReader>(pool);
+    m_records = std::make_unique<application::VehicleRecordService>(
+        *m_recordReader, *m_vehicles, *m_files, *m_referenceData);
+    m_maintenanceRepository = std::make_unique<SqlMaintenanceRepository>(pool);
+    m_maintenance = std::make_unique<application::MaintenanceService>(
+        *m_maintenanceRepository, *m_referenceData, m_receipts);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -187,6 +201,29 @@ void CompositionRoot::showMain(const application::SessionDto &session)
                 *m_registration, m_runner, m_settings.wizardFreeNavigation, view);
             view->bind(*presenter);
             presenter->start();
+            return view;
+        });
+
+        // El expediente de un folio (US-03.3 y US-03.4). El rol se captura por
+        // valor: la sesión no se guarda en ningún otro lado.
+        mainWindow->setRecordFactory([this, role = session.role](QWidget *parent, int folio) {
+            auto *view = new VehicleRecordView(parent);
+            auto *presenter = new presentation::VehicleRecordPresenter(
+                *view, view->detailsView(), view->conditionsView(), view->filesView(),
+                *m_registration, *m_records, m_runner, folio, role, view);
+            view->bind(*presenter);
+            // Historial de mantenimientos: hijo de `presenter` para que muera
+            // antes que las vistas. Cuándo se ve ya lo decide el expediente
+            // según el rol. Al agregar un mantenimiento (#46), el total nuevo
+            // repinta solo el campo "Mantenimientos", sin releer nada.
+            MaintenanceHistoryTableWidget &history = view->detailsView().maintenanceHistory();
+            auto *maintenance = new presentation::MaintenanceHistoryPresenter(
+                history, *m_maintenance, m_runner, folio, role, presenter);
+            history.bind(*maintenance);
+            connect(maintenance, &presentation::MaintenanceHistoryPresenter::maintenanceCostChanged,
+                    presenter, &presentation::VehicleRecordPresenter::showMaintenanceCost);
+            presenter->start();
+            maintenance->start();
             return view;
         });
         m_main = mainWindow;

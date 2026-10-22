@@ -1,15 +1,23 @@
 #include "presentation/common/forms/formsupport.h"
 
+#include <QAbstractItemView>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDateEdit>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QObject>
+#include <QPushButton>
 #include <QProxyStyle>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSpinBox>
+#include <QTextEdit>
 #include <QTest>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 #include <QWidget>
 
 namespace {
@@ -64,6 +72,18 @@ private slots:
     void showsTheMessagesUnderTheFieldInsteadOfTheToolTip();
     void reportsTheErrorsItCannotShow();
     void focusScrollsTheFieldIntoView();
+
+    // Solo lectura (el expediente en consulta) y campos bloqueados al editar.
+    void readOnlyTextsStaySelectableButDoNotChange();
+    void readOnlySpinBoxGetsItsArrowsBackOnlyOnce();
+    void readOnlyDateDropsItsCalendarUntilEditable();
+    void editableAgainDateLeavesRoomForItsCalendar();
+    void readOnlyComboIgnoresClicksKeysAndWheel();
+    void readOnlyCheckBoxDoesNotToggle();
+    void lockedFieldsAreDisabledAndOnlyThoseComeBack();
+    void readOnlyLeavesPlainButtonsAlone();
+    void selectOptionKeepsAMissingCatalogEntry();
+    void selectTextKeepsAMissingText();
 };
 
 void TestFormSupport::marksOnlyFieldsWithAnExactKey()
@@ -387,6 +407,227 @@ void TestFormSupport::focusScrollsTheFieldIntoView()
     QVERIFY2(visible.contains(field), qPrintable(QStringLiteral("campo en y=%1, visible hasta %2")
                                                       .arg(field.top())
                                                       .arg(visible.bottom())));
+}
+
+// En consulta un texto se puede seleccionar y copiar (el VIN, por ejemplo),
+// pero no cambia; al editar vuelve a ser un campo normal.
+void TestFormSupport::readOnlyTextsStaySelectableButDoNotChange()
+{
+    QWidget root;
+    auto *layout = new QVBoxLayout(&root);
+    auto *line = new QLineEdit(QStringLiteral("ABC123"), &root);
+    auto *text = new QTextEdit(&root);
+    text->setPlainText(QStringLiteral("nota"));
+    layout->addWidget(line);
+    layout->addWidget(text);
+    root.show();
+
+    formsupport::setReadOnly(&root, true);
+    QVERIFY(line->isReadOnly());
+    QVERIFY(text->isReadOnly());
+    QVERIFY(line->isEnabled());
+    QTest::keyClicks(line, QStringLiteral("XYZ"));
+    QCOMPARE(line->text(), QStringLiteral("ABC123"));
+
+    formsupport::setReadOnly(&root, false);
+    QVERIFY(!line->isReadOnly());
+    QVERIFY(!text->isReadOnly());
+}
+
+// Las flechas se quitan en consulta y vuelven al editar, aunque la consulta
+// se haya aplicado dos veces (al refrescar el expediente): la segunda no debe
+// guardar "sin flechas" como lo original.
+void TestFormSupport::readOnlySpinBoxGetsItsArrowsBackOnlyOnce()
+{
+    QWidget root;
+    auto *spin = new QSpinBox(&root);
+    spin->setRange(0, 100);
+    spin->setValue(5);
+    QCOMPARE(spin->buttonSymbols(), QAbstractSpinBox::UpDownArrows);
+
+    formsupport::setReadOnly(&root, true);
+    QVERIFY(spin->isReadOnly());
+    QCOMPARE(spin->buttonSymbols(), QAbstractSpinBox::NoButtons);
+    formsupport::setReadOnly(&root, true);
+    formsupport::setReadOnly(&root, false);
+    QVERIFY(!spin->isReadOnly());
+    QCOMPARE(spin->buttonSymbols(), QAbstractSpinBox::UpDownArrows);
+}
+
+// Una fecha con calendario se pintaría como deshabilitada en solo lectura: se
+// queda sin calendario mientras lo es, y lo recupera una sola vez al volver.
+void TestFormSupport::readOnlyDateDropsItsCalendarUntilEditable()
+{
+    QWidget root;
+    auto *date = new QDateEdit(&root);
+    date->setCalendarPopup(true);
+    auto *plain = new QDateEdit(&root);
+    QVERIFY(!plain->calendarPopup());
+
+    formsupport::setReadOnly(&root, true);
+    QVERIFY(date->isReadOnly());
+    QVERIFY(!date->calendarPopup());
+    formsupport::setReadOnly(&root, true);
+    formsupport::setReadOnly(&root, false);
+    QVERIFY(date->calendarPopup());
+    QVERIFY(!plain->calendarPopup());
+}
+
+// Con las reglas de la hoja de la app (el lugar del calendario a la derecha,
+// que en solo lectura se quita), una fecha que vuelve a ser editable deja su
+// campo interno igual que una que nunca dejó de serlo. Si el campo se quedara
+// con el ancho de la solo lectura, taparía el ícono y el clic no abriría el
+// calendario.
+void TestFormSupport::editableAgainDateLeavesRoomForItsCalendar()
+{
+    QWidget window;
+    window.setStyleSheet(QStringLiteral(
+        "QDateEdit { padding: 6px 56px 6px 14px; }"
+        "QDateEdit[readOnly=\"true\"] { padding-right: 14px; }"
+        "QDateEdit::drop-down { subcontrol-origin: margin; subcontrol-position: center right;"
+        "  width: 24px; margin-right: 8px; border: none; }"
+        "QDateEdit[readOnly=\"true\"]::drop-down { width: 0px; margin: 0px; }"));
+    auto *layout = new QVBoxLayout(&window);
+    auto *form = new QWidget(&window);
+    auto *formLayout = new QVBoxLayout(form);
+    formLayout->setContentsMargins(0, 0, 0, 0);
+    auto *date = new QDateEdit(form);
+    date->setCalendarPopup(true);
+    formLayout->addWidget(date);
+    auto *twin = new QDateEdit(&window);
+    twin->setCalendarPopup(true);
+    layout->addWidget(form);
+    layout->addWidget(twin);
+    window.resize(400, 120);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    formsupport::setReadOnly(form, true);
+    formsupport::setReadOnly(form, false);
+    QCoreApplication::processEvents();
+    QCOMPARE(date->width(), twin->width());
+    QCOMPARE(date->findChild<QLineEdit *>()->geometry(), twin->findChild<QLineEdit *>()->geometry());
+}
+
+// QComboBox no tiene readOnly: la guarda se traga flechas y clics, y la rueda
+// (que cambiaría la opción al desplazar la página) tampoco la mueve.
+void TestFormSupport::readOnlyComboIgnoresClicksKeysAndWheel()
+{
+    QWidget root;
+    auto *layout = new QVBoxLayout(&root);
+    auto *combo = new QComboBox(&root);
+    combo->addItems({QStringLiteral("Uno"), QStringLiteral("Dos"), QStringLiteral("Tres")});
+    combo->setCurrentIndex(1);
+    layout->addWidget(combo);
+    root.show();
+
+    formsupport::setReadOnly(&root, true);
+    QVERIFY(combo->property("readOnly").toBool());
+    QTest::keyClick(combo, Qt::Key_Down);
+    QTest::keyClick(combo, Qt::Key_Up);
+    QCOMPARE(combo->currentIndex(), 1);
+
+    const QPointF center = QRectF(combo->rect()).center();
+    QWheelEvent wheel(center, combo->mapToGlobal(center), QPoint(), QPoint(0, -120), Qt::NoButton,
+                      Qt::NoModifier, Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(combo, &wheel);
+    QCOMPARE(combo->currentIndex(), 1);
+
+    QTest::mouseClick(combo, Qt::LeftButton);
+    QVERIFY(!combo->view()->isVisible());
+    combo->hidePopup();
+
+    formsupport::setReadOnly(&root, false);
+    QVERIFY(!combo->property("readOnly").toBool());
+    QTest::keyClick(combo, Qt::Key_Down);
+    QCOMPARE(combo->currentIndex(), 2);
+}
+
+// Una casilla de solo lectura se ve igual (no en gris) pero no cambia.
+void TestFormSupport::readOnlyCheckBoxDoesNotToggle()
+{
+    QWidget root;
+    auto *layout = new QVBoxLayout(&root);
+    auto *check = new QCheckBox(QStringLiteral("Luces delanteras"), &root);
+    check->setChecked(true);
+    layout->addWidget(check);
+    root.show();
+
+    formsupport::setReadOnly(&root, true);
+    QTest::mouseClick(check, Qt::LeftButton);
+    QTest::keyClick(check, Qt::Key_Space);
+    QVERIFY(check->isChecked());
+    QVERIFY(check->isEnabled());
+
+    formsupport::setReadOnly(&root, false);
+    QTest::mouseClick(check, Qt::LeftButton);
+    QVERIFY(!check->isChecked());
+}
+
+// Al editar, los campos de lockedFields se deshabilitan con un tooltip que lo
+// explica. De vuelta en consulta, solo se rehabilitan esos: Folio, que viene
+// deshabilitado del .ui, nunca se habilita.
+void TestFormSupport::lockedFieldsAreDisabledAndOnlyThoseComeBack()
+{
+    QWidget root;
+    QLineEdit *type = addField(&root, QStringLiteral("acquisitionType"));
+    type->setToolTip(QStringLiteral("original"));
+    QLineEdit *folio = addField(&root, QStringLiteral("folio"));
+    folio->setEnabled(false);
+    QLineEdit *model = addField(&root, QStringLiteral("model"));
+
+    const QStringList locked{QStringLiteral("acquisitionType"), QStringLiteral("folio")};
+    formsupport::setReadOnly(&root, false, locked);
+    QVERIFY(!type->isEnabled());
+    QVERIFY(type->toolTip() != QStringLiteral("original"));
+    QVERIFY(!folio->isEnabled());
+    QVERIFY(model->isEnabled());
+    QVERIFY(!model->isReadOnly());
+
+    formsupport::setReadOnly(&root, true);
+    QVERIFY(type->isEnabled());
+    QVERIFY(type->isReadOnly());
+    QCOMPARE(type->toolTip(), QStringLiteral("original"));
+    QVERIFY(!folio->isEnabled());
+}
+
+// Los botones normales ("Ver", "Subir documento") no son campos: cada vista
+// decide si los oculta.
+void TestFormSupport::readOnlyLeavesPlainButtonsAlone()
+{
+    QWidget root;
+    auto *button = new QPushButton(QStringLiteral("Ver"), &root);
+    formsupport::setReadOnly(&root, true);
+    QVERIFY(button->isEnabled());
+    QVERIFY(!button->property("readOnly").isValid());
+}
+
+// Un dato guardado se ve tal cual aunque su opción ya no esté en el catálogo.
+void TestFormSupport::selectOptionKeepsAMissingCatalogEntry()
+{
+    QComboBox combo;
+    formsupport::fillCombo(&combo, {{1, QStringLiteral("Ford"), -1}, {2, QStringLiteral("Nissan"), -1}});
+    formsupport::selectOption(&combo, domain::CatalogRef{2, QStringLiteral("Nissan")});
+    QCOMPARE(combo.currentText(), QStringLiteral("Nissan"));
+
+    formsupport::selectOption(&combo, domain::CatalogRef{9, QStringLiteral("Saturn")});
+    QCOMPARE(combo.currentText(), QStringLiteral("Saturn"));
+    QCOMPARE(combo.currentData().toInt(), 9);
+
+    formsupport::selectOption(&combo, domain::CatalogRef{});
+    QCOMPARE(combo.currentIndex(), -1);
+}
+
+void TestFormSupport::selectTextKeepsAMissingText()
+{
+    QComboBox combo;
+    combo.addItems({QStringLiteral("4"), QStringLiteral("6")});
+    formsupport::selectText(&combo, QStringLiteral("6"));
+    QCOMPARE(combo.currentIndex(), 1);
+    formsupport::selectText(&combo, QStringLiteral("12"));
+    QCOMPARE(combo.currentText(), QStringLiteral("12"));
+    formsupport::selectText(&combo, QString());
+    QCOMPARE(combo.currentIndex(), -1);
 }
 
 QTEST_MAIN(TestFormSupport)

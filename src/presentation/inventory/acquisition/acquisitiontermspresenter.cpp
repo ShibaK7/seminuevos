@@ -18,32 +18,53 @@ void AcquisitionTermsPresenter::setAutofactura(bool autofactura)
     refresh();
 }
 
-void AcquisitionTermsPresenter::onBrowseInvoice()
+bool AcquisitionTermsPresenter::onBrowseInvoice()
 {
     const QString path = m_view.askInvoiceFile();
     if (path.isEmpty())
-        return;
+        return false;
+    const QString before = m_attachment.attachedPath();
     m_attachment.attach(path);
     refresh();
+    return m_attachment.attachedPath() != before;
 }
 
-void AcquisitionTermsPresenter::onCfdiRequest()
+bool AcquisitionTermsPresenter::onCfdiRequest()
 {
     const application::TemporaryFileDto form = m_service.prepareCfdiRequestForm();
     if (!form.ok) {
         m_view.showWarning(QStringLiteral("No se pudo abrir el documento"), form.errorMessage);
-        return;
+        return false;
     }
     if (!m_view.openDocument(form.path)) {
         m_view.showWarning(QStringLiteral("No se pudo abrir el documento"),
                            QStringLiteral("No se pudo abrir el navegador para mostrar:\n%1").arg(form.path));
-        return;
+        return false;
     }
 
     // Solo cuenta como generada cuando todo salió bien: ni se desbloquea la
     // subida con una solicitud que el usuario nunca llegó a ver, ni se pierde
     // una factura que todavía puede recuperar volviendo a Facturado.
+    const QString before = m_attachment.attachedPath();
     m_attachment.markCfdiRequestGenerated();
+    refresh();
+    return m_attachment.attachedPath() != before;
+}
+
+void AcquisitionTermsPresenter::onViewInvoice()
+{
+    const QString path = m_attachment.attachedPath();
+    if (path.isEmpty())
+        return;
+    if (!m_view.openDocument(path)) {
+        m_view.showWarning(QStringLiteral("No se pudo abrir la factura"),
+                           QStringLiteral("No se pudo abrir:\n%1").arg(path));
+    }
+}
+
+void AcquisitionTermsPresenter::restoreInvoice(const QString &path, bool autofactura)
+{
+    m_attachment.restore(path, autofactura);
     refresh();
 }
 
@@ -60,6 +81,7 @@ void AcquisitionTermsPresenter::refresh()
     state.cfdiButtonVisible = m_attachment.showsCfdiButton();
     state.uploadEnabled = m_attachment.canUpload();
     state.uploadToolTip = m_attachment.uploadToolTip();
+    state.viewVisible = m_attachment.canView();
     m_view.showInvoiceAttachment(state);
 }
 

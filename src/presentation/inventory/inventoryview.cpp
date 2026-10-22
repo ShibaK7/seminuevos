@@ -6,6 +6,7 @@
 #include "presentation/common/components/navtabitem.h"
 #include "presentation/inventory/vehicleitemlist.h"
 
+#include <QAbstractButton>
 #include <QBoxLayout>
 #include <QComboBox>
 #include <QDateEdit>
@@ -94,8 +95,8 @@ InventoryView::InventoryView(QWidget *parent)
 
     // La pestaña inicial va aquí y no como `checked` en el .ui: Designer ve
     // los promovidos como QPushButton no checkable, y al guardar reescribe
-    // checked=true como false. Las pestañas Adquisición / Consignación
-    // todavía no filtran: por ahora la lista muestra las dos ramas.
+    // checked=true como false. La pestaña marcada decide qué rama muestra la
+    // lista (ver filter()).
     ui->acquisitionTab->setChecked(true);
 
     populateStatusFilter();
@@ -184,6 +185,10 @@ void InventoryView::bind(presentation::InventoryPresenter &presenter)
             &presentation::InventoryPresenter::scheduleReload);
     connect(ui->fechaFin, &QDateEdit::dateChanged, &presenter,
             &presentation::InventoryPresenter::scheduleReload);
+    // Solo una pestaña: son autoexclusivas, así que cambiar de rama conmuta
+    // las dos, y conectar ambas leería dos veces.
+    connect(ui->consignmentTab, &QAbstractButton::toggled, &presenter,
+            &presentation::InventoryPresenter::reload);
 }
 
 QList<QWidget *> InventoryView::leadingFocusWidgets() const
@@ -303,6 +308,10 @@ application::InventoryFilterDto InventoryView::filter() const
     if (rawStatus >= 0)
         filter.status = static_cast<domain::VehicleStatus>(rawStatus);
 
+    filter.acquisitionType = ui->consignmentTab->isChecked()
+                                 ? domain::AcquisitionType::Consignacion
+                                 : domain::AcquisitionType::Adquisicion;
+
     filter.addedFrom = ui->fechaInicio->date();
     filter.addedTo = ui->fechaFin->date();
     return filter;
@@ -332,6 +341,9 @@ void InventoryView::showVehicles(const QList<application::InventoryItemDto> &veh
         item->setSizeHint(QSize(0, card->sizeHint().height()));
         item->setData(Qt::UserRole, vehicle.folio);
         ui->vehicleList->setItemWidget(item, card);
+        // La conexión muere con la tarjeta, en el próximo clear().
+        connect(card, &VehicleItemList::detailsRequested, this,
+                &InventoryView::vehicleDetailsRequested);
     }
 }
 
