@@ -114,7 +114,7 @@
        <number>32</number>
       </property>
       <property name="bottomMargin">
-       <number>0</number>
+       <number>14</number>
       </property>
       <item>
        <widget class="QLabel" name="label_2">
@@ -258,8 +258,6 @@
   <tabstop>consignmentTab</tabstop>
   <tabstop>addVehicleButton</tabstop>
  </tabstops>
- <resources>
-  <include location="../../../resources/Resources.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

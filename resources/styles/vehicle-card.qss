@@ -11,7 +11,7 @@
 QWidget#VehicleItemList {
     background: transparent;
     min-height: 150px;
-    max-height: 150px;
+    /*max-height: 150px;*/
 }
 
 /* La tarjeta propiamente dicha. */
@@ -122,10 +122,11 @@ QPushButton#detailsButton {
 }
 
 QPushButton#detailsButton:hover {
-    background-color: #F4F6F9;
-    border-color: #ADB5BD;
+    background-color: #0A25C9;
+    color: #FFFFFF;
+    border-color: #0A25C9;
 }
 
 QPushButton#detailsButton:pressed {
-    background-color: #E9ECF1;
+    background-color: #081CA2;
 }
