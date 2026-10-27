@@ -1,5 +1,7 @@
 #include "presentation/inventory/registration/steps/conditions/conditionchecklistrow.h"
 
+#include "presentation/common/forms/formsupport.h"
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QFont>
@@ -105,6 +107,25 @@ void ConditionChecklistRow::setChecked(bool checked)
 bool ConditionChecklistRow::isChecked() const
 {
     return m_checkBox->isChecked();
+}
+
+int ConditionChecklistRow::elementId() const
+{
+    return m_item.id;
+}
+
+void ConditionChecklistRow::showEntry(const std::optional<application::InspectionEntryDto> &entry)
+{
+    m_checkBox->setChecked(entry.has_value());
+    const bool optimal = !entry || entry->isOptimal;
+    (optimal ? m_optimalRadio : m_faultyRadio)->setChecked(true);
+    formsupport::showText(m_observationsEdit, entry ? entry->observations : QString());
+}
+
+void ConditionChecklistRow::setReadOnly(bool readOnly)
+{
+    // No toca "enabled": de eso se encarga updateRowState() según la casilla.
+    formsupport::setReadOnly(this, readOnly);
 }
 
 const QString &ConditionChecklistRow::category() const

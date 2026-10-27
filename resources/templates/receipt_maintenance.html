@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- Guardada en UTF-8 y declarada así para que un navegador muestre bien los
+     acentos y la ñ. Van tal cual, no como entidades (&iacute;): el adaptador
+     busca las marcas con su texto, y [Descripción] dejaría de coincidir. -->
+<meta charset="UTF-8">
+<!-- Las imágenes van con su ruta relativa en disco para que la plantilla se vea
+     igual abierta en un navegador. QTextDocument no resuelve rutas relativas
+     contra qrc:, así que quien la imprima registra cada una antes de setHtml():
+     addResource(QTextDocument::ImageResource, QUrl("../images/x"),
+                 QImage(":/resources/images/images/x")). -->
+<style>
+  body { font-family: Arial, "Segoe UI", sans-serif; font-size: 14pt; color: #000000; }
+  p.header { text-align: center; margin: 0 0 50px 0; }
+  p.place-date { text-align: right; margin: 0 0 14px 0; }
+  p.amount { text-align: right; font-weight: bold; margin: 0 0 16px 0; }
+  p.body { text-align: justify; line-height: 200%; margin: 0; }
+  table.signature { width: 100%; margin-top: 30px; }
+  table.signature td { text-align: center; border: none; }
+  table.signature td.line { border-top: 1px solid #808080; padding-top: 2px; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<p class="header"><img src="../images/logo-seminuevos.jpeg" width="600" height="150"/></p>
+
+<!-- La fecha y el importe van en la misma tabla que el texto para que sus
+     orillas coincidan. QTextDocument repite el fondo de una celda desde su
+     esquina: la celda del texto mide lo mismo que la imagen de ancho, y la
+     imagen es más alta que el texto (blanco bajo el logo), así que el logo se
+     ve una sola vez. -->
+<table align="center" width="625" cellspacing="0" cellpadding="24">
+  <tr>
+    <td style="padding-top: 0; padding-bottom: 0;">
+<p class="place-date">Martínez de la torre, Ver. A [Fecha].</p>
+<p class="amount">Bueno por: $[Costo]</p>
+    </td>
+  </tr>
+  <tr>
+    <td background="../images/logo-seminuevos-watermark.png" height="263">
+<p class="body">Recibí del <b>Sr. Miguel Nicolás De La Hoz Couturier</b> la cantidad de $[Costo] (Moneda Nacional)
+derivado del tipo de mantenimiento [Tipo_Mantenimiento] el cual se describe a continuación,
+<b>[Descripción].</b></p>
+    </td>
+  </tr>
+</table>
+
+<table class="signature">
+  <tr>
+    <td width="35%">&nbsp;</td>
+    <td width="30%" class="line">Nombre y Firma</td>
+    <td width="35%">&nbsp;</td>
+  </tr>
+</table>
+
+</body>
+</html>

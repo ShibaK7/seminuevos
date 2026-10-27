@@ -1,26 +1,40 @@
-// Prueba de integración del registro contra el PostgreSQL de Docker, con los
-// adaptadores reales (SqlVehicleRepository, SqlReferenceDataReader y
-// LocalFileStorage sobre una carpeta temporal). Es opcional: solo se compila
-// con -DSEMINUEVOS_DB_TESTS=ON y necesita `docker compose up -d`.
+// Prueba de integración del registro, del expediente y de su historial de
+// mantenimientos contra el PostgreSQL de Docker, con los adaptadores reales
+// (SqlVehicleRepository, SqlVehicleRecordReader, SqlReferenceDataReader,
+// SqlMaintenanceRepository y LocalFileStorage sobre una carpeta temporal). Es opcional: solo se compila con -DSEMINUEVOS_DB_TESTS=ON
+// y necesita `docker compose up -d`.
 //
 // Cada caso registra una unidad con un VIN único y la borra al terminar.
 
 #include "adapters/contract/pdfcontractgenerator.h"
+#include "adapters/contract/pdfmaintenancereceiptgenerator.h"
 #include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/inventory/sqlcounterpartyrepository.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
+#include "adapters/persistence/inventory/sqlmaintenancerepository.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
+#include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
+#include "application/inventory/maintenance/services/maintenanceservice.h"
+#include "application/inventory/registration/services/vehiclerecordservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
+#include "domain/inventory/model/counterparty.h"
 
 #include <QDateTime>
+#include <QDeadlineTimer>
+#include <QDir>
 #include <QFile>
+#include <QImage>
 #include <QSqlDatabase>
+#include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <QThread>
 #include <QtTest>
 
+#include <atomic>
 #include <memory>
 
 namespace {
@@ -41,6 +55,128 @@ QMap<QString, QString> readEnv()
     return values;
 }
 
+// La sesión de otro usuario: su propia conexión, con una transacción abierta
+// que todavía no confirma. Al destruirse la deshace (si no la confirmó) y se
+// desconecta, así suelta sus candados aunque la prueba falle a la mitad.
+class OtherSession
+{
+public:
+    explicit OtherSession(const DatabaseConfig &config)
+        : m_name(QStringLiteral("otra-sesion-%1").arg(++s_sessions))
+    {
+        m_db = QSqlDatabase::addDatabase(config.driverName, m_name);
+        m_db.setHostName(config.hostName);
+        m_db.setPort(config.port);
+        m_db.setDatabaseName(config.databaseName);
+        m_db.setUserName(config.userName);
+        m_db.setPassword(config.password);
+        m_open = m_db.open() && m_db.transaction();
+    }
+
+    ~OtherSession()
+    {
+        if (m_open && !m_committed)
+            m_db.rollback();
+        m_db.close();
+        m_db = QSqlDatabase(); // soltar la referencia antes de removeDatabase()
+        QSqlDatabase::removeDatabase(m_name);
+    }
+
+    OtherSession(const OtherSession &) = delete;
+    OtherSession &operator=(const OtherSession &) = delete;
+
+    bool isOpen() const { return m_open; }
+    QString lastError() const { return m_db.lastError().text(); }
+    QSqlDatabase &database() { return m_db; }
+
+    bool commit()
+    {
+        m_committed = m_db.commit();
+        return m_committed;
+    }
+
+private:
+    static inline int s_sessions = 0;
+    QString m_name;
+    QSqlDatabase m_db;
+    bool m_open = false;
+    bool m_committed = false;
+};
+
+// Una corrección del expediente en otro hilo, con su propia conexión del pool,
+// como la corre el TaskRunner de la aplicación. Al destruirse espera al hilo.
+// Se declara antes que la OtherSession que la hace esperar: así, si la prueba
+// falla a la mitad, primero la sesión suelta sus candados y después esto
+// espera a que el hilo termine.
+class BackgroundUpdate
+{
+public:
+    BackgroundUpdate() = default;
+    ~BackgroundUpdate() { join(); }
+
+    BackgroundUpdate(const BackgroundUpdate &) = delete;
+    BackgroundUpdate &operator=(const BackgroundUpdate &) = delete;
+
+    void start(ConnectionPool &pool, const application::VehicleRecordService &records,
+               const application::VehicleUpdateDto &update)
+    {
+        m_thread.reset(QThread::create([this, &pool, &records, update] {
+            {
+                ConnectionPool::Handle handle = pool.acquire();
+                QSqlQuery session(handle.database());
+                // Si la prueba falla con el hilo esperando un candado, que no
+                // espere para siempre; más que lo que waitForALock() pregunta,
+                // para que el hilo no se rinda antes de que se le vea esperar.
+                session.exec(QStringLiteral("SET lock_timeout = '20s'"));
+                if (session.exec(QStringLiteral("SELECT pg_backend_pid()")) && session.next())
+                    m_backendPid = session.value(0).toInt();
+            }
+            m_result = records.update(update, domain::UserRole::Admin);
+        }));
+        m_thread->start();
+    }
+
+    // Espera, hasta 10 s, a que la corrección se quede esperando un candado,
+    // o a que termine sin haber esperado. Devuelve si llegó a esperar. Las
+    // pruebas lo exigen: si la otra sesión confirmara antes de que el hilo
+    // llegue, el hilo vería todo ya confirmado y pasarían sin que haya
+    // carrera, aunque faltara justo lo que prueban.
+    bool waitForALock(ConnectionPool &pool) const
+    {
+        const QDeadlineTimer deadline(10000);
+        while (!deadline.hasExpired() && !m_thread->isFinished()) {
+            if (m_backendPid > 0) {
+                ConnectionPool::Handle handle = pool.acquire();
+                QSqlQuery waiting(handle.database());
+                waiting.prepare(QStringLiteral("SELECT 1 FROM pg_stat_activity "
+                                               "WHERE pid = :pid AND wait_event_type = 'Lock'"));
+                waiting.bindValue(QStringLiteral(":pid"), m_backendPid.load());
+                if (waiting.exec() && waiting.next())
+                    return true;
+            }
+            QThread::msleep(20);
+        }
+        return false;
+    }
+
+    const application::RecordUpdateResult &result()
+    {
+        join();
+        return m_result;
+    }
+
+private:
+    void join()
+    {
+        if (m_thread)
+            m_thread->wait();
+    }
+
+    std::unique_ptr<QThread> m_thread;
+    std::atomic<int> m_backendPid{0};
+    application::RecordUpdateResult m_result;
+};
+
 } // namespace
 
 class TstRegistrationDb : public QObject
@@ -49,12 +185,119 @@ class TstRegistrationDb : public QObject
 
 private:
     QTemporaryDir m_storage;
+    DatabaseConfig m_config;
     std::unique_ptr<ConnectionPool> m_pool;
     QStringList m_createdSerials;
+    // Identificaciones de contrapartes que crean los casos, además de las
+    // "ID-<VIN>" de registration().
+    QStringList m_createdNationalIds;
+
+    QString uniqueNationalId(const QString &prefix)
+    {
+        const QString nationalId = prefix + uniqueSuffix();
+        m_createdNationalIds << nationalId;
+        return nationalId;
+    }
 
     application::RegistrationLookupsDto m_lookups;
 
-    application::VehicleRegistrationDto registration(const QString &vin)
+    // Un texto que no choca con el de otra corrida ni con el de otro caso.
+    static QString uniqueSuffix()
+    {
+        static int sequence = 0;
+        return QStringLiteral("%1%2").arg(QDateTime::currentMSecsSinceEpoch()).arg(++sequence);
+    }
+
+    // Un VIN único, anotado para borrar su unidad al terminar (también si la
+    // prueba se lo pone a una unidad al corregirla).
+    QString uniqueVin()
+    {
+        const QString vin = QStringLiteral("TST") + uniqueSuffix();
+        m_createdSerials << vin;
+        return vin;
+    }
+
+    // Una foto real (el almacén la recomprime) en la carpeta temporal.
+    QString sourcePhoto(const QString &name = QStringLiteral("origen.png"))
+    {
+        const QString path = m_storage.filePath(name);
+        QImage image(40, 30, QImage::Format_RGB32);
+        image.fill(Qt::darkBlue);
+        image.save(path);
+        return path;
+    }
+
+    // Registra una unidad y devuelve su folio (o -1, con la prueba ya fallada).
+    int registerUnit(const application::VehicleRegistrationDto &dto)
+    {
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        PdfContractGenerator contracts;
+        const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
+        const auto registered = service.registerVehicle(dto);
+        if (registered.status != application::RegistrationResult::Status::Registered) {
+            qWarning("%s", qPrintable(registered.validation.joinedMessages()
+                                      + registered.errorMessage));
+            return -1;
+        }
+        return registered.folio;
+    }
+
+    // Lo que la pantalla manda a guardar si nadie cambia nada.
+    static application::VehicleUpdateDto unchanged(const application::VehicleRecordDto &record)
+    {
+        application::VehicleUpdateDto update;
+        update.folio = record.folio;
+        update.version = record.version;
+        update.loadedCounterparty = record.details.counterparty;
+        update.counterpartyVersion = record.counterpartyVersion;
+        update.details = record.details;
+        update.conditions = record.conditions;
+        for (const application::StoredImageDto &stored : record.images)
+            update.files.images << stored.image;
+        update.files.documents = record.documents;
+        return update;
+    }
+
+    // La persona a la que se le compró la unidad (-1 si no se encuentra).
+    int sellerOf(int folio)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery seller(handle.database());
+        seller.prepare(QStringLiteral(
+            "SELECT seller_id FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
+        seller.bindValue(QStringLiteral(":folio"), folio);
+        return seller.exec() && seller.next() ? seller.value(0).toInt() : -1;
+    }
+
+    // Cuántas personas tienen esa identificación.
+    int peopleWith(const QString &nationalId)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery count(handle.database());
+        count.prepare(QStringLiteral("SELECT count(*) FROM counterparties WHERE national_id = :id"));
+        count.bindValue(QStringLiteral(":id"), nationalId);
+        return count.exec() && count.next() ? count.value(0).toInt() : -1;
+    }
+
+    // Corre SQL suelto de la prueba (lo que haría otro módulo, o un dato
+    // corrupto).
+    bool exec(const QString &sql, int folio)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery query(handle.database());
+        query.prepare(sql);
+        query.bindValue(QStringLiteral(":folio"), folio);
+        if (!query.exec()) {
+            qWarning("%s", qPrintable(query.lastError().text()));
+            return false;
+        }
+        return true;
+    }
+
+    application::VehicleRegistrationDto registration(
+        const QString &vin, domain::AcquisitionType type = domain::AcquisitionType::Adquisicion)
     {
         // Un archivo real para que el almacén tenga qué copiar.
         const QString source = m_storage.filePath(QStringLiteral("origen.pdf"));
@@ -65,7 +308,7 @@ private:
 
         application::VehicleRegistrationDto dto;
         auto &d = dto.details;
-        d.acquisitionType = domain::AcquisitionType::Adquisicion;
+        d.acquisitionType = type;
         d.dealDate = QDate::currentDate();
         // Ids reales de los catálogos sembrados por init-db.
         const application::CatalogOptionDto subtype = m_lookups.vehicleSubtypes.first();
@@ -81,11 +324,17 @@ private:
         d.platesHolder = QStringLiteral("Titular de prueba");
         d.counterparty.fullName = QStringLiteral("Vendedor de prueba");
         d.counterparty.nationalId = QStringLiteral("ID-") + vin;
-        d.invoiceType = domain::InvoiceType::Facturado;
         d.invoiceNumber = QStringLiteral("F-PRUEBA");
-        d.purchasePrice = 100000.0;
-        d.salePrice = 120000.0;
-        d.paymentMethod = domain::PaymentMethod::Transferencia;
+        if (type == domain::AcquisitionType::Adquisicion) {
+            d.invoiceType = domain::InvoiceType::Facturado;
+            d.purchasePrice = 100000.0;
+            d.salePrice = 120000.0;
+            d.paymentMethod = domain::PaymentMethod::Transferencia;
+        } else {
+            d.invoiceType = domain::InvoiceType::FacturadoReal;
+            d.basePrice = 200000.0;
+            d.commissionRate = 12.5;
+        }
 
         auto &c = dto.conditions;
         c.fuelType = {m_lookups.fuelTypes.first().id, m_lookups.fuelTypes.first().name};
@@ -105,7 +354,7 @@ private slots:
     {
         QVERIFY(m_storage.isValid());
         const QMap<QString, QString> env = readEnv();
-        DatabaseConfig config;
+        DatabaseConfig &config = m_config;
         config.hostName = env.value(QStringLiteral("POSTGRES_HOST"), QStringLiteral("localhost"));
         config.port = env.value(QStringLiteral("POSTGRES_PORT"), QStringLiteral("5432")).toInt();
         config.databaseName = env.value(QStringLiteral("POSTGRES_DB"), QStringLiteral("seminuevos"));
@@ -130,8 +379,9 @@ private slots:
         }
         m_lookups.brands = reference.brands(&error);
         m_lookups.fuelTypes = reference.fuelTypes(&error);
+        m_lookups.checklist = reference.conditionChecklist(&error);
         QVERIFY2(!m_lookups.vehicleSubtypes.isEmpty() && !m_lookups.brands.isEmpty()
-                     && !m_lookups.fuelTypes.isEmpty(),
+                     && !m_lookups.fuelTypes.isEmpty() && m_lookups.checklist.size() >= 2,
                  qPrintable(error));
     }
 
@@ -144,6 +394,17 @@ private slots:
             query.bindValue(QStringLiteral(":vin"), vin);
             query.exec();
         }
+        // Las contrapartes no se borran en cascada (la operación las
+        // referencia, no al revés). Sin sus unidades ya nadie las usa.
+        QStringList nationalIds = m_createdNationalIds;
+        for (const QString &vin : std::as_const(m_createdSerials))
+            nationalIds << QStringLiteral("ID-") + vin;
+        for (const QString &nationalId : std::as_const(nationalIds)) {
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral("DELETE FROM counterparties WHERE national_id = :id"));
+            query.bindValue(QStringLiteral(":id"), nationalId);
+            query.exec();
+        }
     }
 
     void registersAgainstTheRealDatabase()
@@ -154,8 +415,7 @@ private slots:
         PdfContractGenerator contracts;
         const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
 
-        const QString vin = QStringLiteral("TST%1").arg(QDateTime::currentMSecsSinceEpoch());
-        m_createdSerials << vin;
+        const QString vin = uniqueVin();
 
         const auto first = service.registerVehicle(registration(vin));
         QVERIFY2(first.status == application::RegistrationResult::Status::Registered,
@@ -195,6 +455,654 @@ private slots:
         QVERIFY(!lookups.brands.isEmpty());
         QVERIFY(!lookups.checklist.isEmpty());
         QVERIFY(lookups.umaDailyValue.has_value());
+    }
+
+    // #30: el expediente se relee completo, con los nombres de sus catálogos y
+    // las rutas relativas que guarda la base, en las dos ramas.
+    void readsTheRecordBack_data()
+    {
+        QTest::addColumn<int>("type");
+        QTest::newRow("compra") << static_cast<int>(domain::AcquisitionType::Adquisicion);
+        QTest::newRow("consignación") << static_cast<int>(domain::AcquisitionType::Consignacion);
+    }
+
+    void readsTheRecordBack()
+    {
+        QFETCH(int, type);
+        const auto branch = static_cast<domain::AcquisitionType>(type);
+        const bool isAcquisition = branch == domain::AcquisitionType::Adquisicion;
+
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        PdfContractGenerator contracts;
+        const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
+
+        application::VehicleRegistrationDto dto = registration(uniqueVin(), branch);
+        dto.files.images << domain::VehicleImage{sourcePhoto(), true};
+        if (isAcquisition)
+            dto.details.invoiceFilePath = dto.files.documents.first().path;
+        dto.details.color = QStringLiteral("Rojo");
+        dto.details.counterparty.locality = QStringLiteral("Morelia");
+        dto.details.observations = QStringLiteral("Sin detalles");
+        const int faulty = m_lookups.checklist.at(1).id;
+        dto.conditions.inspection = {{m_lookups.checklist.at(0).id, true, QString()},
+                                     {faulty, false, QStringLiteral("Rayón")}};
+        const auto registered = service.registerVehicle(dto);
+        QVERIFY2(registered.status == application::RegistrationResult::Status::Registered,
+                 qPrintable(registered.validation.joinedMessages() + registered.errorMessage));
+
+        SqlVehicleRecordReader reader(*m_pool);
+        QString error;
+        const std::optional<application::VehicleRecordDto> record =
+            reader.findByFolio(registered.folio, &error);
+        QVERIFY2(record.has_value(), qPrintable(error));
+        QCOMPARE(record->folio, registered.folio);
+        QVERIFY(!record->version.isEmpty());
+        QVERIFY(record->hasDealTerms);
+
+        const application::VehicleDetailsDto &d = record->details;
+        const application::VehicleDetailsDto &expected = dto.details;
+        QCOMPARE(d.acquisitionType, branch);
+        QCOMPARE(d.dealDate, expected.dealDate);
+        QCOMPARE(d.serialNumber, expected.serialNumber);
+        QCOMPARE(d.model, expected.model);
+        QCOMPARE(d.yearModel, expected.yearModel);
+        QCOMPARE(d.color, expected.color);
+        QCOMPARE(d.plates, expected.plates);
+        // Los nombres salen de los catálogos, no de lo que se capturó.
+        QCOMPARE(d.subtype.id, expected.subtype.id);
+        QCOMPARE(d.subtype.name, expected.subtype.name);
+        QCOMPARE(d.vehicleType.id, expected.vehicleType.id);
+        QVERIFY(!d.vehicleType.name.isEmpty());
+        QCOMPARE(d.brand.name, expected.brand.name);
+        QCOMPARE(d.counterparty.fullName, expected.counterparty.fullName);
+        QCOMPARE(d.counterparty.nationalId, expected.counterparty.nationalId);
+        QCOMPARE(d.counterparty.locality, expected.counterparty.locality);
+        QCOMPARE(d.invoiceType, expected.invoiceType);
+        QCOMPARE(d.invoiceNumber, expected.invoiceNumber);
+        QCOMPARE(d.observations, expected.observations);
+        if (isAcquisition) {
+            QCOMPARE(d.purchasePrice, expected.purchasePrice);
+            QCOMPARE(d.salePrice, expected.salePrice);
+            QCOMPARE(d.paymentMethod, expected.paymentMethod);
+            QVERIFY(!d.invoiceFilePath.isEmpty());
+            QVERIFY(QDir::isRelativePath(d.invoiceFilePath));
+        } else {
+            QCOMPARE(d.basePrice, expected.basePrice);
+            QCOMPARE(d.commissionRate, expected.commissionRate);
+            QVERIFY(d.invoiceFilePath.isEmpty());
+        }
+
+        const application::VehicleConditionsDto &c = record->conditions;
+        QCOMPARE(c.fuelType.id, dto.conditions.fuelType.id);
+        QCOMPARE(c.fuelType.name, dto.conditions.fuelType.name);
+        QCOMPARE(c.cylinders, dto.conditions.cylinders);
+        QCOMPARE(c.transmission, dto.conditions.transmission);
+        QCOMPARE(c.interiorMaterial, dto.conditions.interiorMaterial);
+        QCOMPARE(c.windowRegulators, dto.conditions.windowRegulators);
+        QCOMPARE(c.airConditioning, dto.conditions.airConditioning);
+        QCOMPARE(c.inspection.size(), 2);
+        for (const application::InspectionEntryDto &entry : c.inspection) {
+            QCOMPARE(entry.isOptimal, entry.elementId != faulty);
+            if (entry.elementId == faulty)
+                QCOMPARE(entry.observations, QStringLiteral("Rayón"));
+        }
+
+        QCOMPARE(record->images.size(), 1);
+        QVERIFY(record->images.first().image.isPrimary);
+        QVERIFY(QDir::isRelativePath(record->images.first().image.path));
+        QCOMPARE(record->documents.size(), 1);
+        QCOMPARE(record->documents.first().documentType, QStringLiteral("Tarjeta de circulación"));
+        QVERIFY(QDir::isRelativePath(record->documents.first().path));
+
+        // El servicio las entrega absolutas: son archivos del almacén.
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const application::RecordLoadResult loaded =
+            records.load(registered.folio, domain::UserRole::Admin);
+        QCOMPARE(loaded.status, application::RecordLoadResult::Status::Loaded);
+        QVERIFY(QFile::exists(loaded.record.images.first().image.path));
+        QVERIFY(!loaded.record.images.first().thumbnail.isEmpty());
+        QVERIFY(QFile::exists(loaded.record.documents.first().path));
+        if (isAcquisition)
+            QVERIFY(QFile::exists(loaded.record.details.invoiceFilePath));
+    }
+
+    // Solo cuenta la subtabla de la rama de la unidad, aunque por un dato
+    // corrupto exista también la otra; y sin la suya, la unidad se lee igual,
+    // sin operación y con la fecha en que se agregó.
+    void onlyTheUnitsBranchCounts()
+    {
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        PdfContractGenerator contracts;
+        const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
+        const auto registered = service.registerVehicle(registration(uniqueVin()));
+        QVERIFY2(registered.status == application::RegistrationResult::Status::Registered,
+                 qPrintable(registered.validation.joinedMessages() + registered.errorMessage));
+
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral(
+                "INSERT INTO vehicle_consignments (vehicle_folio, owner_id, invoice_type, "
+                "base_price, commission_rate) "
+                "SELECT vehicle_folio, seller_id, 'No Facturado', 999, 50 "
+                "FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
+            query.bindValue(QStringLiteral(":folio"), registered.folio);
+            QVERIFY2(query.exec(), qPrintable(query.lastError().text()));
+        }
+
+        SqlVehicleRecordReader reader(*m_pool);
+        QString error;
+        std::optional<application::VehicleRecordDto> record =
+            reader.findByFolio(registered.folio, &error);
+        QVERIFY2(record.has_value(), qPrintable(error));
+        QCOMPARE(record->details.purchasePrice, 100000.0);
+        QCOMPARE(record->details.basePrice, 0.0);
+        QCOMPARE(record->details.invoiceType, std::optional(domain::InvoiceType::Facturado));
+
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral(
+                "DELETE FROM vehicle_acquisitions WHERE vehicle_folio = :folio"));
+            query.bindValue(QStringLiteral(":folio"), registered.folio);
+            QVERIFY2(query.exec(), qPrintable(query.lastError().text()));
+        }
+        record = reader.findByFolio(registered.folio, &error);
+        QVERIFY2(record.has_value(), qPrintable(error));
+        QVERIFY(!record->hasDealTerms);
+        QVERIFY(record->details.counterparty.fullName.isEmpty());
+        QCOMPARE(record->details.dealDate, QDate::currentDate());
+    }
+
+    void missingFolioReadsAsNotFound()
+    {
+        SqlVehicleRecordReader reader(*m_pool);
+        QString error;
+        QVERIFY(!reader.findByFolio(-1, &error).has_value());
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+    }
+
+    // #34: la corrección se guarda en una transacción y se relee igual, en las
+    // dos ramas. El costo de mantenimientos que el historial acumuló mientras
+    // se capturaba no se pisa, y la foto reemplazada sale del almacén.
+    void editsTheRecordInOneTransaction_data()
+    {
+        QTest::addColumn<int>("type");
+        QTest::newRow("compra") << static_cast<int>(domain::AcquisitionType::Adquisicion);
+        QTest::newRow("consignación") << static_cast<int>(domain::AcquisitionType::Consignacion);
+    }
+
+    void editsTheRecordInOneTransaction()
+    {
+        QFETCH(int, type);
+        const auto branch = static_cast<domain::AcquisitionType>(type);
+        const bool isAcquisition = branch == domain::AcquisitionType::Adquisicion;
+
+        application::VehicleRegistrationDto dto = registration(uniqueVin(), branch);
+        dto.files.images << domain::VehicleImage{sourcePhoto(), true};
+        if (isAcquisition)
+            dto.details.invoiceFilePath = dto.files.documents.first().path;
+        const int folio = registerUnit(dto);
+        QVERIFY(folio > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const application::RecordLoadResult loaded = records.load(folio, domain::UserRole::Admin);
+        QCOMPARE(loaded.status, application::RecordLoadResult::Status::Loaded);
+
+        application::VehicleUpdateDto update = unchanged(loaded.record);
+        update.details.model = QStringLiteral("Corregido");
+        update.details.plates = QStringLiteral("COR0001");
+        update.details.counterparty.locality = QStringLiteral("Pátzcuaro");
+        update.details.observations = QStringLiteral("Corregido en el expediente");
+        if (isAcquisition)
+            update.details.purchasePrice = 95000.0;
+        else
+            update.details.commissionRate = 15.0;
+        update.conditions.inspection = {{m_lookups.checklist.at(1).id, true, QString()}};
+        const QString oldPhoto = loaded.record.images.first().image.path;
+        update.files.images = {domain::VehicleImage{sourcePhoto(QStringLiteral("nueva.png")), true}};
+
+        // Mientras se capturaba, el historial le sumó un mantenimiento (#46).
+        const QString branchTable = isAcquisition ? QStringLiteral("vehicle_acquisitions")
+                                                  : QStringLiteral("vehicle_consignments");
+        QVERIFY(exec(QStringLiteral("UPDATE %1 SET maintenance_cost = maintenance_cost + 100 "
+                                    "WHERE vehicle_folio = :folio")
+                         .arg(branchTable),
+                     folio));
+
+        const application::RecordUpdateResult saved = records.update(update, domain::UserRole::Admin);
+        QVERIFY2(saved.status == application::RecordUpdateResult::Status::Saved,
+                 qPrintable(saved.validation.joinedMessages() + saved.errorMessage));
+
+        const application::RecordLoadResult reread = records.load(folio, domain::UserRole::Admin);
+        const application::VehicleRecordDto &record = reread.record;
+        QVERIFY(record.version != loaded.record.version);
+        QCOMPARE(record.details.model, QStringLiteral("Corregido"));
+        QCOMPARE(record.details.plates, QStringLiteral("COR0001"));
+        QCOMPARE(record.details.counterparty.locality, QStringLiteral("Pátzcuaro"));
+        QCOMPARE(record.details.observations, QStringLiteral("Corregido en el expediente"));
+        QCOMPARE(record.details.maintenanceCost, loaded.record.details.maintenanceCost + 100.0);
+        if (isAcquisition) {
+            QCOMPARE(record.details.purchasePrice, 95000.0);
+            // La factura se conservó: misma ruta, mismo archivo.
+            QCOMPARE(record.details.invoiceFilePath, loaded.record.details.invoiceFilePath);
+            QVERIFY(QFile::exists(record.details.invoiceFilePath));
+        } else {
+            QCOMPARE(record.details.commissionRate, 15.0);
+        }
+        QCOMPARE(record.conditions.inspection.size(), 1);
+        QVERIFY(record.conditions.inspection.first().isOptimal);
+        QCOMPARE(record.documents.size(), 1);
+        QCOMPARE(record.documents.first().path, loaded.record.documents.first().path);
+        QCOMPARE(record.images.size(), 1);
+        QVERIFY(record.images.first().image.path != oldPhoto);
+        QVERIFY(QFile::exists(record.images.first().image.path));
+        QVERIFY(!QFile::exists(oldPhoto));
+    }
+
+    // Una versión vieja no pisa la corrección de otro, y el VIN de otra
+    // unidad se rechaza; el propio, aunque cambie, no.
+    void staleVersionsAndForeignVinsAreRejected()
+    {
+        const QString firstVin = uniqueVin();
+        const int first = registerUnit(registration(firstVin));
+        const int second = registerUnit(registration(uniqueVin()));
+        QVERIFY(first > 0 && second > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        using UpdateStatus = application::RecordUpdateResult::Status;
+
+        const application::VehicleRecordDto read = records.load(first, domain::UserRole::Admin).record;
+        application::VehicleUpdateDto update = unchanged(read);
+        update.details.model = QStringLiteral("Primera corrección");
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status, UpdateStatus::Saved);
+        update.details.model = QStringLiteral("Segunda, con la versión vieja");
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status, UpdateStatus::Conflict);
+        QCOMPARE(records.load(first, domain::UserRole::Admin).record.details.model,
+                 QStringLiteral("Primera corrección"));
+
+        application::VehicleUpdateDto other =
+            unchanged(records.load(second, domain::UserRole::Admin).record);
+        other.details.serialNumber = firstVin;
+        const application::RecordUpdateResult duplicate =
+            records.update(other, domain::UserRole::Admin);
+        QCOMPARE(duplicate.status, UpdateStatus::Rejected);
+        QVERIFY(duplicate.validation.fields().contains(QStringLiteral("serialNumber")));
+
+        other.details.serialNumber = uniqueVin();
+        QCOMPARE(records.update(other, domain::UserRole::Admin).status, UpdateStatus::Saved);
+    }
+
+    // La contraparte: con la misma identificación se corrige donde está (y se
+    // ve en todas sus operaciones); con otra, la operación pasa a quien la
+    // tiene o a una persona nueva; y si es de alguien con otro nombre, se
+    // rechaza en vez de ligarla en silencio.
+    void counterpartyIsCorrectedOrRelinked()
+    {
+        const QString sharedId = uniqueNationalId(QStringLiteral("ID-COMPARTIDA-"));
+        application::VehicleRegistrationDto dto = registration(uniqueVin());
+        dto.details.counterparty.fullName = QStringLiteral("Ana Prueba");
+        dto.details.counterparty.nationalId = sharedId;
+        const int first = registerUnit(dto);
+        dto.details.serialNumber = uniqueVin();
+        const int second = registerUnit(dto);
+        QVERIFY(first > 0 && second > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        using UpdateStatus = application::RecordUpdateResult::Status;
+        const auto counterpartyOf = [&records](int folio) {
+            return records.load(folio, domain::UserRole::Admin).record.details.counterparty;
+        };
+        const auto edit = [&records](int folio, const QString &name, const QString &nationalId) {
+            application::VehicleUpdateDto update =
+                unchanged(records.load(folio, domain::UserRole::Admin).record);
+            update.details.counterparty.fullName = name;
+            update.details.counterparty.nationalId = nationalId;
+            return records.update(update, domain::UserRole::Admin);
+        };
+
+        // Misma identificación: se corrige el nombre en las dos operaciones.
+        QCOMPARE(edit(first, QStringLiteral("Ana María Prueba"), sharedId).status,
+                 UpdateStatus::Saved);
+        QCOMPARE(counterpartyOf(second).fullName, QStringLiteral("Ana María Prueba"));
+
+        // Otra identificación, nueva: la primera pasa a otra persona y la
+        // segunda se queda con la de antes.
+        const QString newId = uniqueNationalId(QStringLiteral("ID-NUEVA-"));
+        QCOMPARE(edit(first, QStringLiteral("Beto Prueba"), newId).status, UpdateStatus::Saved);
+        QCOMPARE(counterpartyOf(first).nationalId, newId);
+        QCOMPARE(counterpartyOf(first).fullName, QStringLiteral("Beto Prueba"));
+        QCOMPARE(counterpartyOf(second).fullName, QStringLiteral("Ana María Prueba"));
+
+        // Una identificación que ya es de otra persona, con otro nombre: no.
+        const application::RecordUpdateResult taken =
+            edit(first, QStringLiteral("Carlos Prueba"), sharedId);
+        QCOMPARE(taken.status, UpdateStatus::Rejected);
+        QVERIFY(taken.validation.fields().contains(QStringLiteral("counterparty.nationalId")));
+        QVERIFY(taken.validation.joinedMessages().contains(QStringLiteral("Ana María Prueba")));
+        QCOMPARE(counterpartyOf(first).nationalId, newId);
+
+        // Con el mismo nombre (sin importar mayúsculas), se liga sin tocarla.
+        QCOMPARE(edit(first, QStringLiteral("ana maría prueba"), sharedId).status,
+                 UpdateStatus::Saved);
+        QCOMPARE(counterpartyOf(first).nationalId, sharedId);
+        QCOMPARE(counterpartyOf(first).fullName, QStringLiteral("Ana María Prueba"));
+    }
+
+    // Cambiar solo la identificación (mismo nombre) liga la unidad a otra
+    // persona, nueva aquí, y no toca a la de antes.
+    void changingOnlyTheNationalIdRelinks()
+    {
+        const QString oldId = uniqueNationalId(QStringLiteral("ID-ANTES-"));
+        application::VehicleRegistrationDto dto = registration(uniqueVin());
+        dto.details.counterparty.fullName = QStringLiteral("Carla Prueba");
+        dto.details.counterparty.nationalId = oldId;
+        const int folio = registerUnit(dto);
+        QVERIFY(folio > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+
+        const QString newId = uniqueNationalId(QStringLiteral("ID-DESPUES-"));
+        application::VehicleUpdateDto update =
+            unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.counterparty.nationalId = newId;
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status,
+                 application::RecordUpdateResult::Status::Saved);
+
+        const application::CounterpartyDto now =
+            records.load(folio, domain::UserRole::Admin).record.details.counterparty;
+        QCOMPARE(now.nationalId, newId);
+        QCOMPARE(now.fullName, QStringLiteral("Carla Prueba"));
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery old(handle.database());
+        old.prepare(QStringLiteral("SELECT full_name FROM counterparties WHERE national_id = :id"));
+        old.bindValue(QStringLiteral(":id"), oldId);
+        QVERIFY(old.exec() && old.next());
+        QCOMPARE(old.value(0).toString(), QStringLiteral("Carla Prueba"));
+    }
+
+    // Corregir a una persona en su lugar no espera a que otra operación
+    // termine de ligarse a ella. La llave foránea de esa otra operación pide
+    // FOR KEY SHARE sobre la persona; el candado de la corrección no choca
+    // con ese (FOR UPDATE sí, y dos religados cruzados se bloqueaban).
+    void correctingAPersonDoesNotWaitForItsForeignKeys()
+    {
+        application::VehicleRegistrationDto dto = registration(uniqueVin());
+        const int corrected = registerUnit(dto);
+        const int other = registerUnit(registration(uniqueVin()));
+        QVERIFY(corrected > 0 && other > 0);
+        const int personId = sellerOf(corrected);
+        QVERIFY(personId > 0);
+
+        // Otra sesión liga la otra unidad a esa persona y deja abierta su
+        // transacción.
+        OtherSession session(m_config);
+        QVERIFY2(session.isOpen(), qPrintable(session.lastError()));
+        QSqlQuery link(session.database());
+        link.prepare(QStringLiteral("UPDATE vehicle_acquisitions SET seller_id = :person "
+                                    "WHERE vehicle_folio = :folio"));
+        link.bindValue(QStringLiteral(":person"), personId);
+        link.bindValue(QStringLiteral(":folio"), other);
+        QVERIFY2(link.exec(), qPrintable(link.lastError().text()));
+
+        // Si la corrección esperara ese candado, fallaría a los 3 s en vez de
+        // colgar la prueba.
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery timeout(handle.database());
+            QVERIFY(timeout.exec(QStringLiteral("SET lock_timeout = '3s'")));
+        }
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        application::VehicleUpdateDto update =
+            unchanged(records.load(corrected, domain::UserRole::Admin).record);
+        update.details.counterparty.locality = QStringLiteral("Zitácuaro");
+        const application::RecordUpdateResult saved = records.update(update, domain::UserRole::Admin);
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery reset(handle.database());
+            reset.exec(QStringLiteral("RESET lock_timeout"));
+        }
+        QVERIFY2(saved.status == application::RecordUpdateResult::Status::Saved,
+                 qPrintable(saved.validation.joinedMessages() + saved.errorMessage));
+    }
+
+    // Religar una unidad a una identificación que otra sesión está dando de
+    // alta en ese momento espera a que esa termine y la liga a la misma
+    // persona, en vez de crear otra con la misma identificación.
+    void relinkingWaitsForAPersonBeingRegistered()
+    {
+        const int folio = registerUnit(registration(uniqueVin()));
+        QVERIFY(folio > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const QString newId = uniqueNationalId(QStringLiteral("ID-SIMULTANEA-"));
+        application::VehicleUpdateDto update =
+            unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.counterparty.fullName = QStringLiteral("Diego Prueba");
+        update.details.counterparty.nationalId = newId;
+
+        // La otra sesión da de alta a esa persona, como al registrar otra
+        // unidad, y todavía no confirma.
+        BackgroundUpdate relink;
+        OtherSession session(m_config);
+        QVERIFY2(session.isOpen(), qPrintable(session.lastError()));
+        domain::Counterparty person;
+        QVERIFY(person.setFullName(QStringLiteral("Diego Prueba")));
+        QVERIFY(person.setNationalId(newId));
+        QString error;
+        QVERIFY2(SqlCounterpartyRepository(session.database()).findOrCreate(person, error) > 0,
+                 qPrintable(error));
+
+        relink.start(*m_pool, records, update);
+        QVERIFY2(relink.waitForALock(*m_pool), "el religado no esperó a la otra sesión");
+        QVERIFY2(session.commit(), qPrintable(session.lastError()));
+
+        const application::RecordUpdateResult &result = relink.result();
+        QVERIFY2(result.status == application::RecordUpdateResult::Status::Saved,
+                 qPrintable(result.validation.joinedMessages() + result.errorMessage));
+        QCOMPARE(peopleWith(newId), 1);
+        QCOMPARE(records.load(folio, domain::UserRole::Admin).record.details.counterparty.nationalId,
+                 newId);
+    }
+
+    // Dos correcciones de la misma persona al mismo tiempo: la segunda espera
+    // a que la primera confirme y es un conflicto, en vez de pisarla con lo
+    // que leyó antes. Tampoco queda nada de lo demás que corregía.
+    void simultaneousCorrectionsOfAPersonConflict()
+    {
+        const int folio = registerUnit(registration(uniqueVin()));
+        QVERIFY(folio > 0);
+        const int personId = sellerOf(folio);
+        QVERIFY(personId > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const application::VehicleRecordDto read = records.load(folio, domain::UserRole::Admin).record;
+        application::VehicleUpdateDto update = unchanged(read);
+        update.details.model = QStringLiteral("No debe quedar");
+        update.details.counterparty.locality = QStringLiteral("Pátzcuaro");
+
+        // Otro usuario corrige la calle de la misma persona y todavía no
+        // confirma.
+        BackgroundUpdate correction;
+        OtherSession session(m_config);
+        QVERIFY2(session.isOpen(), qPrintable(session.lastError()));
+        QSqlQuery street(session.database());
+        street.prepare(QStringLiteral(
+            "UPDATE counterparties SET street_address = :street WHERE id = :id"));
+        street.bindValue(QStringLiteral(":street"), QStringLiteral("Calle de la otra sesión"));
+        street.bindValue(QStringLiteral(":id"), personId);
+        QVERIFY2(street.exec(), qPrintable(street.lastError().text()));
+
+        correction.start(*m_pool, records, update);
+        QVERIFY2(correction.waitForALock(*m_pool), "la corrección no esperó a la otra sesión");
+        QVERIFY2(session.commit(), qPrintable(session.lastError()));
+
+        QCOMPARE(correction.result().status, application::RecordUpdateResult::Status::Conflict);
+        const application::VehicleRecordDto now = records.load(folio, domain::UserRole::Admin).record;
+        QCOMPARE(now.details.counterparty.streetAddress, QStringLiteral("Calle de la otra sesión"));
+        QCOMPARE(now.details.counterparty.locality, read.details.counterparty.locality);
+        QCOMPARE(now.details.model, read.details.model);
+    }
+
+    // Dos administradores con dos unidades de la misma persona. Lo que uno
+    // corrige de ella no lo deshace el otro con lo que leyó antes: si el otro
+    // no tocó la contraparte, se guarda sin escribirla; si la cambió, es un
+    // conflicto.
+    void staleFormsDoNotUndoACounterpartyCorrection()
+    {
+        const QString sharedId = uniqueNationalId(QStringLiteral("ID-COMPARTIDA-"));
+        application::VehicleRegistrationDto dto = registration(uniqueVin());
+        dto.details.counterparty.fullName = QStringLiteral("Paula Prueba");
+        dto.details.counterparty.nationalId = sharedId;
+        dto.details.counterparty.streetAddress = QStringLiteral("Calle 1");
+        const int first = registerUnit(dto);
+        dto.details.serialNumber = uniqueVin();
+        const int second = registerUnit(dto);
+        QVERIFY(first > 0 && second > 0);
+
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        using UpdateStatus = application::RecordUpdateResult::Status;
+
+        // B abre la segunda unidad; A corrige la calle desde la primera.
+        const application::VehicleRecordDto staleSecond =
+            records.load(second, domain::UserRole::Admin).record;
+        application::VehicleUpdateDto fromFirst =
+            unchanged(records.load(first, domain::UserRole::Admin).record);
+        fromFirst.details.counterparty.streetAddress = QStringLiteral("Calle 2");
+        QCOMPARE(records.update(fromFirst, domain::UserRole::Admin).status, UpdateStatus::Saved);
+
+        // B cambia la colonia con lo que leyó antes: conflicto, nada se guarda.
+        application::VehicleUpdateDto staleCounterparty = unchanged(staleSecond);
+        staleCounterparty.details.counterparty.suburb = QStringLiteral("Centro");
+        QCOMPARE(records.update(staleCounterparty, domain::UserRole::Admin).status,
+                 UpdateStatus::Conflict);
+
+        // B cambia solo el kilometraje: se guarda, y la calle sigue corregida.
+        application::VehicleUpdateDto mileageOnly = unchanged(staleSecond);
+        mileageOnly.details.mileage = 61000;
+        QCOMPARE(records.update(mileageOnly, domain::UserRole::Admin).status, UpdateStatus::Saved);
+        const application::VehicleRecordDto reread =
+            records.load(second, domain::UserRole::Admin).record;
+        QCOMPARE(reread.details.mileage, 61000);
+        QCOMPARE(reread.details.counterparty.streetAddress, QStringLiteral("Calle 2"));
+        QVERIFY(reread.details.counterparty.suburb.isEmpty());
+    }
+
+    // #46: el mantenimiento se guarda y su costo se suma al total de la
+    // subtabla de la rama, en la misma transacción; el historial lo trae.
+    void maintenanceAddsToItsBranchTotal_data()
+    {
+        QTest::addColumn<int>("type");
+        QTest::newRow("compra") << static_cast<int>(domain::AcquisitionType::Adquisicion);
+        QTest::newRow("consignación") << static_cast<int>(domain::AcquisitionType::Consignacion);
+    }
+
+    void maintenanceAddsToItsBranchTotal()
+    {
+        QFETCH(int, type);
+        const auto branch = static_cast<domain::AcquisitionType>(type);
+        const QString table = branch == domain::AcquisitionType::Adquisicion
+            ? QStringLiteral("vehicle_acquisitions")
+            : QStringLiteral("vehicle_consignments");
+        application::VehicleRegistrationDto dto = registration(uniqueVin(), branch);
+        dto.details.maintenanceCost = 250.0;
+        const int folio = registerUnit(dto);
+        QVERIFY(folio > 0);
+
+        SqlMaintenanceRepository repository(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        PdfMaintenanceReceiptGenerator receipts;
+        const application::MaintenanceService service(repository, reference, receipts);
+        QString error;
+        const auto types = reference.maintenanceTypes(&error);
+        QVERIFY2(!types.isEmpty(), qPrintable(error));
+
+        application::NewMaintenanceDto maintenance;
+        maintenance.vehicleFolio = folio;
+        maintenance.date = QDate(2026, 10, 19);
+        maintenance.maintenanceTypeId = types.first().id;
+        maintenance.cost = QStringLiteral("1234.56");
+        maintenance.description = QStringLiteral("Prueba de integración");
+        const auto added = service.add(maintenance, domain::UserRole::Admin);
+        QVERIFY2(added.status == application::MaintenanceAddResult::Status::Saved,
+                 qPrintable(added.errorMessage));
+        QVERIFY(added.id > 0);
+        // Se sumó al costo del alta, no se recalculó desde el historial.
+        QCOMPARE(added.maintenanceCostTotal, std::optional(1484.56));
+
+        const auto history = service.history(folio, domain::UserRole::Admin);
+        QCOMPARE(history.status, application::MaintenanceHistoryResult::Status::Loaded);
+        QCOMPARE(history.items.size(), 1);
+        QCOMPARE(history.items.first().id, added.id);
+        QCOMPARE(history.items.first().date, QDate(2026, 10, 19));
+        QCOMPARE(history.items.first().typeName, types.first().name);
+        QCOMPARE(history.items.first().description, QStringLiteral("Prueba de integración"));
+        // Nace sin recibo impreso; "Imprimir" lo anota.
+        QVERIFY(!history.items.first().receiptPrinted);
+        QCOMPARE(service.markReceiptPrinted(added.id, domain::UserRole::Admin).status,
+                 application::MaintenanceReceiptMarkResult::Status::Marked);
+        QVERIFY(service.history(folio, domain::UserRole::Admin).items.first().receiptPrinted);
+        // La descripción se corrige en su renglón.
+        QCOMPARE(service.updateDescription(added.id, QStringLiteral("Corregida"),
+                                           domain::UserRole::Admin).status,
+                 application::MaintenanceDescriptionUpdateResult::Status::Updated);
+        QCOMPARE(service.history(folio, domain::UserRole::Admin).items.first().description,
+                 QStringLiteral("Corregida"));
+        QCOMPARE(service.updateDescription(-1, QStringLiteral("x"), domain::UserRole::Admin).status,
+                 application::MaintenanceDescriptionUpdateResult::Status::Failed);
+        // Un id que no existe no se da por anotado.
+        QCOMPARE(service.markReceiptPrinted(-1, domain::UserRole::Admin).status,
+                 application::MaintenanceReceiptMarkResult::Status::Failed);
+
+        // Un costo que cabe en su columna pero desborda el total de la unidad:
+        // el UPDATE falla y se deshace también el INSERT.
+        maintenance.cost = QStringLiteral("9999999999.99");
+        const auto failed = service.add(maintenance, domain::UserRole::Admin);
+        QCOMPARE(failed.status, application::MaintenanceAddResult::Status::Failed);
+        QCOMPARE(service.history(folio, domain::UserRole::Admin).items.size(), 1);
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery total(handle.database());
+        total.prepare(QStringLiteral("SELECT maintenance_cost FROM %1 WHERE vehicle_folio = :folio")
+                          .arg(table));
+        total.bindValue(QStringLiteral(":folio"), folio);
+        QVERIFY2(total.exec() && total.next(), qPrintable(total.lastError().text()));
+        QCOMPARE(total.value(0).toString(), QStringLiteral("1484.56"));
     }
 };
 

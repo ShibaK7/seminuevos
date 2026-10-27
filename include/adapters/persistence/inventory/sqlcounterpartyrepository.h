@@ -25,10 +25,43 @@ public:
     // national_id; si viene vacío no hay con qué identificarla, así que se
     // inserta una nueva.
     //
+    // Va dentro de la transacción de la operación: aparta la identificación
+    // hasta que esta termine, así otra sesión que busca a la misma persona
+    // espera y la encuentra en vez de crear otra. Lo mismo vale para
+    // keepOrRelink().
+    //
     // Devuelve -1 en caso de error, con el detalle en errorMessage.
     int findOrCreate(const domain::Counterparty &counterparty, QString &errorMessage);
 
+    struct Relink
+    {
+        // Con qué contraparte queda la operación; -1 si no se pudo.
+        int id = -1;
+        // La persona cambió desde que se leyó (otro usuario la corrigió).
+        bool conflict = false;
+        // La identificación ya es de otra persona, con otro nombre: el suyo.
+        QString takenBy;
+        QString errorMessage;
+    };
+
+    // Al corregir una operación cuya contraparte el usuario cambió: con cuál
+    // queda, partiendo de la que tenía (`currentId`) y de lo capturado.
+    //   - Misma identificación: es la misma persona, y sus datos se corrigen
+    //     ahí, así que la corrección se ve en todas sus operaciones. Solo si
+    //     su renglón sigue en la versión que se leyó (`expectedVersion`); si
+    //     no, es un conflicto: no se pisa lo que otro usuario corrigió, ni
+    //     aunque lo esté corrigiendo en este momento. La identificación, el
+    //     teléfono y el correo no se tocan.
+    //   - Otra identificación: la operación pasa a la persona que la tiene,
+    //     sin modificarla, o a una nueva. Si esa persona tiene otro nombre no
+    //     se liga: se devuelve su nombre en takenBy, para que el usuario lo
+    //     revise en vez de cambiar en silencio lo que ve.
+    Relink keepOrRelink(int currentId, const domain::Counterparty &edited,
+                        const QString &expectedVersion);
+
 private:
+    int insert(const domain::Counterparty &counterparty, QString &errorMessage);
+
     QSqlDatabase &m_db;
 };
 

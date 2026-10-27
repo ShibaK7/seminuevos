@@ -14,6 +14,8 @@ namespace Ui {
 }
 QT_END_NAMESPACE
 
+class MaintenanceHistoryTableWidget;
+
 // Paso 1 del wizard: datos generales del vehículo + contraparte + condiciones
 // de la operación. Cubre las dos ramas -- Adquisición (la agencia compra) y
 // Consignación (la agencia vende por cuenta del dueño y cobra comisión). Lo
@@ -38,13 +40,31 @@ public:
     explicit VehicleDetailsView(QWidget *parent = nullptr);
     ~VehicleDetailsView() override;
 
+    // La sección del historial de mantenimientos, entre las dos tarjetas
+    // (US-03.3). Arranca oculta: el alta nunca la muestra, y el expediente
+    // decide según el rol si se ve.
+    MaintenanceHistoryTableWidget &maintenanceHistory();
+    void setMaintenanceHistoryVisible(bool visible);
+    // La tarjeta de la operación (tipo, contraparte, factura, precios,
+    // mantenimientos y observaciones). El expediente la oculta a quien su rol
+    // no se la deja ver; el alta siempre la muestra.
+    void setDealTermsVisible(bool visible);
+
     // --- IVehicleDetailsView ---
     application::VehicleDetailsDto details() const override;
     void setLookups(const application::RegistrationLookupsDto &lookups) override;
+    void showDetails(int folio, const application::VehicleDetailsDto &details) override;
+    void showMaintenanceCost(double cost) override;
     presentation::IAcquisitionTermsView &acquisitionTerms() override;
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
+    void setReadOnly(bool readOnly, const QStringList &lockedFields) override;
+
+    // La página va dentro de un área con scroll, que la encoge hasta este
+    // mínimo cuando no cabe. Se pide el alto natural para que haga scroll en
+    // vez de aplastar la descripción o el historial.
+    QSize minimumSizeHint() const override;
 
 signals:
     // Cambió cualquier campo.
@@ -54,6 +74,7 @@ signals:
     // reenvían aquí para que el asistente no tenga que conocer la sección.
     void browseInvoiceRequested();
     void cfdiRequestRequested();
+    void viewInvoiceRequested();
 
 protected:
     // Alinea las columnas de las secciones con las de la tarjeta, la primera
@@ -67,6 +88,10 @@ private slots:
 
 private:
     domain::AcquisitionType selectedAcquisitionType() const;
+    // La marca se busca escribiendo: combo editable con autocompletado. Se
+    // configura una vez, al construir, para que su línea exista desde el
+    // principio (y quede en solo lectura cuando el paso lo esté).
+    void setUpBrandSearch();
 
     Ui::VehicleDetailsView *ui;
 

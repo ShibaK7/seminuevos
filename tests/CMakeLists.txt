@@ -71,6 +71,16 @@ seminuevos_add_test(tst_uploadformatpolicy
     LIBS seminuevos_domain
 )
 
+seminuevos_add_test(tst_vehiclerecordaccess
+    SOURCES domain/tst_vehiclerecordaccess.cpp
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_maintenancerecord
+    SOURCES domain/tst_maintenancerecord.cpp
+    LIBS seminuevos_domain
+)
+
 # --- Aplicación -----------------------------------------------------------------
 seminuevos_add_test(tst_authenticationservice
     SOURCES application/tst_authenticationservice.cpp support/fakes.h
@@ -82,15 +92,36 @@ seminuevos_add_test(tst_registrationservice
     LIBS seminuevos_application
 )
 
+seminuevos_add_test(tst_vehiclerecordservice
+    SOURCES application/tst_vehiclerecordservice.cpp support/fakes.h support/registrationfixtures.h
+    LIBS seminuevos_application
+)
+
+seminuevos_add_test(tst_maintenanceservice
+    SOURCES application/tst_maintenanceservice.cpp support/fakes.h
+    LIBS seminuevos_application
+)
+
 # --- Adaptadores ---------------------------------------------------------------
 seminuevos_add_test(tst_localfilestorage
     SOURCES adapters/tst_localfilestorage.cpp
     LIBS seminuevos_storage
 )
 
+# El recibo usa la plantilla y las imágenes del recurso: se compila con él.
+seminuevos_add_test(tst_maintenancereceipt
+    SOURCES adapters/tst_maintenancereceipt.cpp "${PROJECT_SOURCE_DIR}/resources/Resources.qrc"
+    LIBS seminuevos_contract
+)
+
 # --- Presentación ---------------------------------------------------------------
 seminuevos_add_test(tst_wizardnavigator
     SOURCES presentation/tst_wizardnavigator.cpp
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_editsession
+    SOURCES presentation/tst_editsession.cpp
     LIBS seminuevos_presentation
 )
 
@@ -120,6 +151,17 @@ seminuevos_add_test(tst_vehiclewizardpresenter
     LIBS seminuevos_presentation
 )
 
+seminuevos_add_test(tst_vehiclerecordpresenter
+    SOURCES presentation/tst_vehiclerecordpresenter.cpp support/fakes.h support/wizardfakes.h
+            support/registrationfixtures.h
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_maintenancehistorypresenter
+    SOURCES presentation/tst_maintenancehistorypresenter.cpp support/fakes.h
+    LIBS seminuevos_presentation
+)
+
 # Las de vistas enlazan seminuevos_views: widgets reales, sin base ni disco.
 seminuevos_add_test(tst_formsupport
     SOURCES presentation/tst_formsupport.cpp
@@ -133,7 +175,19 @@ seminuevos_add_test(tst_inventoryview
 
 # Humo del asistente con sus widgets reales.
 seminuevos_add_test(tst_vehiclewizardview
-    SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h
+    SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h support/registrationfixtures.h
+    LIBS seminuevos_views
+)
+
+# Humo del expediente con sus widgets reales.
+seminuevos_add_test(tst_vehiclerecordview
+    SOURCES presentation/tst_vehiclerecordview.cpp support/fakes.h support/registrationfixtures.h
+    LIBS seminuevos_views
+)
+
+# El formulario de alta del historial de mantenimientos.
+seminuevos_add_test(tst_addmaintenancedialog
+    SOURCES presentation/tst_addmaintenancedialog.cpp support/fakes.h
     LIBS seminuevos_views
 )
 

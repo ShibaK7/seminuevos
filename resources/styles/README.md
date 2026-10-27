@@ -81,6 +81,19 @@ Used for the single main action on a page (e.g., `+ Agregar Vehículo`, `Guardar
   btn->setProperty("class", "primary");
   ```
 
+### B. Data tables (`class="data-table"`)
+Used for tabular lists inside a card (e.g., the maintenance history of a vehicle).
+* **Border:** `#DEE2E6`, `8px` radius; grid lines `#E9ECEF`; alternating rows `#F8F9FA`.
+* **Selection:** `#E6E9FC` background with `#0A25C9` text.
+* **Header:** `#F8F9FA` background, `#495057` semi-bold text.
+* Set it as the `class` property of the `QTableWidget`/`QTableView` in Designer (Translatable unchecked). It is matched by class on purpose: a rule on every `QTableView` would also restyle the calendar popup of `QDateEdit`.
+
+### C. Read-only fields (`readOnly`) and fields locked while editing (`lockedByForm`)
+The vehicle record shows the registration form read-only. `formsupport::setReadOnly()` does it for a whole form; never set these properties by hand.
+* **`readOnly`:** the real property of `QLineEdit`, `QTextEdit` and spin boxes, and a dynamic one on `QComboBox`, `QCheckBox` and `QRadioButton`. Read-only fields keep their normal look (readable text) but lose hover and arrows. Do not use `QComboBox:read-only`: Qt applies it to every non-editable combo.
+* **Read-only `QDateEdit`:** with a calendar popup, Qt draws its frame as disabled when it is read-only, so it would take the `:disabled` grey. `formsupport::setReadOnly()` therefore turns the popup off while the date is read-only and restores it afterwards; do not add a stylesheet override for it, because that would also whiten a date that is really disabled.
+* **`lockedByForm`:** a field that cannot change while the record is being edited (operation type, maintenance cost). It is disabled, so it takes the `:disabled` grey.
+
 ## 📁 4. Project Setup & Stylesheet Loading
 
 The global stylesheet is located in the resource bundle at:

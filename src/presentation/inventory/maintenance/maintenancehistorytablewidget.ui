@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MaintenanceHistoryTableWidget</class>
+ <widget class="QWidget" name="MaintenanceHistoryTableWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>320</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="maintenanceHistoryLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="historyCard">
+     <property name="class" stdset="0">
+      <string notr="true">card</string>
+     </property>
+     <layout class="QVBoxLayout" name="historyCardLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="historyHeaderLayout">
+        <item>
+         <widget class="QLabel" name="historyTitle">
+          <property name="text">
+           <string>Historial de mantenimientos</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">h3</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="historyHeaderSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="OutlineButton" name="addMaintenanceButton">
+          <property name="title" stdset="0">
+           <string>Agregar Mantenimiento</string>
+          </property>
+          <property name="leadingIcon" stdset="0">
+           <string notr="true">:/icons/plus.png</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QTableWidget" name="historyTable">
+        <property name="editTriggers">
+         <set>QAbstractItemView::EditTrigger::DoubleClicked</set>
+        </property>
+        <property name="tabKeyNavigation">
+         <bool>false</bool>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">data-table</string>
+        </property>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Fecha</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Tipo de mantenimiento</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Costo</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Descripción</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Recibo</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="historyFooterLayout">
+        <item>
+         <spacer name="historyFooterSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="OutlineButton" name="printReceiptsButton">
+          <property name="title" stdset="0">
+           <string>Imprimir</string>
+          </property>
+          <property name="leadingIcon" stdset="0">
+           <string notr="true">:/icons/printer.png</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>OutlineButton</class>
+   <extends>QPushButton</extends>
+   <header>presentation/common/components/outlinebutton.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>addMaintenanceButton</tabstop>
+  <tabstop>historyTable</tabstop>
+  <tabstop>printReceiptsButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

@@ -4,6 +4,7 @@
 #include "presentation/common/forms/formsupport.h"
 #include "presentation/inventory/acquisition/acquisitiontermssection.h"
 #include "presentation/inventory/consignment/consignmenttermssection.h"
+#include "presentation/inventory/maintenance/maintenancehistorytablewidget.h"
 
 #include <QComboBox>
 #include <QCompleter>
@@ -94,11 +95,15 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     for (domain::AcquisitionType value : domain::allAcquisitionTypes())
         ui->acquisitionTypeCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
 
+    setUpBrandSearch();
+
     // Los botones de la factura viven en la sección de Adquisición.
     connect(ui->acquisitionSection, &AcquisitionTermsSection::browseInvoiceRequested, this,
             &VehicleDetailsView::browseInvoiceRequested);
     connect(ui->acquisitionSection, &AcquisitionTermsSection::cfdiRequestRequested, this,
             &VehicleDetailsView::cfdiRequestRequested);
+    connect(ui->acquisitionSection, &AcquisitionTermsSection::viewInvoiceRequested, this,
+            &VehicleDetailsView::viewInvoiceRequested);
 
     // El orden de tabulación cruza tres formularios, así que el .ui de este
     // paso solo lo declara hasta "Expidió Factura" y el resto se encadena
@@ -108,6 +113,17 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     focusChain << ui->maintenanceCostSpin << ui->observationsEdit;
     for (qsizetype i = 0; i + 1 < focusChain.size(); ++i)
         QWidget::setTabOrder(focusChain.at(i), focusChain.at(i + 1));
+
+    // El historial de mantenimientos va entre las dos tarjetas, y el Tab
+    // también: de la descripción a sus botones y de ahí a Tipo Operación.
+    // Mientras está oculto (en el alta, siempre), el Tab se lo salta. Va oculto
+    // desde aquí porque solo el expediente lo muestra, y solo a quien su rol
+    // se lo permite.
+    QList<QWidget *> historyChain{ui->descriptionEdit};
+    historyChain << ui->maintenanceHistorySection->focusOrder() << ui->acquisitionTypeCombo;
+    for (qsizetype i = 0; i + 1 < historyChain.size(); ++i)
+        QWidget::setTabOrder(historyChain.at(i), historyChain.at(i + 1));
+    ui->maintenanceHistorySection->setVisible(false);
 
     // Bajo cada campo, el lugar de sus mensajes de error (también los de las
     // secciones). Sin errores no ocupa espacio.
@@ -121,8 +137,12 @@ VehicleDetailsView::VehicleDetailsView(QWidget *parent)
     // Deja la vista coherente con la rama seleccionada por omisión.
     onAcquisitionTypeChanged();
 
-    // Cualquier cambio se avisa; el presenter decide cuándo revalidar.
-    formsupport::watchEdits(this, this, [this] { emit edited(); });
+    // Cualquier cambio se avisa; el presenter decide cuándo revalidar. Solo
+    // dentro de las dos tarjetas (las secciones de cada rama van en la
+    // segunda): lo que se capture en el historial de mantenimientos no es una
+    // edición de la unidad.
+    for (QFrame *card : {ui->generalInfoCard, ui->ownerAndAcquisitionCard})
+        formsupport::watchEdits(card, this, [this] { emit edited(); });
 }
 
 VehicleDetailsView::~VehicleDetailsView()
@@ -167,6 +187,21 @@ presentation::IAcquisitionTermsView &VehicleDetailsView::acquisitionTerms()
     return *ui->acquisitionSection;
 }
 
+MaintenanceHistoryTableWidget &VehicleDetailsView::maintenanceHistory()
+{
+    return *ui->maintenanceHistorySection;
+}
+
+void VehicleDetailsView::setMaintenanceHistoryVisible(bool visible)
+{
+    ui->maintenanceHistorySection->setVisible(visible);
+}
+
+void VehicleDetailsView::setDealTermsVisible(bool visible)
+{
+    ui->ownerAndAcquisitionCard->setVisible(visible);
+}
+
 void VehicleDetailsView::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
@@ -184,6 +219,17 @@ void VehicleDetailsView::showEvent(QShowEvent *event)
                                    ui->consignmentSection->grid()});
 }
 
+QSize VehicleDetailsView::minimumSizeHint() const
+{
+    QSize size = QWidget::minimumSizeHint();
+    // Con mensajes de error que se parten en renglones, el layout calcula su
+    // alto según el ancho, y el área con scroll ya toma el alto al ancho
+    // real. El natural se calcula a otro ancho y dejaría un hueco abajo.
+    if (layout() && !layout()->hasHeightForWidth())
+        size.setHeight(qMax(size.height(), sizeHint().height()));
+    return size;
+}
+
 QList<domain::ValidationError>
 VehicleDetailsView::showFieldErrors(const QList<domain::ValidationError> &errors)
 {
@@ -193,6 +239,17 @@ VehicleDetailsView::showFieldErrors(const QList<domain::ValidationError> &errors
 bool VehicleDetailsView::focusField(const QString &field)
 {
     return formsupport::focusField(this, field);
+}
+
+void VehicleDetailsView::setReadOnly(bool readOnly, const QStringList &lockedFields)
+{
+    // Solo las dos tarjetas (las secciones de cada rama van en la segunda): el
+    // historial de mantenimientos, que va entre ellas, no es parte de la
+    // captura de la unidad.
+    for (QFrame *card : {ui->generalInfoCard, ui->ownerAndAcquisitionCard})
+        formsupport::setReadOnly(card, readOnly, lockedFields);
+    // Los botones de la factura (CFDI y subir) se ocultan en consulta.
+    ui->acquisitionSection->setReadOnly(readOnly);
 }
 
 void VehicleDetailsView::reloadSubtypes()
@@ -216,7 +273,57 @@ void VehicleDetailsView::setLookups(const application::RegistrationLookupsDto &l
     m_subtypes = lookups.vehicleSubtypes;
     formsupport::fillCombo(ui->vehicleTypeCombo, lookups.vehicleTypes);
     formsupport::fillCombo(ui->brandCombo, lookups.brands);
+}
 
+void VehicleDetailsView::showDetails(int folio, const application::VehicleDetailsDto &details)
+{
+    formsupport::showText(ui->folioEdit, QString::number(folio));
+
+    // El orden importa: la rama decide qué tipos de factura ofrece su combo,
+    // y el tipo de vehículo, qué subtipos. Cada uno repuebla al siguiente, así
+    // que se eligen de arriba abajo y lo demás va al final.
+    formsupport::selectEnum(ui->acquisitionTypeCombo, details.acquisitionType);
+    formsupport::selectOption(ui->vehicleTypeCombo, details.vehicleType);
+    formsupport::selectOption(ui->subtypeCombo, details.subtype);
+    formsupport::selectOption(ui->brandCombo, details.brand);
+    formsupport::selectEnum(ui->invoiceTypeCombo, details.invoiceType);
+
+    formsupport::showDate(ui->dateEdit, details.dealDate);
+    formsupport::showText(ui->modelEdit, details.model);
+    formsupport::showValue(ui->yearModelSpin, details.yearModel);
+    formsupport::showText(ui->colorEdit, details.color);
+    formsupport::showValue(ui->mileageSpin, details.mileage);
+    ui->descriptionEdit->setPlainText(details.description);
+    formsupport::showText(ui->motorNumberEdit, details.motorNumber);
+    formsupport::showText(ui->serialNumberEdit, details.serialNumber);
+    formsupport::showText(ui->repuveEdit, details.repuve);
+    formsupport::showText(ui->platesEdit, details.plates);
+    formsupport::showText(ui->platesHolderEdit, details.platesHolder);
+
+    formsupport::showText(ui->ownerNameEdit, details.counterparty.fullName);
+    formsupport::showText(ui->ownerIdEdit, details.counterparty.nationalId);
+    formsupport::showText(ui->ownerAddressEdit, details.counterparty.streetAddress);
+    formsupport::showText(ui->ownerSuburbEdit, details.counterparty.suburb);
+    formsupport::showText(ui->ownerLocalityEdit, details.counterparty.locality);
+    formsupport::showText(ui->ownerStateEdit, details.counterparty.state);
+    formsupport::showText(ui->ownerPostalCodeEdit, details.counterparty.postalCode);
+
+    formsupport::showText(ui->invoiceNumberEdit, details.invoiceNumber);
+    formsupport::showText(ui->invoiceIssuerEdit, details.invoiceIssuer);
+    showMaintenanceCost(details.maintenanceCost);
+    ui->observationsEdit->setPlainText(details.observations);
+
+    ui->acquisitionSection->showTerms(details);
+    ui->consignmentSection->showTerms(details);
+}
+
+void VehicleDetailsView::showMaintenanceCost(double cost)
+{
+    formsupport::showValue(ui->maintenanceCostSpin, cost);
+}
+
+void VehicleDetailsView::setUpBrandSearch()
+{
     ui->brandCombo->setEditable(true);
 
     QCompleter* completer = ui->brandCombo->completer();

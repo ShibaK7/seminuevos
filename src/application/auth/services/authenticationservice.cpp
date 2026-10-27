@@ -41,8 +41,18 @@ LoginResult AuthenticationService::login(const QString &username, const QString 
         return result;
     }
 
+    // Un rol que la aplicación no conoce no entra: adivinarle permisos sería
+    // peor que decir qué pasa. El CHECK de users.role solo admite los dos
+    // que existen, así que esto solo ocurre con datos editados a mano.
+    const std::optional<domain::UserRole> role = domain::userRoleFromDb(record->role);
+    if (!role) {
+        result.errorMessage =
+            QStringLiteral("La cuenta tiene un rol que la aplicación no reconoce (%1).").arg(record->role);
+        return result;
+    }
+
     result.ok = true;
-    result.session = SessionDto{user, record->displayName, record->role};
+    result.session = SessionDto{user, record->displayName, *role};
     return result;
 }
 

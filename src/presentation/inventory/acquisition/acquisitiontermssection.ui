@@ -41,7 +41,7 @@
    </item>
    <item row="0" column="1" colspan="3">
     <widget class="QWidget" name="invoiceFileWidget" native="true">
-     <layout class="QHBoxLayout" name="invoiceFileLayout" stretch="1,0,0">
+     <layout class="QHBoxLayout" name="invoiceFileLayout" stretch="1,0,0,0">
       <property name="leftMargin">
        <number>0</number>
       </property>
@@ -75,6 +75,16 @@
        <widget class="QPushButton" name="invoiceUploadButton">
         <property name="text">
          <string>Subir documento</string>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">secondary</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="invoiceViewButton">
+        <property name="text">
+         <string>Ver</string>
         </property>
         <property name="class" stdset="0">
          <string notr="true">secondary</string>

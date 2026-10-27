@@ -149,6 +149,30 @@ void WizardStepper::setStepState(int index, const QString &state, bool complete,
     textLabel->style()->polish(textLabel);
 }
 
+void WizardStepper::setStepVisual(int index, presentation::StepVisual visual, bool complete,
+                                  const QString &hint)
+{
+    // El valor de la propiedad stepState que lee el QSS.
+    QString state = QStringLiteral("pending");
+    switch (visual) {
+    case presentation::StepVisual::Current:
+        state = QStringLiteral("current");
+        break;
+    case presentation::StepVisual::Locked:
+        state = QStringLiteral("locked");
+        break;
+    case presentation::StepVisual::Error:
+        state = QStringLiteral("error");
+        break;
+    case presentation::StepVisual::Done:
+        state = QStringLiteral("done");
+        break;
+    case presentation::StepVisual::Pending:
+        break;
+    }
+    setStepState(index, state, complete, hint);
+}
+
 bool WizardStepper::isStepCompleted(int index) const
 {
     return index >= 0 && index < m_completed.size() && m_completed.at(index);
