@@ -16,9 +16,12 @@ QT_END_NAMESPACE
 
 namespace presentation {
 class InventoryPresenter;
+class CommercialPresenter;
 }
 
 class InventoryView;
+class CommercialMainView;
+class SaleDetails;
 class VehicleRecordView;
 class VehicleWizardView;
 
@@ -48,6 +51,8 @@ public:
     // raíz de composición: es quien tiene los servicios y el rol de la sesión.
     using RecordFactory = std::function<VehicleRecordView *(QWidget *parent, int folio)>;
     void setRecordFactory(RecordFactory factory);
+    using SaleDetailsFactory = std::function<SaleDetails *(QWidget *parent, int folio)>;
+    void setSaleDetailsFactory(SaleDetailsFactory factory);
 
     // Quién entró: la barra superior muestra su rol.
     void setSession(const application::SessionDto &session);
@@ -55,10 +60,12 @@ public:
     // La página del inventario, para que la raíz de composición le arme su
     // presenter.
     InventoryView &inventoryView();
+    CommercialMainView &commercialView();
 
     // Conecta la página del inventario con su presenter, y a este con los
     // registros que haga el asistente.
     void bindInventory(presentation::InventoryPresenter &presenter);
+    void bindCommercial(presentation::CommercialPresenter &presenter);
 
 protected:
     // Cerrar la ventana también pregunta por los cambios sin guardar del
@@ -68,6 +75,7 @@ protected:
 private:
     WizardFactory m_wizardFactory;
     RecordFactory m_recordFactory;
+    SaleDetailsFactory m_saleDetailsFactory;
 
     // --- Asistente ---
     // Hay a lo más un asistente. "Agregar Vehículo" retoma el que ya exista,
@@ -86,6 +94,8 @@ private:
     void openVehicleRecord(int folio);
     void closeVehicleRecord();
     void onVehicleChanged(int folio);
+    void openSaleDetails(int folio);
+    void closeSaleDetails();
     // Quita una página de la pila y la destruye. Solo vuelve al inventario si
     // esa página era la visible: un registro que termina en segundo plano no
     // debe tapar lo que el usuario está viendo.
@@ -108,6 +118,7 @@ private:
     // pruebas de la cáscara) para saber cuál está abierto.
     QPointer<VehicleRecordView> m_record;
     int m_recordFolio = -1;
+    QPointer<SaleDetails> m_saleDetails;
 
     // El presenter de la rejilla. Su dueño es esta ventana (es su hijo).
     QPointer<presentation::InventoryPresenter> m_inventory;

@@ -18,6 +18,7 @@ class LoginWindow;
 class MainWindow;
 class LocalFileStorage;
 class SqlInventoryReader;
+class SqlCommercial;
 class SqlMaintenanceRepository;
 class SqlReferenceDataReader;
 class SqlUserDirectory;
@@ -26,6 +27,7 @@ class SqlVehicleRepository;
 
 namespace application {
 class AuthenticationService;
+class CommercialService;
 class InventoryService;
 class MaintenanceService;
 class VehicleRecordService;
@@ -76,6 +78,8 @@ private:
     std::unique_ptr<SqlMaintenanceRepository> m_maintenanceRepository;
     PdfMaintenanceReceiptGenerator m_receipts;
     std::unique_ptr<application::MaintenanceService> m_maintenance;
+    std::unique_ptr<SqlCommercial> m_commercialReader;
+    std::unique_ptr<application::CommercialService> m_commercial;
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

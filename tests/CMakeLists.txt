@@ -173,6 +173,11 @@ seminuevos_add_test(tst_inventoryview
     LIBS seminuevos_views
 )
 
+seminuevos_add_test(tst_commercialview
+    SOURCES presentation/tst_commercialview.cpp
+    LIBS seminuevos_views
+)
+
 # Humo del asistente con sus widgets reales.
 seminuevos_add_test(tst_vehiclewizardview
     SOURCES presentation/tst_vehiclewizardview.cpp support/fakes.h support/registrationfixtures.h

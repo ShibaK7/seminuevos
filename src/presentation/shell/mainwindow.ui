@@ -321,6 +321,7 @@
              <number>0</number>
             </property>
             <widget class="InventoryView" name="inventoryPage"/>
+            <widget class="CommercialMainView" name="commercial_main_view"/>
            </widget>
           </item>
          </layout>
@@ -348,6 +349,11 @@
    <class>InventoryView</class>
    <extends>QWidget</extends>
    <header>presentation/inventory/inventoryview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>CommercialMainView</class>
+   <extends>QWidget</extends>
+   <header>presentation/commercial/commercialmainview.h</header>
   </customwidget>
   <customwidget>
    <class>AspectRatioImageLabel</class>
