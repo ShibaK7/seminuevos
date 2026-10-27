@@ -18,6 +18,7 @@ class LoginWindow;
 class MainWindow;
 class LocalFileStorage;
 class SqlInventoryReader;
+class SqlCommercial;
 class SqlMaintenanceRepository;
 class SqlReferenceDataReader;
 class SqlCounterpartyDirectory;
@@ -28,6 +29,7 @@ class SqlVehicleRepository;
 
 namespace application {
 class AuthenticationService;
+class CommercialService;
 class InventoryService;
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -98,7 +100,12 @@ private:
     std::unique_ptr<SqlMaintenanceRepository> m_maintenanceRepository;
     PdfMaintenanceReceiptGenerator m_receipts;
     std::unique_ptr<application::MaintenanceService> m_maintenance;
+<<<<<<< HEAD
 >>>>>>> d8d4186 (add Maintenance section and generation receipt template)
+=======
+    std::unique_ptr<SqlCommercial> m_commercialReader;
+    std::unique_ptr<application::CommercialService> m_commercial;
+>>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

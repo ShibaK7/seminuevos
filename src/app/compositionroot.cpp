@@ -6,6 +6,7 @@
 #include "adapters/persistence/commercial/sqlsalerepository.h"
 #include "adapters/persistence/common/sqlcounterpartydirectory.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
+#include "adapters/persistence/commercial/sqlcommercial.h"
 #include "adapters/persistence/inventory/sqlmaintenancerepository.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 <<<<<<< HEAD
@@ -18,10 +19,14 @@
 #include "application/auth/services/authenticationservice.h"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "application/commercial/sales/services/saleservice.h"
 #include "application/common/services/counterpartylookupservice.h"
 =======
 =======
+=======
+#include "application/commercial/services/commercialservice.h"
+>>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
 #include "application/inventory/maintenance/services/maintenanceservice.h"
 >>>>>>> d8d4186 (add Maintenance section and generation receipt template)
 #include "application/inventory/services/inventoryservice.h"
@@ -35,6 +40,10 @@
 #include "presentation/inventory/maintenance/maintenancehistorytablewidget.h"
 #include "presentation/inventory/record/vehiclerecordpresenter.h"
 #include "presentation/inventory/record/vehiclerecordview.h"
+#include "presentation/commercial/commercialpresenter.h"
+#include "presentation/commercial/commercialmainview.h"
+#include "presentation/commercial/saledetails/SaleDetails.h"
+#include "presentation/commercial/saledetails/saledetailspresenter.h"
 #include "presentation/login/loginpresenter.h"
 #include "presentation/inventory/registration/vehiclewizardpresenter.h"
 #include "presentation/commercial/registration/saledetailsview.h"
@@ -191,7 +200,13 @@ bool CompositionRoot::start()
     m_maintenanceRepository = std::make_unique<SqlMaintenanceRepository>(pool);
     m_maintenance = std::make_unique<application::MaintenanceService>(
         *m_maintenanceRepository, *m_referenceData, m_receipts);
+<<<<<<< HEAD
 >>>>>>> d8d4186 (add Maintenance section and generation receipt template)
+=======
+    m_commercialReader = std::make_unique<SqlCommercial>(pool);
+    m_commercial = std::make_unique<application::CommercialService>(
+        *m_commercialReader, *m_commercialReader);
+>>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -247,6 +262,20 @@ void CompositionRoot::showMain(const application::SessionDto &session)
             mainWindow->inventoryView(), *m_inventory, m_runner, mainWindow);
         mainWindow->bindInventory(*inventory);
         inventory->reload();
+
+        auto *commercial = new presentation::CommercialPresenter(
+            mainWindow->commercialView(), *m_commercial, m_runner, mainWindow);
+        mainWindow->bindCommercial(*commercial);
+        commercial->reload();
+
+        mainWindow->setSaleDetailsFactory([this, role = session.role](QWidget *parent, int folio) {
+            auto *view = new SaleDetails(role, parent);
+            auto *presenter = new presentation::SaleDetailsPresenter(
+                *view, *m_commercial, m_runner, folio, role, view);
+            view->bind(*presenter);
+            presenter->load();
+            return view;
+        });
 
         // El asistente se arma aquí porque solo la raíz tiene su servicio y el
         // TaskRunner; MainWindow solo decide cuándo abrirlo.

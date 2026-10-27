@@ -3,6 +3,9 @@
 
 #include "presentation/inventory/inventorypresenter.h"
 #include "presentation/inventory/inventoryview.h"
+#include "presentation/commercial/commercialmainview.h"
+#include "presentation/commercial/commercialpresenter.h"
+#include "presentation/commercial/saledetails/SaleDetails.h"
 #include "presentation/inventory/record/vehiclerecordview.h"
 #include "presentation/inventory/registration/vehiclewizardview.h"
 #include "presentation/commercial/registration/salewizardview.h"
@@ -42,6 +45,8 @@ MainWindow::MainWindow(QWidget *parent)
     // inventario se recarga en ese momento).
     connect(ui->inventoryPage, &InventoryView::vehicleDetailsRequested, this,
             &MainWindow::openVehicleRecord, Qt::QueuedConnection);
+    connect(ui->commercial_main_view, &CommercialMainView::saleDetailsRequested,
+            this, &MainWindow::openSaleDetails, Qt::QueuedConnection);
 
     // Inventario en el menú solo cambia de página. Un asistente abierto no se
     // cierra por eso: queda vivo y oculto, con lo capturado, y "Agregar
@@ -84,15 +89,31 @@ InventoryView &MainWindow::inventoryView()
     return *ui->inventoryPage;
 }
 
+<<<<<<< HEAD
 SaleWizardView &MainWindow::saleWizardView()
 {
     return *ui->commercialPage;
+=======
+CommercialMainView &MainWindow::commercialView()
+{
+    return *ui->commercial_main_view;
+>>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
 }
 
 void MainWindow::bindInventory(presentation::InventoryPresenter &presenter)
 {
     m_inventory = &presenter;
     ui->inventoryPage->bind(presenter);
+}
+
+void MainWindow::bindCommercial(presentation::CommercialPresenter &presenter)
+{
+    ui->commercial_main_view->bind(presenter);
+}
+
+void MainWindow::setSaleDetailsFactory(SaleDetailsFactory factory)
+{
+    m_saleDetailsFactory = std::move(factory);
 }
 
 void MainWindow::setSession(const application::SessionDto &session)
@@ -159,6 +180,34 @@ void MainWindow::closeVehicleWizard()
 void MainWindow::setWizardFactory(WizardFactory factory)
 {
     m_wizardFactory = std::move(factory);
+}
+
+void MainWindow::openSaleDetails(int folio)
+{
+    if (m_saleDetails)
+        closeSaleDetails();
+    if (!m_saleDetailsFactory)
+        return;
+
+    SaleDetails *details = m_saleDetailsFactory(ui->mainContentStack, folio);
+    connect(details, &SaleDetails::returnToCommercial, this, [this, details] {
+        if (details == m_saleDetails)
+            closeSaleDetails();
+    });
+    ui->mainContentStack->addWidget(details);
+    ui->mainContentStack->setCurrentWidget(details);
+    m_saleDetails = details;
+}
+
+void MainWindow::closeSaleDetails()
+{
+    if (!m_saleDetails)
+        return;
+    if (ui->mainContentStack->currentWidget() == m_saleDetails)
+        ui->mainContentStack->setCurrentWidget(ui->commercial_main_view);
+    ui->mainContentStack->removeWidget(m_saleDetails);
+    m_saleDetails->deleteLater();
+    m_saleDetails = nullptr;
 }
 
 // ---------------------------------------------------------------------------
