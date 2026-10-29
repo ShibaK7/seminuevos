@@ -22,6 +22,14 @@ CommercialSaleDetailsResultDto CommercialService::saleDetails(int folio) const
     return result;
 }
 
+CommercialSaleRegistrationDetailsResultDto CommercialService::saleRegistrationDetails(
+    int folio) const
+{
+    CommercialSaleRegistrationDetailsResultDto result;
+    result.sale = m_reader.saleRegistrationDetails(folio, &result.errorMessage);
+    return result;
+}
+
 CommercialWriteResultDto CommercialService::updatePaymentWaiver(
     int paymentFolio, bool waived, domain::UserRole role) const
 {

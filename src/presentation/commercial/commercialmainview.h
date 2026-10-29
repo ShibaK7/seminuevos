@@ -38,6 +38,7 @@ public:
 
 signals:
     void saleDetailsRequested(int folio);
+    void fullSaleDetailsRequested(int folio);
     void newSaleRequested();
 
 private:

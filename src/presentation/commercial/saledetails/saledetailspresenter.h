@@ -18,6 +18,7 @@ public:
                                   QObject *parent = nullptr);
 
     void load();
+    void loadFullDetails();
     void setPaymentWaived(int paymentFolio, bool waived);
 
 private:

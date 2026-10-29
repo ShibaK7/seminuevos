@@ -26,12 +26,18 @@ public:
     ~SaleDetails() override;
 
     void bind(presentation::CommercialSaleDetailsPresenter &presenter);
+    void requestFullDetails();
     void showSaleDetails(const application::CommercialSaleDetailsDto &details) override;
+    void showFullSaleDetails(
+        const application::CommercialSaleRegistrationDetailsDto &details) override;
     void showSaleDetailsError(const QString &message) override;
 
 signals:
     void returnToCommercial();
     void paymentWaiverChanged(int paymentFolio, bool waived);
+    void fullDetailsRequested();
+    void fullSaleDetailsLoaded(
+        const application::CommercialSaleRegistrationDetailsDto &details);
 
 private:
     void onFullDetailsRequested();

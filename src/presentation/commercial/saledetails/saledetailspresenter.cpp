@@ -33,6 +33,19 @@ void CommercialSaleDetailsPresenter::load()
                  });
 }
 
+void CommercialSaleDetailsPresenter::loadFullDetails()
+{
+    const application::CommercialService *service = &m_service;
+    const int folio = m_saleFolio;
+    m_runner.run(this, [service, folio] { return service->saleRegistrationDetails(folio); },
+                 [this](const application::CommercialSaleRegistrationDetailsResultDto &result) {
+                     if (!result.errorMessage.isEmpty())
+                         m_view.showSaleDetailsError(result.errorMessage);
+                     else
+                         m_view.showFullSaleDetails(result.sale);
+                 });
+}
+
 void CommercialSaleDetailsPresenter::setPaymentWaived(int paymentFolio, bool waived)
 {
     const application::CommercialService *service = &m_service;

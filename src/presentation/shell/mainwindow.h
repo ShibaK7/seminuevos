@@ -8,6 +8,8 @@
 
 #include <functional>
 
+#include "application/commercial/dto/commercialdtos.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
     class MainWindow;
@@ -22,6 +24,7 @@ class CommercialPresenter;
 class InventoryView;
 class CommercialMainView;
 class SaleDetails;
+class SaleDetailsView;
 class VehicleRecordView;
 class VehicleWizardView;
 class SaleWizardView;
@@ -98,6 +101,9 @@ private:
     void onVehicleChanged(int folio);
     void openSaleWizard();
     void openSaleDetails(int folio);
+    void openFullSaleDetails(int folio);
+    void showFullSaleDetails(const application::CommercialSaleRegistrationDetailsDto &details);
+    void closeFullSaleDetails();
     void closeSaleDetails();
     // Quita una página de la pila y la destruye. Solo vuelve al inventario si
     // esa página era la visible: un registro que termina en segundo plano no
@@ -122,6 +128,9 @@ private:
     QPointer<VehicleRecordView> m_record;
     int m_recordFolio = -1;
     QPointer<SaleDetails> m_saleDetails;
+    QPointer<QWidget> m_fullSaleDetailsPage;
+    QPointer<SaleDetailsView> m_fullSaleDetailsView;
+    bool m_fullSaleDetailsReturnsToCommercial = false;
 
     // El presenter de la rejilla. Su dueño es esta ventana (es su hijo).
     QPointer<presentation::InventoryPresenter> m_inventory;

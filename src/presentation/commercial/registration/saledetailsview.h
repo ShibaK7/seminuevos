@@ -3,6 +3,7 @@
 
 #include "application/common/dto/counterpartydtos.h"
 #include "application/auth/dto/authdtos.h"
+#include "application/commercial/dto/commercialdtos.h"
 #include "application/commercial/sales/dto/saledtos.h"
 #include "domain/common/value_objects/enums.h"
 #include "presentation/commercial/registration/isaledetailsview.h"
@@ -36,6 +37,7 @@ public:
     bool focusSaleField(const QString &field) override;
     void setCurrentUser(const application::SessionDto &session);
     void resetForm();
+    void showSavedSale(const application::CommercialSaleRegistrationDetailsDto &details);
     int selectedVehicleFolio() const;
     application::SaleVehicleOptionDto selectedVehicle() const;
     application::SaleRegistrationDto registrationForm() const;

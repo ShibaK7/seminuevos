@@ -5,13 +5,20 @@
 
 #include <QCompleter>
 #include <QAbstractItemView>
+#include <QAbstractSpinBox>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDateEdit>
+#include <QDoubleSpinBox>
 #include <QEvent>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QLocale>
+#include <QPushButton>
 #include <QSignalBlocker>
 #include <QStandardItemModel>
 #include <QStringListModel>
+#include <QTextEdit>
 #include <QtMath>
 
 SaleDetailsView::SaleDetailsView(QWidget *parent)
@@ -553,6 +560,143 @@ void SaleDetailsView::resetForm()
 
     emit vendorSearchRequested(QString());
     emit vehicleSearchRequested(QString());
+}
+
+void SaleDetailsView::showSavedSale(
+    const application::CommercialSaleRegistrationDetailsDto &details)
+{
+    const application::SaleRegistrationDto &sale = details.registration;
+    const application::SaleBuyerDto &buyer = sale.buyer;
+    const QSignalBlocker paymentTypeBlocker(ui->paymentTypeCombo);
+
+    m_financingInitialized = true;
+    ui->folioEdit->setText(QString::number(details.folio));
+    ui->dateEdit->setDate(sale.saleDate);
+    m_vehicleFolio = details.vehicle.folio;
+    m_selectedVehicle = details.vehicle;
+    ui->vehicleCombo->clear();
+    const QString vehicleLabel = QStringLiteral("%1 %2 %3 — Folio %4")
+                                     .arg(details.vehicle.brandName.isEmpty()
+                                              ? QStringLiteral("Vehículo")
+                                              : details.vehicle.brandName)
+                                     .arg(details.vehicle.model)
+                                     .arg(details.vehicle.yearModel > 0
+                                              ? QString::number(details.vehicle.yearModel)
+                                              : QString())
+                                     .arg(details.vehicle.folio);
+    ui->vehicleCombo->addItem(vehicleLabel);
+    ui->vehicleCombo->setCurrentIndex(0);
+
+    ui->sellerBox->clear();
+    const QString vendorLabel = details.vendor.username.isEmpty()
+                                    ? details.vendor.displayName
+                                    : QStringLiteral("%1 (%2)")
+                                          .arg(details.vendor.displayName, details.vendor.username);
+    ui->sellerBox->addItem(vendorLabel, details.vendor.id);
+    ui->sellerBox->setCurrentIndex(0);
+    m_vendorId = details.vendor.id;
+
+    m_buyerCounterpartyId = buyer.counterpartyId;
+    ui->buyerEdit->setText(buyer.fullName);
+    ui->identificationEdit->setText(buyer.nationalId);
+    ui->residenceEdit->setText(buyer.streetAddress);
+    ui->suburbEdit->setText(buyer.suburb);
+    ui->localityEdit->setText(buyer.locality);
+    ui->stateEdit->setText(buyer.state);
+    ui->zipCodeEdit->setText(buyer.postalCode);
+    ui->phoneEdit->setText(buyer.phone);
+    ui->emailEdit->setText(buyer.email);
+    ui->updateBuyerRecordCheck->setChecked(false);
+    ui->updateBuyerRecordCheck->hide();
+
+    ui->paymentTypeCombo->setCurrentIndex(
+        ui->paymentTypeCombo->findData(static_cast<int>(sale.paymentType)));
+    onPaymentTypeChanged();
+    ui->paymentMethodCombo->setCurrentIndex(-1);
+    if (sale.paymentMethod) {
+        ui->paymentMethodCombo->setCurrentIndex(
+            ui->paymentMethodCombo->findData(static_cast<int>(*sale.paymentMethod)));
+    } else if (sale.paymentType == domain::PaymentType::Credito) {
+        ui->paymentMethodCombo->addItem(QStringLiteral("Financiamiento"));
+        ui->paymentMethodCombo->setCurrentIndex(ui->paymentMethodCombo->count() - 1);
+    }
+
+    ui->subtotalSpin->setValue(sale.subtotal);
+    ui->ivaSpin->setValue(sale.iva);
+    ui->totalSpin->setValue(sale.totalAmount);
+    ui->salePriceSpin->setValue(sale.totalAmount);
+    ui->observationsTextEdit->setPlainText(sale.observations);
+    ui->updateGuarantorRecordCheck->setChecked(false);
+    ui->updateGuarantorRecordCheck->hide();
+    m_projectionInstallments.clear();
+    ui->paymentsTable->model()->removeRows(0, ui->paymentsTable->model()->rowCount());
+
+    if (sale.financing) {
+        const application::SaleFinancingDto &financing = *sale.financing;
+        m_financingInitialized = true;
+        ui->depositSpin->setValue(financing.downPayment);
+        ui->financingSpin->setValue(financing.amountToFinance);
+        ui->interestRateSpin->setValue(financing.interestRatePercent);
+        ui->monthsSpin->setValue(financing.monthsTerm);
+        ui->finalPriceSpin->setValue(financing.finalPrice);
+        if (financing.guarantor) {
+            const application::SaleBuyerDto &guarantor = *financing.guarantor;
+            m_guarantorCounterpartyId = guarantor.counterpartyId;
+            ui->gNameEdit->setText(guarantor.fullName);
+            ui->gIdentificationEdit->setText(guarantor.nationalId);
+            ui->gResidenceEdit->setText(guarantor.streetAddress);
+            ui->gSuburbEdit->setText(guarantor.suburb);
+            ui->gLocalityEdit->setText(guarantor.locality);
+            ui->gStateEdit->setText(guarantor.state);
+            ui->gZipCodeEdit->setText(guarantor.postalCode);
+            ui->gTelephoneEdit->setText(guarantor.phone);
+            ui->gEmailEdit->setText(guarantor.email);
+        }
+
+        auto *model = qobject_cast<QStandardItemModel *>(ui->paymentsTable->model());
+        for (const application::SaleInstallmentDto &installment : financing.installments) {
+            const QList<QString> values = {
+                QString::number(installment.number),
+                installment.dueDate.toString(QStringLiteral("dd/MM/yyyy")),
+                QLocale(QLocale::Spanish, QLocale::Mexico)
+                    .toCurrencyString(installment.expectedAmount),
+                QLocale(QLocale::Spanish, QLocale::Mexico)
+                    .toCurrencyString(installment.capitalAllocation),
+                QLocale(QLocale::Spanish, QLocale::Mexico)
+                    .toCurrencyString(installment.interestAllocation),
+                QLocale(QLocale::Spanish, QLocale::Mexico)
+                    .toCurrencyString(installment.remainingBalance)
+            };
+            QList<QStandardItem *> row;
+            for (const QString &value : values) {
+                auto *item = new QStandardItem(value);
+                item->setEditable(false);
+                row << item;
+            }
+            model->appendRow(row);
+            m_projectionInstallments << installment;
+        }
+    } else {
+        m_financingInitialized = false;
+        ui->depositSpin->setValue(0.0);
+        ui->financingSpin->setValue(0.0);
+        ui->monthsSpin->setValue(0);
+        ui->finalPriceSpin->setValue(0.0);
+    }
+
+    for (QLineEdit *edit : findChildren<QLineEdit *>())
+        edit->setReadOnly(true);
+    for (QTextEdit *edit : findChildren<QTextEdit *>())
+        edit->setReadOnly(true);
+    for (QAbstractSpinBox *spin : findChildren<QAbstractSpinBox *>())
+        spin->setReadOnly(true);
+    for (QComboBox *combo : findChildren<QComboBox *>())
+        combo->setEnabled(false);
+    for (QCheckBox *check : findChildren<QCheckBox *>())
+        check->setEnabled(false);
+    ui->calculateProjectionButton->hide();
+    ui->printButton->hide();
+    ui->paymentsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
 }
 
 void SaleDetailsView::selectVendor(const QString &displayText)
