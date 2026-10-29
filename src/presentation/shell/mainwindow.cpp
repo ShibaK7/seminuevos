@@ -45,6 +45,8 @@ MainWindow::MainWindow(QWidget *parent)
     // inventario se recarga en ese momento).
     connect(ui->inventoryPage, &InventoryView::vehicleDetailsRequested, this,
             &MainWindow::openVehicleRecord, Qt::QueuedConnection);
+    connect(ui->commercial_main_view, &CommercialMainView::newSaleRequested,
+            this, &MainWindow::openSaleWizard, Qt::QueuedConnection);
     connect(ui->commercial_main_view, &CommercialMainView::saleDetailsRequested,
             this, &MainWindow::openSaleDetails, Qt::QueuedConnection);
 
@@ -173,6 +175,12 @@ void MainWindow::closeVehicleWizard()
 void MainWindow::setWizardFactory(WizardFactory factory)
 {
     m_wizardFactory = std::move(factory);
+}
+
+void MainWindow::openSaleWizard()
+{
+    ui->mainContentStack->setCurrentWidget(ui->commercialPage);
+    ui->commercialPage->setFocus();
 }
 
 void MainWindow::openSaleDetails(int folio)

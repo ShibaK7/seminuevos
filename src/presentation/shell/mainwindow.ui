@@ -357,11 +357,6 @@
    <header>presentation/inventory/inventoryview.h</header>
   </customwidget>
   <customwidget>
-   <class>CommercialMainView</class>
-   <extends>QWidget</extends>
-   <header>presentation/commercial/commercialmainview.h</header>
-  </customwidget>
-  <customwidget>
    <class>SidebarMenuItem</class>
    <extends>QPushButton</extends>
    <header>presentation/common/components/sidebarmenuitem.h</header>
@@ -371,6 +366,11 @@
    <extends>QWidget</extends>
    <header>presentation/commercial/registration/salewizardview.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CommercialMainView</class>
+   <extends>QWidget</extends>
+   <header>presentation/commercial/commercialmainview.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

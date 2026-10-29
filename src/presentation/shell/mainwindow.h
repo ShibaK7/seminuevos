@@ -96,6 +96,7 @@ private:
     void openVehicleRecord(int folio);
     void closeVehicleRecord();
     void onVehicleChanged(int folio);
+    void openSaleWizard();
     void openSaleDetails(int folio);
     void closeSaleDetails();
     // Quita una página de la pila y la destruye. Solo vuelve al inventario si

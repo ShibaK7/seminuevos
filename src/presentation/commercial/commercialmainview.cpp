@@ -82,6 +82,7 @@ CommercialMainView::CommercialMainView(QWidget* parent) :
     ui->newSaleButton->setIcon(QIcon(":/icons/plus.png"));
     ui->newSaleButton->setIconSize(QSize(20,20));
     ui->newSaleButton->show();
+    connect(ui->newSaleButton, &QPushButton::clicked, this, &CommercialMainView::newSaleRequested);
     ui->searchBox->hide();
 
     QPalette palete = ui->tableWidget->palette();
