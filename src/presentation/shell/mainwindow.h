@@ -20,6 +20,7 @@ class InventoryPresenter;
 
 class InventoryView;
 class VehicleWizardView;
+class SaleWizardView;
 
 // Ventana principal: la cáscara. Barra lateral de módulos, barra superior con
 // el rol y, dentro del área de contenido, una pila que alterna entre la página
@@ -48,6 +49,7 @@ public:
     // La página del inventario, para que la raíz de composición le arme su
     // presenter.
     InventoryView &inventoryView();
+    SaleWizardView &saleWizardView();
 
     // Conecta la página del inventario con su presenter, y a este con los
     // registros que haga el asistente.

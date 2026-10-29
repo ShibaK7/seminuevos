@@ -31,6 +31,7 @@ private slots:
         QCOMPARE(result.session.username, QStringLiteral("ana"));
         QCOMPARE(result.session.displayName, QStringLiteral("Ana López"));
         QCOMPARE(result.session.role, QStringLiteral("Vendedor"));
+        QCOMPARE(m_users.successfulLogins, 1);
     }
 
     // "No existe" y "contraseña equivocada" dan el mismo mensaje: distinguirlos
@@ -42,6 +43,7 @@ private slots:
         const auto unknownUser = auth.login(QStringLiteral("nadie"), QStringLiteral("secreta"));
         QVERIFY(!wrongPassword.ok);
         QVERIFY(!unknownUser.ok);
+        QCOMPARE(m_users.successfulLogins, 0);
         QCOMPARE(wrongPassword.errorMessage, unknownUser.errorMessage);
     }
 

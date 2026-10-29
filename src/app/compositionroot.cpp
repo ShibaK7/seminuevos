@@ -2,17 +2,24 @@
 
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/auth/devseeder.h"
+#include "adapters/persistence/auth/sqluserdirectory.h"
+#include "adapters/persistence/commercial/sqlsalerepository.h"
+#include "adapters/persistence/common/sqlcounterpartydirectory.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
-#include "adapters/persistence/auth/sqluserdirectory.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
 #include "application/auth/services/authenticationservice.h"
-#include "application/inventory/services/inventoryservice.h"
+#include "application/commercial/sales/services/saleservice.h"
+#include "application/common/services/counterpartylookupservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
+#include "application/inventory/services/inventoryservice.h"
+#include "presentation/commercial/registration/salewizardview.h"
 #include "presentation/inventory/inventorypresenter.h"
 #include "presentation/login/loginpresenter.h"
 #include "presentation/inventory/registration/vehiclewizardpresenter.h"
+#include "presentation/commercial/registration/saledetailsview.h"
+#include "presentation/commercial/registration/saledetailspresenter.h"
 #include "presentation/inventory/inventoryview.h"
 #include "presentation/login/loginwindow.h"
 #include "presentation/shell/mainwindow.h"
@@ -28,6 +35,7 @@
 #include <QPropertyAnimation>
 #include <QSqlDatabase>
 #include <QSqlError>
+#include <QSqlQuery>
 #include <QTextStream>
 
 namespace {
@@ -140,6 +148,11 @@ bool CompositionRoot::start()
         *m_vehicles, *m_files, *m_referenceData, m_contracts);
     m_inventoryReader = std::make_unique<SqlInventoryReader>(pool);
     m_inventory = std::make_unique<application::InventoryService>(*m_inventoryReader, *m_files);
+    m_counterparties = std::make_unique<SqlCounterpartyDirectory>(pool);
+    m_saleRepository = std::make_unique<SqlSaleRepository>(pool);
+    m_counterpartyLookup =
+        std::make_unique<application::CounterpartyLookupService>(*m_counterparties);
+    m_saleService = std::make_unique<application::SaleService>(*m_saleRepository, *m_counterparties);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -168,6 +181,27 @@ void CompositionRoot::showMain(const application::SessionDto &session)
         mainWindow->setAttribute(Qt::WA_DeleteOnClose);
         connect(mainWindow, &QObject::destroyed, qApp, &QCoreApplication::quit);
         mainWindow->setSession(session);
+
+        auto &saleDetails = mainWindow->saleWizardView().detailsView();
+        auto &saleWizard = mainWindow->saleWizardView();
+        auto *salePresenter = new presentation::SaleDetailsPresenter(
+            saleDetails, *m_counterpartyLookup, m_runner, mainWindow, m_saleService.get());
+        connect(&saleDetails, &SaleDetailsView::counterpartySearchRequested, salePresenter,
+            &presentation::SaleDetailsPresenter::searchCounterparty);
+        connect(&saleDetails, &SaleDetailsView::vehicleSearchRequested, salePresenter,
+            &presentation::SaleDetailsPresenter::searchVehicle);
+        connect(&saleDetails, &SaleDetailsView::vendorSearchRequested, salePresenter,
+            &presentation::SaleDetailsPresenter::searchVendors);
+        saleDetails.setCurrentUser(session);
+        connect(&saleWizard, &SaleWizardView::saveSaleRequested, salePresenter,
+            [salePresenter, &saleDetails] { salePresenter->registerSale(saleDetails.registrationForm()); });
+        connect(salePresenter, &presentation::SaleDetailsPresenter::saleRegistrationStarted,
+            &saleWizard, [&saleWizard] { saleWizard.setSaving(true); });
+        connect(salePresenter, &presentation::SaleDetailsPresenter::saleRegistrationFinished,
+            &saleWizard, [&saleWizard](bool success, int folio, const QString &message) {
+                saleWizard.setSaving(false);
+                saleWizard.showSaveResult(success, folio, message);
+            });
 
         // La rejilla del inventario: su presenter vive lo que vive la ventana.
         auto *inventory = new presentation::InventoryPresenter(

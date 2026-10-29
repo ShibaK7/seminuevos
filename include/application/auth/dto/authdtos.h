@@ -12,6 +12,7 @@ struct UserRecordDto
     QString passwordHash;
     QString displayName;
     QString role;
+    int id = -1;
 };
 
 // La sesión que obtiene quien inició sesión. Es lo único que cruza hacia la
@@ -21,6 +22,7 @@ struct SessionDto
     QString username;
     QString displayName;
     QString role;
+    int userId = -1;
 };
 
 struct LoginResult

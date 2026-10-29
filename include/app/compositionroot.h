@@ -18,12 +18,16 @@ class MainWindow;
 class LocalFileStorage;
 class SqlInventoryReader;
 class SqlReferenceDataReader;
+class SqlCounterpartyDirectory;
+class SqlSaleRepository;
 class SqlUserDirectory;
 class SqlVehicleRepository;
 
 namespace application {
 class AuthenticationService;
 class InventoryService;
+class CounterpartyLookupService;
+class SaleService;
 class VehicleRegistrationService;
 }
 namespace presentation {
@@ -66,6 +70,10 @@ private:
     std::unique_ptr<application::VehicleRegistrationService> m_registration;
     std::unique_ptr<SqlInventoryReader> m_inventoryReader;
     std::unique_ptr<application::InventoryService> m_inventory;
+    std::unique_ptr<SqlCounterpartyDirectory> m_counterparties;
+    std::unique_ptr<SqlSaleRepository> m_saleRepository;
+    std::unique_ptr<application::CounterpartyLookupService> m_counterpartyLookup;
+    std::unique_ptr<application::SaleService> m_saleService;
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

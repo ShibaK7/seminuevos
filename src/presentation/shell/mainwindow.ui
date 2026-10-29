@@ -256,7 +256,7 @@
              <string/>
             </property>
             <property name="pixmap">
-             <pixmap resource="../../../resources/Resources.qrc">:/icons/avatar.png</pixmap>
+             <pixmap>:/icons/avatar.png</pixmap>
             </property>
            </widget>
           </item>
@@ -306,9 +306,10 @@
           <item>
            <widget class="QStackedWidget" name="mainContentStack">
             <property name="currentIndex">
-             <number>0</number>
+             <number>1</number>
             </property>
             <widget class="InventoryView" name="inventoryPage"/>
+            <widget class="SaleWizardView" name="commercialPage"/>
            </widget>
           </item>
          </layout>
@@ -325,7 +326,7 @@
      <x>0</x>
      <y>0</y>
      <width>1060</width>
-     <height>17</height>
+     <height>30</height>
     </rect>
    </property>
   </widget>
@@ -333,19 +334,25 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>AspectRatioImageLabel</class>
+   <extends>QLabel</extends>
+   <header>../src/presentation/common/components/aspectratioimagelabel.h</header>
+  </customwidget>
+  <customwidget>
    <class>InventoryView</class>
    <extends>QWidget</extends>
    <header>presentation/inventory/inventoryview.h</header>
   </customwidget>
   <customwidget>
-   <class>AspectRatioImageLabel</class>
-   <extends>QLabel</extends>
-   <header>presentation/common/components/aspectratioimagelabel.h</header>
-  </customwidget>
-  <customwidget>
    <class>SidebarMenuItem</class>
    <extends>QPushButton</extends>
    <header>presentation/common/components/sidebarmenuitem.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SaleWizardView</class>
+   <extends>QWidget</extends>
+   <header>presentation/commercial/registration/salewizardview.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>
@@ -354,8 +361,6 @@
   <tabstop>financeItem</tabstop>
   <tabstop>reportItem</tabstop>
  </tabstops>
- <resources>
-  <include location="../../../resources/Resources.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

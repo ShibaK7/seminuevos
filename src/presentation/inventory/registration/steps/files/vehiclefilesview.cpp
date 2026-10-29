@@ -237,7 +237,7 @@ void VehicleFilesView::rebuildGallery()
         cellLayout->addWidget(thumbnail);
 
         auto *actionsLayout = new QHBoxLayout;
-        auto *deleteButton = new QPushButton(QStringLiteral("🗑"), cell);
+        /*auto *deleteButton = new QPushButton(QStringLiteral("🗑"), cell);
         deleteButton->setProperty("class", QStringLiteral("icon-flat"));
         connect(deleteButton, &QPushButton::clicked, this, [this, i]() {
             m_images.removeAt(i);
@@ -258,7 +258,7 @@ void VehicleFilesView::rebuildGallery()
 
         actionsLayout->addWidget(deleteButton, 0, Qt::AlignLeft);
         actionsLayout->addStretch();
-        actionsLayout->addWidget(starButton, 0, Qt::AlignRight);
+        actionsLayout->addWidget(starButton, 0, Qt::AlignRight);*/
         cellLayout->addLayout(actionsLayout);
 
         rowLayout->addWidget(cell);

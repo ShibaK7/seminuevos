@@ -41,8 +41,14 @@ LoginResult AuthenticationService::login(const QString &username, const QString 
         return result;
     }
 
+    QString loginError;
+    if (!m_users.recordSuccessfulLogin(record->id, &loginError)) {
+        result.errorMessage = QStringLiteral("No se pudo actualizar la última sesión: %1").arg(loginError);
+        return result;
+    }
+
     result.ok = true;
-    result.session = SessionDto{user, record->displayName, record->role};
+    result.session = SessionDto{user, record->displayName, record->role, record->id};
     return result;
 }
 

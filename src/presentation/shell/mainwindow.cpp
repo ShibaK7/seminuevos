@@ -1,9 +1,10 @@
 #include "presentation/shell/mainwindow.h"
-#include "ui_mainwindow.h"
+#include "src/presentation/shell/ui_mainwindow.h"
 
 #include "presentation/inventory/inventorypresenter.h"
 #include "presentation/inventory/inventoryview.h"
 #include "presentation/inventory/registration/vehiclewizardview.h"
+#include "presentation/commercial/registration/salewizardview.h"
 
 #include <QLabel>
 #include <QPushButton>
@@ -43,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     // resaltado a Inventario: con autoExclusive, un manejador vacío dejaría la
     // barra lateral marcando un módulo en el que el usuario no está.
     connect(ui->commercialItem, &QPushButton::clicked, this,
-            [this] { showModulePending(QStringLiteral("Comercial")); });
+            [this] { ui->mainContentStack->setCurrentWidget(ui->commercialPage); });
     connect(ui->financeItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Finanzas")); });
     connect(ui->reportItem, &QPushButton::clicked, this,
@@ -65,6 +66,11 @@ void MainWindow::showModulePending(const QString &moduleName)
 InventoryView &MainWindow::inventoryView()
 {
     return *ui->inventoryPage;
+}
+
+SaleWizardView &MainWindow::saleWizardView()
+{
+    return *ui->commercialPage;
 }
 
 void MainWindow::bindInventory(presentation::InventoryPresenter &presenter)

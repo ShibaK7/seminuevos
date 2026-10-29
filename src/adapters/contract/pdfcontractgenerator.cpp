@@ -62,11 +62,16 @@ application::ContractGenerator::Outcome PdfContractGenerator::generate(
         html.replace(QStringLiteral("{{%1}}").arg(it.key()), it.value().toHtmlEscaped());
     }
 
-    // Datos de la agencia: son de la aplicación, no de la unidad.
-    html.replace(QStringLiteral("{{comprador_nombre}}"), CompanyProfile::name().toHtmlEscaped());
-    html.replace(QStringLiteral("{{comprador_domicilio}}"), CompanyProfile::address().toHtmlEscaped());
-    html.replace(QStringLiteral("{{comprador_identificacion}}"),
-                 CompanyProfile::identification().toHtmlEscaped());
+    // Datos de la agencia: se usan solo como respaldo. Cuando el caso de uso
+    // ya suministró un comprador específico para este contrato, ese valor debe
+    // prevalecer y no ser sobrescrito por la empresa.
+    if (!contract.placeholders.contains(QStringLiteral("comprador_nombre")))
+        html.replace(QStringLiteral("{{comprador_nombre}}"), CompanyProfile::name().toHtmlEscaped());
+    if (!contract.placeholders.contains(QStringLiteral("comprador_domicilio")))
+        html.replace(QStringLiteral("{{comprador_domicilio}}"), CompanyProfile::address().toHtmlEscaped());
+    if (!contract.placeholders.contains(QStringLiteral("comprador_identificacion")))
+        html.replace(QStringLiteral("{{comprador_identificacion}}"),
+                     CompanyProfile::identification().toHtmlEscaped());
 
     // El importe llega como número y se formatea aquí: convertirlo a letras o
     // ponerle separadores de miles es presentación, no negocio.
