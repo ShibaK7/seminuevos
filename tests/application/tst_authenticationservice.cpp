@@ -30,11 +30,8 @@ private slots:
         QVERIFY(result.ok);
         QCOMPARE(result.session.username, QStringLiteral("ana"));
         QCOMPARE(result.session.displayName, QStringLiteral("Ana López"));
-<<<<<<< HEAD
-        QCOMPARE(result.session.role, QStringLiteral("Vendedor"));
-        QCOMPARE(m_users.successfulLogins, 1);
-=======
         QCOMPARE(result.session.role, domain::UserRole::SalesAgent);
+        QCOMPARE(m_users.successfulLogins, 1);
     }
 
     // El texto de la base se traduce al rol del dominio: nadie más compara
@@ -60,7 +57,6 @@ private slots:
         const auto result = auth.login(QStringLiteral("raro"), QStringLiteral("clave"));
         QVERIFY(!result.ok);
         QVERIFY(result.errorMessage.contains(QStringLiteral("rol")));
->>>>>>> 1041035 (Carry the session role as a domain enum)
     }
 
     // "No existe" y "contraseña equivocada" dan el mismo mensaje: distinguirlos

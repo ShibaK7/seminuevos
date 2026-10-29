@@ -6,22 +6,22 @@
 #include <QObject>
 
 namespace presentation {
-class ISaleDetailsView;
+class ICommercialSaleDetailsView;
 class TaskRunner;
 
-class SaleDetailsPresenter final : public QObject
+class CommercialSaleDetailsPresenter final : public QObject
 {
 public:
-    SaleDetailsPresenter(ISaleDetailsView &view,
-                         const application::CommercialService &service,
-                         TaskRunner &runner, int saleFolio, domain::UserRole role,
-                         QObject *parent = nullptr);
+    CommercialSaleDetailsPresenter(ICommercialSaleDetailsView &view,
+                                  const application::CommercialService &service,
+                                  TaskRunner &runner, int saleFolio, domain::UserRole role,
+                                  QObject *parent = nullptr);
 
     void load();
     void setPaymentWaived(int paymentFolio, bool waived);
 
 private:
-    ISaleDetailsView &m_view;
+    ICommercialSaleDetailsView &m_view;
     const application::CommercialService &m_service;
     TaskRunner &m_runner;
     const int m_saleFolio;

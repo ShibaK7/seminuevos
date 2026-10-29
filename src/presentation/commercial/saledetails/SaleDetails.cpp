@@ -110,11 +110,11 @@ SaleDetails::~SaleDetails()
     delete ui;
 }
 
-void SaleDetails::bind(presentation::SaleDetailsPresenter &presenter)
+void SaleDetails::bind(presentation::CommercialSaleDetailsPresenter &presenter)
 {
     m_presenter = &presenter;
     connect(this, &SaleDetails::paymentWaiverChanged,
-            &presenter, &presentation::SaleDetailsPresenter::setPaymentWaived);
+            &presenter, &presentation::CommercialSaleDetailsPresenter::setPaymentWaived);
 }
 
 void SaleDetails::showSaleDetails(const application::CommercialSaleDetailsDto &details)

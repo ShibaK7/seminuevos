@@ -41,28 +41,21 @@ LoginResult AuthenticationService::login(const QString &username, const QString 
         return result;
     }
 
-<<<<<<< HEAD
-    QString loginError;
-    if (!m_users.recordSuccessfulLogin(record->id, &loginError)) {
-        result.errorMessage = QStringLiteral("No se pudo actualizar la última sesión: %1").arg(loginError);
-=======
-    // Un rol que la aplicación no conoce no entra: adivinarle permisos sería
-    // peor que decir qué pasa. El CHECK de users.role solo admite los dos
-    // que existen, así que esto solo ocurre con datos editados a mano.
     const std::optional<domain::UserRole> role = domain::userRoleFromDb(record->role);
     if (!role) {
         result.errorMessage =
             QStringLiteral("La cuenta tiene un rol que la aplicación no reconoce (%1).").arg(record->role);
->>>>>>> 1041035 (Carry the session role as a domain enum)
+        return result;
+    }
+
+    QString loginError;
+    if (!m_users.recordSuccessfulLogin(record->id, &loginError)) {
+        result.errorMessage = QStringLiteral("No se pudo actualizar la última sesión: %1").arg(loginError);
         return result;
     }
 
     result.ok = true;
-<<<<<<< HEAD
-    result.session = SessionDto{user, record->displayName, record->role, record->id};
-=======
-    result.session = SessionDto{user, record->displayName, *role};
->>>>>>> 1041035 (Carry the session role as a domain enum)
+    result.session = SessionDto{user, record->displayName, *role, record->id};
     return result;
 }
 

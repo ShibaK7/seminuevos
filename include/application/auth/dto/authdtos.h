@@ -26,12 +26,8 @@ struct SessionDto
 {
     QString username;
     QString displayName;
-<<<<<<< HEAD
-    QString role;
-    int userId = -1;
-=======
     domain::UserRole role = domain::UserRole::SalesAgent;
->>>>>>> 1041035 (Carry the session role as a domain enum)
+    int userId = -1;
 };
 
 struct LoginResult

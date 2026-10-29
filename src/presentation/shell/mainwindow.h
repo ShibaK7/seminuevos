@@ -61,11 +61,8 @@ public:
     // La página del inventario, para que la raíz de composición le arme su
     // presenter.
     InventoryView &inventoryView();
-<<<<<<< HEAD
     SaleWizardView &saleWizardView();
-=======
     CommercialMainView &commercialView();
->>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
 
     // Conecta la página del inventario con su presenter, y a este con los
     // registros que haga el asistente.

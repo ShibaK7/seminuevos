@@ -257,7 +257,7 @@ private slots:
         application::CommercialService service(reader, reader);
         InlineTaskRunner runner;
         SaleDetails administrator(domain::UserRole::Admin);
-        presentation::SaleDetailsPresenter presenter(
+        presentation::CommercialSaleDetailsPresenter presenter(
             administrator, service, runner, details.folio, domain::UserRole::Admin);
         administrator.bind(presenter);
         presenter.load();

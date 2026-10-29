@@ -321,11 +321,8 @@
              <number>1</number>
             </property>
             <widget class="InventoryView" name="inventoryPage"/>
-<<<<<<< HEAD
-            <widget class="SaleWizardView" name="commercialPage"/>
-=======
             <widget class="CommercialMainView" name="commercial_main_view"/>
->>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
+            <widget class="SaleWizardView" name="commercialPage"/>
            </widget>
           </item>
          </layout>
@@ -342,11 +339,7 @@
      <x>0</x>
      <y>0</y>
      <width>1060</width>
-<<<<<<< HEAD
-     <height>30</height>
-=======
      <height>33</height>
->>>>>>> 19a583e (Initial front view commercial module)
     </rect>
    </property>
   </widget>
@@ -364,19 +357,11 @@
    <header>presentation/inventory/inventoryview.h</header>
   </customwidget>
   <customwidget>
-<<<<<<< HEAD
-=======
    <class>CommercialMainView</class>
    <extends>QWidget</extends>
    <header>presentation/commercial/commercialmainview.h</header>
   </customwidget>
   <customwidget>
-   <class>AspectRatioImageLabel</class>
-   <extends>QLabel</extends>
-   <header>presentation/common/components/aspectratioimagelabel.h</header>
-  </customwidget>
-  <customwidget>
->>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
    <class>SidebarMenuItem</class>
    <extends>QPushButton</extends>
    <header>presentation/common/components/sidebarmenuitem.h</header>

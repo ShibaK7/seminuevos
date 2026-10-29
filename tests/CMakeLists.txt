@@ -92,17 +92,13 @@ seminuevos_add_test(tst_registrationservice
     LIBS seminuevos_application
 )
 
-<<<<<<< HEAD
 seminuevos_add_test(tst_saleservice
     SOURCES application/tst_saleservice.cpp
-=======
+    LIBS seminuevos_application
+)
+
 seminuevos_add_test(tst_vehiclerecordservice
-<<<<<<< HEAD
-    SOURCES application/tst_vehiclerecordservice.cpp
->>>>>>> df55a47 (Decide what each role sees in a vehicle record)
-=======
     SOURCES application/tst_vehiclerecordservice.cpp support/fakes.h support/registrationfixtures.h
->>>>>>> 8bb4177 (Read a vehicle record by folio (#30))
     LIBS seminuevos_application
 )
 

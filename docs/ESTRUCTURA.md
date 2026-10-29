@@ -94,13 +94,9 @@ seminuevos/
 │   │   ├── persistence/             PostgreSQL (Qt Sql)
 │   │   │   ├── connectionpool        Una conexión por hilo; en Debug prohíbe SQL en el hilo de la interfaz
 │   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
-<<<<<<< HEAD
 │   │   │   ├── common/              sqlcounterpartydirectory (búsqueda y actualización de personas compartidas)
-│   │   │   └── inventory/           sqlvehiclerepository (guardado transaccional), sqlcounterpartyrepository,
-=======
 │   │   │   └── inventory/           sqlvehiclerepository (alta y corrección transaccionales, con versión),
 │   │   │                            sqlcounterpartyrepository (contraparte: buscar, crear, corregir o religar),
->>>>>>> a2f7d8d (Update a vehicle record in one transaction (#34))
 │   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA),
 │   │   │                            sqlvehiclerecordreader (el expediente de un folio, en una sola lectura)
 │   │   ├── storage/                 Disco local (localfilestorage): almacén por VIN, miniaturas, temporales

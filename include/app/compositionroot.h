@@ -30,17 +30,11 @@ class SqlVehicleRepository;
 namespace application {
 class AuthenticationService;
 class CommercialService;
-class InventoryService;
-<<<<<<< HEAD
-<<<<<<< HEAD
 class CounterpartyLookupService;
-class SaleService;
-=======
-=======
+class InventoryService;
 class MaintenanceService;
->>>>>>> d8d4186 (add Maintenance section and generation receipt template)
+class SaleService;
 class VehicleRecordService;
->>>>>>> 5255cc8 (Open the vehicle record from the inventory)
 class VehicleRegistrationService;
 }
 namespace presentation {
@@ -83,29 +77,17 @@ private:
     std::unique_ptr<application::VehicleRegistrationService> m_registration;
     std::unique_ptr<SqlInventoryReader> m_inventoryReader;
     std::unique_ptr<application::InventoryService> m_inventory;
-<<<<<<< HEAD
-<<<<<<< HEAD
     std::unique_ptr<SqlCounterpartyDirectory> m_counterparties;
     std::unique_ptr<SqlSaleRepository> m_saleRepository;
     std::unique_ptr<application::CounterpartyLookupService> m_counterpartyLookup;
     std::unique_ptr<application::SaleService> m_saleService;
-=======
-=======
     std::unique_ptr<SqlVehicleRecordReader> m_recordReader;
->>>>>>> 8bb4177 (Read a vehicle record by folio (#30))
     std::unique_ptr<application::VehicleRecordService> m_records;
-<<<<<<< HEAD
->>>>>>> 5255cc8 (Open the vehicle record from the inventory)
-=======
     std::unique_ptr<SqlMaintenanceRepository> m_maintenanceRepository;
     PdfMaintenanceReceiptGenerator m_receipts;
     std::unique_ptr<application::MaintenanceService> m_maintenance;
-<<<<<<< HEAD
->>>>>>> d8d4186 (add Maintenance section and generation receipt template)
-=======
     std::unique_ptr<SqlCommercial> m_commercialReader;
     std::unique_ptr<application::CommercialService> m_commercial;
->>>>>>> 206c200 (Funtionality of front and back on commercial module main view)
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

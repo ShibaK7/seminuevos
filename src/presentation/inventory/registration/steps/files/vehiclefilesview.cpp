@@ -277,30 +277,6 @@ void VehicleFilesView::rebuildGallery()
         cellLayout->addWidget(thumbnail);
 
         auto *actionsLayout = new QHBoxLayout;
-<<<<<<< HEAD
-        /*auto *deleteButton = new QPushButton(QStringLiteral("🗑"), cell);
-        deleteButton->setProperty("class", QStringLiteral("icon-flat"));
-        connect(deleteButton, &QPushButton::clicked, this, [this, i]() {
-            m_images.removeAt(i);
-            if (!m_images.isEmpty() && std::none_of(m_images.cbegin(), m_images.cend(),
-                                                      [](const GalleryImage &img) { return img.image.isPrimary; })) {
-                m_images.first().image.isPrimary = true;
-            }
-            rebuildGallery();
-        });
-
-        auto *starButton = new QPushButton(entry.image.isPrimary ? QStringLiteral("★") : QStringLiteral("☆"), cell);
-        starButton->setProperty("class", QStringLiteral("icon-flat"));
-        connect(starButton, &QPushButton::clicked, this, [this, i]() {
-            for (int j = 0; j < m_images.size(); ++j)
-                m_images[j].image.isPrimary = (j == i);
-            rebuildGallery();
-        });
-
-        actionsLayout->addWidget(deleteButton, 0, Qt::AlignLeft);
-        actionsLayout->addStretch();
-        actionsLayout->addWidget(starButton, 0, Qt::AlignRight);*/
-=======
         // En consulta no se quita nada: sin bote.
         if (!m_readOnly) {
             auto *deleteButton = new QPushButton(QStringLiteral("🗑"), cell);
@@ -339,7 +315,6 @@ void VehicleFilesView::rebuildGallery()
             }
             actionsLayout->addWidget(starButton, 0, Qt::AlignRight);
         }
->>>>>>> 0b52297 (Lock the wizard steps for viewing)
         cellLayout->addLayout(actionsLayout);
 
         rowLayout->addWidget(cell);
