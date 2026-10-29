@@ -1,18 +1,22 @@
 #include "presentation/shell/mainwindow.h"
-#include "ui_mainwindow.h"
+#include "src/presentation/shell/ui_mainwindow.h"
 
 #include "presentation/inventory/inventorypresenter.h"
 #include "presentation/inventory/inventoryview.h"
 #include "presentation/commercial/commercialmainview.h"
 #include "presentation/commercial/commercialpresenter.h"
 #include "presentation/commercial/saledetails/SaleDetails.h"
+#include "presentation/commercial/registration/saledetailsview.h"
 #include "presentation/inventory/record/vehiclerecordview.h"
 #include "presentation/inventory/registration/vehiclewizardview.h"
+#include "presentation/commercial/registration/salewizardview.h"
 
 #include <QCloseEvent>
 #include <QLabel>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QStatusBar>
+#include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -24,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     // los promovidos como QPushButton no checkable, y al guardar reescribe
     // checked=true como false.
     ui->inventoryItem->setChecked(true);
+    ui->mainContentStack->setCurrentWidget(ui->inventoryPage);
 
     // El orden de tabulación cruza dos formularios (este y el de la página del
     // inventario), así que ninguno de los dos .ui lo puede declarar completo:
@@ -44,8 +49,12 @@ MainWindow::MainWindow(QWidget *parent)
     // inventario se recarga en ese momento).
     connect(ui->inventoryPage, &InventoryView::vehicleDetailsRequested, this,
             &MainWindow::openVehicleRecord, Qt::QueuedConnection);
+    connect(ui->commercial_main_view, &CommercialMainView::newSaleRequested,
+            this, &MainWindow::openSaleWizard, Qt::QueuedConnection);
     connect(ui->commercial_main_view, &CommercialMainView::saleDetailsRequested,
             this, &MainWindow::openSaleDetails, Qt::QueuedConnection);
+    connect(ui->commercial_main_view, &CommercialMainView::fullSaleDetailsRequested,
+            this, &MainWindow::openFullSaleDetails, Qt::QueuedConnection);
 
     // Inventario en el menú solo cambia de página. Un asistente abierto no se
     // cierra por eso: queda vivo y oculto, con lo capturado, y "Agregar
@@ -55,8 +64,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Los otros tres módulos no existen todavía. Se avisa y se devuelve el
     // resaltado a Inventario: con autoExclusive, un manejador vacío dejaría la
     // barra lateral marcando un módulo en el que el usuario no está.
-    connect(ui->commercialItem, &QPushButton::clicked, this,[this]
-    {
+    connect(ui->commercialItem, &QPushButton::clicked, this, [this] {
         ui->commercialItem->setChecked(true);
         ui->mainContentStack->setCurrentWidget(ui->commercial_main_view);
     });
@@ -81,6 +89,11 @@ void MainWindow::showModulePending(const QString &moduleName)
 InventoryView &MainWindow::inventoryView()
 {
     return *ui->inventoryPage;
+}
+
+SaleWizardView &MainWindow::saleWizardView()
+{
+    return *ui->commercialPage;
 }
 
 CommercialMainView &MainWindow::commercialView()
@@ -170,6 +183,12 @@ void MainWindow::setWizardFactory(WizardFactory factory)
     m_wizardFactory = std::move(factory);
 }
 
+void MainWindow::openSaleWizard()
+{
+    ui->mainContentStack->setCurrentWidget(ui->commercialPage);
+    ui->commercialPage->setFocus();
+}
+
 void MainWindow::openSaleDetails(int folio)
 {
     if (m_saleDetails)
@@ -177,20 +196,94 @@ void MainWindow::openSaleDetails(int folio)
     if (!m_saleDetailsFactory)
         return;
 
+    m_fullSaleDetailsReturnsToCommercial = false;
     SaleDetails *details = m_saleDetailsFactory(ui->mainContentStack, folio);
     connect(details, &SaleDetails::returnToCommercial, this, [this, details] {
         if (details == m_saleDetails)
             closeSaleDetails();
     });
+    connect(details, &SaleDetails::fullSaleDetailsLoaded, this,
+            [this, details](const application::CommercialSaleRegistrationDetailsDto &sale) {
+                if (details == m_saleDetails)
+                    showFullSaleDetails(sale);
+            });
     ui->mainContentStack->addWidget(details);
     ui->mainContentStack->setCurrentWidget(details);
     m_saleDetails = details;
+}
+
+void MainWindow::openFullSaleDetails(int folio)
+{
+    openSaleDetails(folio);
+    if (m_saleDetails) {
+        m_fullSaleDetailsReturnsToCommercial = true;
+        m_saleDetails->requestFullDetails();
+    }
+}
+
+void MainWindow::showFullSaleDetails(
+    const application::CommercialSaleRegistrationDetailsDto &details)
+{
+    closeFullSaleDetails();
+
+    auto *page = new QWidget(ui->mainContentStack);
+    page->setObjectName(QStringLiteral("fullSaleDetailsPage"));
+    auto *layout = new QVBoxLayout(page);
+    auto *backButton = new QPushButton(page);
+    backButton->setObjectName(QStringLiteral("backToSaleDetailsButton"));
+    backButton->setMinimumSize(44, 40);
+    backButton->setText(QString());
+    backButton->setIcon(QIcon(QStringLiteral(":/icons/back-arrow.svg")));
+    backButton->setProperty("class", QStringLiteral("secondary"));
+    layout->addWidget(backButton, 0, Qt::AlignLeft);
+
+    auto *scrollArea = new QScrollArea(page);
+    scrollArea->setWidgetResizable(true);
+    auto *detailsView = new SaleDetailsView;
+    detailsView->setObjectName(QStringLiteral("fullSaleDetailsView"));
+    detailsView->showSavedSale(details);
+    scrollArea->setWidget(detailsView);
+    layout->addWidget(scrollArea);
+
+    connect(backButton, &QPushButton::clicked, this, &MainWindow::closeFullSaleDetails);
+
+    ui->mainContentStack->addWidget(page);
+    ui->mainContentStack->setCurrentWidget(page);
+    m_fullSaleDetailsPage = page;
+    m_fullSaleDetailsView = detailsView;
+}
+
+void MainWindow::closeFullSaleDetails()
+{
+    if (!m_fullSaleDetailsPage)
+        return;
+
+    const bool returnToCommercial = m_fullSaleDetailsReturnsToCommercial;
+    if (ui->mainContentStack->currentWidget() == m_fullSaleDetailsPage) {
+        QWidget *returnPage = returnToCommercial
+                                 ? static_cast<QWidget *>(ui->commercial_main_view)
+                                 : static_cast<QWidget *>(m_saleDetails.data());
+        if (returnPage)
+            ui->mainContentStack->setCurrentWidget(returnPage);
+    }
+    ui->mainContentStack->removeWidget(m_fullSaleDetailsPage);
+    m_fullSaleDetailsPage->deleteLater();
+    m_fullSaleDetailsPage = nullptr;
+    m_fullSaleDetailsView = nullptr;
+    m_fullSaleDetailsReturnsToCommercial = false;
+
+    if (returnToCommercial && m_saleDetails) {
+        ui->mainContentStack->removeWidget(m_saleDetails);
+        m_saleDetails->deleteLater();
+        m_saleDetails = nullptr;
+    }
 }
 
 void MainWindow::closeSaleDetails()
 {
     if (!m_saleDetails)
         return;
+    closeFullSaleDetails();
     if (ui->mainContentStack->currentWidget() == m_saleDetails)
         ui->mainContentStack->setCurrentWidget(ui->commercial_main_view);
     ui->mainContentStack->removeWidget(m_saleDetails);

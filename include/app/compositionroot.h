@@ -21,6 +21,8 @@ class SqlInventoryReader;
 class SqlCommercial;
 class SqlMaintenanceRepository;
 class SqlReferenceDataReader;
+class SqlCounterpartyDirectory;
+class SqlSaleRepository;
 class SqlUserDirectory;
 class SqlVehicleRecordReader;
 class SqlVehicleRepository;
@@ -28,8 +30,10 @@ class SqlVehicleRepository;
 namespace application {
 class AuthenticationService;
 class CommercialService;
+class CounterpartyLookupService;
 class InventoryService;
 class MaintenanceService;
+class SaleService;
 class VehicleRecordService;
 class VehicleRegistrationService;
 }
@@ -73,6 +77,10 @@ private:
     std::unique_ptr<application::VehicleRegistrationService> m_registration;
     std::unique_ptr<SqlInventoryReader> m_inventoryReader;
     std::unique_ptr<application::InventoryService> m_inventory;
+    std::unique_ptr<SqlCounterpartyDirectory> m_counterparties;
+    std::unique_ptr<SqlSaleRepository> m_saleRepository;
+    std::unique_ptr<application::CounterpartyLookupService> m_counterpartyLookup;
+    std::unique_ptr<application::SaleService> m_saleService;
     std::unique_ptr<SqlVehicleRecordReader> m_recordReader;
     std::unique_ptr<application::VehicleRecordService> m_records;
     std::unique_ptr<SqlMaintenanceRepository> m_maintenanceRepository;

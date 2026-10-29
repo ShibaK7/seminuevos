@@ -1,6 +1,8 @@
 #ifndef APPLICATION_COMMERCIAL_DTO_COMMERCIALDTOS_H
 #define APPLICATION_COMMERCIAL_DTO_COMMERCIALDTOS_H
 
+#include "application/commercial/sales/dto/saledtos.h"
+
 #include <QDate>
 #include <QList>
 #include <QString>
@@ -60,10 +62,19 @@ struct CommercialSaleDetailsDto
     double paidAmount = 0.0;
     double capitalPaid = 0.0;
     double interestPaid = 0.0;
+    double originalDueAmount = 0.0;
     double balanceDue = 0.0;
     int paidInstallments = 0;
     int expectedInstallments = 0;
     QList<CommercialPaymentDto> payments;
+};
+
+struct CommercialSaleRegistrationDetailsDto
+{
+    int folio = -1;
+    SaleRegistrationDto registration;
+    SaleVehicleOptionDto vehicle;
+    SaleVendorOptionDto vendor;
 };
 
 struct CommercialResultDto
@@ -75,6 +86,12 @@ struct CommercialResultDto
 struct CommercialSaleDetailsResultDto
 {
     CommercialSaleDetailsDto sale;
+    QString errorMessage;
+};
+
+struct CommercialSaleRegistrationDetailsResultDto
+{
+    CommercialSaleRegistrationDetailsDto sale;
     QString errorMessage;
 };
 

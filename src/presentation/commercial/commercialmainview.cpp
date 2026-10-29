@@ -14,7 +14,6 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QLocale>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -82,14 +81,15 @@ CommercialMainView::CommercialMainView(QWidget* parent) :
     ui->newSaleButton->setIcon(QIcon(":/icons/plus.png"));
     ui->newSaleButton->setIconSize(QSize(20,20));
     ui->newSaleButton->show();
+    connect(ui->newSaleButton, &QPushButton::clicked, this, &CommercialMainView::newSaleRequested);
     ui->searchBox->hide();
 
-    QPalette palete = ui->tableWidget->palette();
+    /*QPalette palete = ui->tableWidget->palette();
     palete.setColor(QPalette::Base, QColor("#f9f9f9"));          // Fila normal
     palete.setColor(QPalette::AlternateBase, QColor("#e0f2fe")); // Fila alterna
     palete.setColor(QPalette::Highlight, QColor("#3b82f6"));     // Fondo seleccionado
     palete.setColor(QPalette::HighlightedText, QColor("#ffffff")); // Texto seleccionado
-    ui->tableWidget->setPalette(palete);
+    ui->tableWidget->setPalette(palete);*/
     ui->tableWidget->setProperty("class", QStringLiteral("data-table"));
     ui->tableWidget->setSortingEnabled(true);
     ui->tableWidget->setAlternatingRowColors(true);
@@ -154,9 +154,7 @@ void CommercialMainView::bind(presentation::CommercialPresenter &presenter)
                 if (m_collectionsMode) {
                     emit saleDetailsRequested(folio);
                 } else {
-                    QMessageBox::information(
-                        this, QStringLiteral("Detalle de venta"),
-                        QStringLiteral("Folio de venta: %1").arg(folio));
+                    emit fullSaleDetailsRequested(folio);
                 }
             });
 }

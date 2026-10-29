@@ -13,6 +13,8 @@ public:
     virtual QList<CommercialSaleDto> search(const CommercialFilterDto &filter,
                                             QString *error) = 0;
     virtual CommercialSaleDetailsDto saleDetails(int folio, QString *error) = 0;
+    virtual CommercialSaleRegistrationDetailsDto saleRegistrationDetails(int folio,
+                                                                          QString *error) = 0;
 
 protected:
     CommercialReader() = default;

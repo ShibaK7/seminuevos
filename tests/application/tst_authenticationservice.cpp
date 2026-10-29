@@ -31,6 +31,7 @@ private slots:
         QCOMPARE(result.session.username, QStringLiteral("ana"));
         QCOMPARE(result.session.displayName, QStringLiteral("Ana López"));
         QCOMPARE(result.session.role, domain::UserRole::SalesAgent);
+        QCOMPARE(m_users.successfulLogins, 1);
     }
 
     // El texto de la base se traduce al rol del dominio: nadie más compara
@@ -67,6 +68,7 @@ private slots:
         const auto unknownUser = auth.login(QStringLiteral("nadie"), QStringLiteral("secreta"));
         QVERIFY(!wrongPassword.ok);
         QVERIFY(!unknownUser.ok);
+        QCOMPARE(m_users.successfulLogins, 0);
         QCOMPARE(wrongPassword.errorMessage, unknownUser.errorMessage);
     }
 

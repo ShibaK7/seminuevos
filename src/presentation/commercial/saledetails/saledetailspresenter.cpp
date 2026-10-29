@@ -5,10 +5,10 @@
 
 namespace presentation {
 
-SaleDetailsPresenter::SaleDetailsPresenter(ISaleDetailsView &view,
-                                           const application::CommercialService &service,
-                                           TaskRunner &runner, int saleFolio,
-                                           domain::UserRole role, QObject *parent)
+CommercialSaleDetailsPresenter::CommercialSaleDetailsPresenter(ICommercialSaleDetailsView &view,
+                                                             const application::CommercialService &service,
+                                                             TaskRunner &runner, int saleFolio,
+                                                             domain::UserRole role, QObject *parent)
     : QObject(parent)
     , m_view(view)
     , m_service(service)
@@ -18,7 +18,7 @@ SaleDetailsPresenter::SaleDetailsPresenter(ISaleDetailsView &view,
 {
 }
 
-void SaleDetailsPresenter::load()
+void CommercialSaleDetailsPresenter::load()
 {
     const application::CommercialService *service = &m_service;
     const int folio = m_saleFolio;
@@ -33,7 +33,20 @@ void SaleDetailsPresenter::load()
                  });
 }
 
-void SaleDetailsPresenter::setPaymentWaived(int paymentFolio, bool waived)
+void CommercialSaleDetailsPresenter::loadFullDetails()
+{
+    const application::CommercialService *service = &m_service;
+    const int folio = m_saleFolio;
+    m_runner.run(this, [service, folio] { return service->saleRegistrationDetails(folio); },
+                 [this](const application::CommercialSaleRegistrationDetailsResultDto &result) {
+                     if (!result.errorMessage.isEmpty())
+                         m_view.showSaleDetailsError(result.errorMessage);
+                     else
+                         m_view.showFullSaleDetails(result.sale);
+                 });
+}
+
+void CommercialSaleDetailsPresenter::setPaymentWaived(int paymentFolio, bool waived)
 {
     const application::CommercialService *service = &m_service;
     const domain::UserRole role = m_role;

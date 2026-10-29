@@ -38,6 +38,8 @@ public:
 
 signals:
     void saleDetailsRequested(int folio);
+    void fullSaleDetailsRequested(int folio);
+    void newSaleRequested();
 
 private:
     void setCollectionsMode(bool enabled, presentation::CommercialPresenter *presenter = nullptr);

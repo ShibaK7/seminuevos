@@ -3,20 +3,24 @@
 
 #include "application/commercial/dto/commercialdtos.h"
 
+#include <QString>
+
 namespace presentation {
 
-class ISaleDetailsView
+class ICommercialSaleDetailsView
 {
 public:
-    virtual ~ISaleDetailsView() = default;
+    virtual ~ICommercialSaleDetailsView() = default;
 
     virtual void showSaleDetails(const application::CommercialSaleDetailsDto &details) = 0;
+    virtual void showFullSaleDetails(
+        const application::CommercialSaleRegistrationDetailsDto &details) = 0;
     virtual void showSaleDetailsError(const QString &message) = 0;
 
 protected:
-    ISaleDetailsView() = default;
-    ISaleDetailsView(const ISaleDetailsView &) = default;
-    ISaleDetailsView &operator=(const ISaleDetailsView &) = default;
+    ICommercialSaleDetailsView() = default;
+    ICommercialSaleDetailsView(const ICommercialSaleDetailsView &) = default;
+    ICommercialSaleDetailsView &operator=(const ICommercialSaleDetailsView &) = default;
 };
 
 } // namespace presentation

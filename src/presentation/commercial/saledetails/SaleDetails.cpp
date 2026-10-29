@@ -4,12 +4,14 @@
 #include "presentation/commercial/saledetails/saledetailspresenter.h"
 
 #include <QCheckBox>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStyle>
 #include <QTableWidgetItem>
 #include <QLocale>
+#include <QWidget>
 
 namespace {
 
@@ -35,7 +37,6 @@ enum PaymentColumn {
     ColInterest,
     ColBalance,
     ColWaived,
-    ColNote,
 };
 
 } // namespace
@@ -56,20 +57,20 @@ SaleDetails::SaleDetails(domain::UserRole role, QWidget *parent)
     // El rol de la sesión es la fuente de autorización; ocultar la columna no
     // basta, así que también se bloquean sus controles para usuarios sin permiso.
     ui->updateFinancingButton->setVisible(isAdministrator);
-    ui->paymentsTable->setColumnCount(11);
+    ui->paymentsTable->setColumnCount(10);
     ui->paymentsTable->setHorizontalHeaderLabels({
         QStringLiteral("Folio"), QStringLiteral("No"), QStringLiteral("Forma de pago"),
         QStringLiteral("Fecha programada"), QStringLiteral("Fecha de pago"),
         QStringLiteral("Monto"), QStringLiteral("Abono al capital"),
         QStringLiteral("Pago de intereses"), QStringLiteral("Saldo"),
-        QStringLiteral("Condonado"), QStringLiteral("Nota")
+        QStringLiteral("Condonado")
     });
-    QPalette palete = ui->paymentsTable->palette();
+    /*QPalette palete = ui->paymentsTable->palette();
     palete.setColor(QPalette::Base, QColor("#f9f9f9"));          // Fila normal
     palete.setColor(QPalette::AlternateBase, QColor("#e0f2fe")); // Fila alterna
     palete.setColor(QPalette::Highlight, QColor("#3b82f6"));     // Fondo seleccionado
     palete.setColor(QPalette::HighlightedText, QColor("#ffffff")); // Texto seleccionado
-    ui->paymentsTable->setPalette(palete);
+    ui->paymentsTable->setPalette(palete);*/
     ui->paymentsTable->setProperty("class", QStringLiteral("data-table"));
     ui->paymentsTable->verticalHeader()->setVisible(false);
     ui->paymentsTable->setAlternatingRowColors(true);
@@ -83,10 +84,10 @@ SaleDetails::SaleDetails(domain::UserRole role, QWidget *parent)
     auto* header = ui->paymentsTable->horizontalHeader();
     header->setSectionResizeMode(0, QHeaderView::ResizeToContents); // Folio
     header->setSectionResizeMode(1, QHeaderView::ResizeToContents); // No
-    header->setSectionResizeMode(10, QHeaderView::ResizeToContents); // Nota
+    header->setSectionResizeMode(ColWaived, QHeaderView::ResizeToContents);
 
     // Las demás se estiran para ocupar el espacio libre
-    for (int col = 2; col < 10; ++col)
+    for (int col = 2; col < ColWaived; ++col)
     {
         header->setSectionResizeMode(col, QHeaderView::Stretch);
     }
@@ -110,11 +111,18 @@ SaleDetails::~SaleDetails()
     delete ui;
 }
 
-void SaleDetails::bind(presentation::SaleDetailsPresenter &presenter)
+void SaleDetails::bind(presentation::CommercialSaleDetailsPresenter &presenter)
 {
     m_presenter = &presenter;
+    connect(this, &SaleDetails::fullDetailsRequested,
+            &presenter, &presentation::CommercialSaleDetailsPresenter::loadFullDetails);
     connect(this, &SaleDetails::paymentWaiverChanged,
-            &presenter, &presentation::SaleDetailsPresenter::setPaymentWaived);
+            &presenter, &presentation::CommercialSaleDetailsPresenter::setPaymentWaived);
+}
+
+void SaleDetails::requestFullDetails()
+{
+    emit fullDetailsRequested();
 }
 
 void SaleDetails::showSaleDetails(const application::CommercialSaleDetailsDto &details)
@@ -130,6 +138,7 @@ void SaleDetails::showSaleDetails(const application::CommercialSaleDetailsDto &d
     ui->paidValue->setText(money(details.paidAmount));
     ui->capitalPaidValue->setText(money(details.capitalPaid));
     ui->interestPaidValue->setText(money(details.interestPaid));
+    ui->originalDueValue->setText(money(details.originalDueAmount));
     ui->balanceDueValue->setText(money(details.balanceDue));
     ui->paymentsTitle->setText(
         QStringLiteral("Pagos efectuados (%1/%2)")
@@ -153,23 +162,22 @@ void SaleDetails::showSaleDetails(const application::CommercialSaleDetailsDto &d
         setText(ColInterest, money(payment.interestAllocation));
         setText(ColBalance, money(payment.remainingBalance));
 
-        auto *waived = new QCheckBox(ui->paymentsTable);
+        auto *waivedContainer = new QWidget(ui->paymentsTable);
+        auto *waivedLayout = new QHBoxLayout(waivedContainer);
+        waivedLayout->setContentsMargins(0, 0, 0, 0);
+        waivedLayout->setAlignment(Qt::AlignCenter);
+        auto *waived = new QCheckBox(waivedContainer);
         waived->setChecked(payment.waived);
         // The UI hides this column for non-admins; only the administrator can
         // change it, and the service and SQL adapter independently validate the role.
         waived->setEnabled(isAdministrator);
-        ui->paymentsTable->setCellWidget(row, ColWaived, waived);
+        waivedLayout->addWidget(waived);
+        ui->paymentsTable->setCellWidget(row, ColWaived, waivedContainer);
         ui->paymentsTable->setColumnHidden(ColWaived, !isAdministrator);
         connect(waived, &QCheckBox::toggled, this,
                 [this, paymentFolio = payment.folio](bool checked) {
                     emit paymentWaiverChanged(paymentFolio, checked);
                 });
-
-        auto *note = new QCheckBox(ui->paymentsTable);
-        note->setChecked(!payment.notes.trimmed().isEmpty());
-        note->setToolTip(payment.notes);
-        note->setEnabled(false);
-        ui->paymentsTable->setCellWidget(row, ColNote, note);
     }
 
     ui->errorLabel->clear();
@@ -183,11 +191,15 @@ void SaleDetails::showSaleDetailsError(const QString &message)
     ui->errorLabel->show();
 }
 
+void SaleDetails::showFullSaleDetails(
+    const application::CommercialSaleRegistrationDetailsDto &details)
+{
+    emit fullSaleDetailsLoaded(details);
+}
+
 void SaleDetails::onFullDetailsRequested()
 {
-    QMessageBox::information(
-        this, QStringLiteral("Detalle completo"),
-        QStringLiteral("Folio de venta: %1").arg(ui->saleFolioValue->text()));
+    emit fullDetailsRequested();
 }
 
 void SaleDetails::onUpdateFinancingRequested()
@@ -206,7 +218,22 @@ void SaleDetails::onAddPaymentRequested()
 
 void SaleDetails::onPrintRequested()
 {
-    // TODO: implementar la impresión del detalle de venta.
-    QMessageBox::information(this, QStringLiteral("Imprimir"),
-                             QStringLiteral("Funcionalidad pendiente."));
+    const int row = ui->paymentsTable->currentRow();
+    if (row < 0) {
+        QMessageBox::information(this, QStringLiteral("Pago"),
+                                 QStringLiteral("Selecciona un pago de la tabla."));
+        return;
+    }
+
+    const QTableWidgetItem *folio = ui->paymentsTable->item(row, ColPaymentFolio);
+    const QTableWidgetItem *paidDate = ui->paymentsTable->item(row, ColPaidDate);
+    if (!paidDate || paidDate->text().trimmed().isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("Pago"),
+                                 QStringLiteral("No existe una nota para ese pago."));
+        return;
+    }
+
+    QMessageBox::information(this, QStringLiteral("Folio de pago"),
+                             QStringLiteral("Folio de pago: %1")
+                                 .arg(folio ? folio->text() : QString()));
 }

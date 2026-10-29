@@ -1,6 +1,7 @@
 #ifndef APPLICATION_INVENTORY_REGISTRATION_DTO_REGISTRATIONDTOS_H
 #define APPLICATION_INVENTORY_REGISTRATION_DTO_REGISTRATIONDTOS_H
 
+#include "application/common/dto/counterpartydtos.h"
 #include "domain/common/value_objects/catalogref.h"
 #include "domain/inventory/value_objects/contractdata.h"
 #include "domain/common/value_objects/enums.h"
@@ -24,17 +25,6 @@ namespace application {
 //
 // Son structs planos, sin lógica. "Sin elegir" se expresa con std::optional:
 // así un combo vacío no se convierte en el primer valor del enum.
-
-struct CounterpartyDto
-{
-    QString fullName;
-    QString nationalId;
-    QString streetAddress;
-    QString suburb;
-    QString locality;
-    QString state;
-    QString postalCode;
-};
 
 // Paso 1: datos de la unidad y de la operación.
 struct VehicleDetailsDto

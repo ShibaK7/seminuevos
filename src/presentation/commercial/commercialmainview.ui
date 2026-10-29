@@ -283,6 +283,9 @@
         <property name="sortingEnabled">
          <bool>true</bool>
         </property>
+        <property name="class" stdset="0">
+         <string>data-table</string>
+        </property>
        </widget>
       </item>
      </layout>

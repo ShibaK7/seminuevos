@@ -14,6 +14,7 @@ public:
 
     CommercialResultDto search(const CommercialFilterDto &filter) const;
     CommercialSaleDetailsResultDto saleDetails(int folio) const;
+    CommercialSaleRegistrationDetailsResultDto saleRegistrationDetails(int folio) const;
     CommercialWriteResultDto updatePaymentWaiver(int paymentFolio, bool waived,
                                                   domain::UserRole role) const;
 

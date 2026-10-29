@@ -14,10 +14,10 @@ class SaleDetails;
 QT_END_NAMESPACE
 
 namespace presentation {
-class SaleDetailsPresenter;
+class CommercialSaleDetailsPresenter;
 }
 
-class SaleDetails final : public QWidget, public presentation::ISaleDetailsView
+class SaleDetails final : public QWidget, public presentation::ICommercialSaleDetailsView
 {
     Q_OBJECT
 
@@ -25,13 +25,19 @@ public:
     explicit SaleDetails(domain::UserRole role, QWidget *parent = nullptr);
     ~SaleDetails() override;
 
-    void bind(presentation::SaleDetailsPresenter &presenter);
+    void bind(presentation::CommercialSaleDetailsPresenter &presenter);
+    void requestFullDetails();
     void showSaleDetails(const application::CommercialSaleDetailsDto &details) override;
+    void showFullSaleDetails(
+        const application::CommercialSaleRegistrationDetailsDto &details) override;
     void showSaleDetailsError(const QString &message) override;
 
 signals:
     void returnToCommercial();
     void paymentWaiverChanged(int paymentFolio, bool waived);
+    void fullDetailsRequested();
+    void fullSaleDetailsLoaded(
+        const application::CommercialSaleRegistrationDetailsDto &details);
 
 private:
     void onFullDetailsRequested();
@@ -41,7 +47,7 @@ private:
 
     Ui::SaleDetails *ui;
     const domain::UserRole m_role;
-    QPointer<presentation::SaleDetailsPresenter> m_presenter;
+    QPointer<presentation::CommercialSaleDetailsPresenter> m_presenter;
 };
 
 #endif // PRESENTATION_COMMERCIAL_SALEDETAILS_SALEDETAILS_H
