@@ -141,8 +141,12 @@ private slots:
         window.bindInventory(*presenter);
         presenter->reload();
 
+        auto *inventoryItem = window.findChild<QPushButton *>(QStringLiteral("inventoryItem"));
+        auto *contentStack = window.findChild<QStackedWidget *>(QStringLiteral("mainContentStack"));
         auto *list = window.findChild<QListWidget *>(QStringLiteral("vehicleList"));
-        QVERIFY(list);
+        QVERIFY(inventoryItem && contentStack && list);
+        QVERIFY(inventoryItem->isChecked());
+        QCOMPARE(contentStack->currentWidget(), &window.inventoryView());
         QCOMPARE(list->count(), 1);
         QCOMPARE(window.inventoryView().objectName(), QStringLiteral("inventoryPage"));
     }

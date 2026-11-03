@@ -481,6 +481,28 @@ QPushButton[class="secondary"]:disabled {
     border-color: #DEE2E6;
 }
 
+QToolButton[class="secondary"] {
+    background-color: #FFFFFF;
+    color: #495057;
+    font-size: 9pt;
+    font-weight: 600;
+    border: 1px solid #6C757D;
+    border-radius: 6px;
+    padding: 7px 16px;
+}
+
+QToolButton[class="secondary"]:hover {
+    background-color: #0A25C9;
+    color: #FFFFFF;
+    border-color: #0A25C9;
+}
+
+QToolButton[class="secondary"]:disabled {
+    background-color: #F4F6F9;
+    color: #ADB5BD;
+    border-color: #DEE2E6;
+}
+
 QPushButton[class="danger"] {
     background-color: #D90429;
     color: #FFFFFF;
@@ -705,8 +727,9 @@ QDateEdit::down-button {
 QTableView[class="data-table"] {
     border: 1px solid #DEE2E6;
     border-radius: 8px;
+    background-color: #FFFFFF;
     gridline-color: #E9ECEF;
-    alternate-background-color: #F8F9FA;
+    alternate-background-color: #F0F0F0;
     selection-background-color: #E6E9FC;
     selection-color: #0A25C9;
 }

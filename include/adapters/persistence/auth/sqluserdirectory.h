@@ -18,6 +18,7 @@ public:
 
     std::optional<application::UserRecordDto> findByUsername(const QString &username,
                                                              QString *error) override;
+    bool recordSuccessfulLogin(int userId, QString *error) override;
 
 private:
     ConnectionPool &m_pool;

@@ -73,7 +73,8 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     role VARCHAR(30) NOT NULL CHECK (role IN ('Administrador', 'Vendedor')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP
 );
 
 CREATE TABLE counterparties (
@@ -90,6 +91,14 @@ CREATE TABLE counterparties (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- La identificación fiscal/oficial identifica a la persona sin depender de
+-- su papel en la operación. NULL o vacío sigue permitido para registros
+-- históricos incompletos; los IDs capturados se comparan sin espacios ni
+-- diferencias entre mayúsculas/minúsculas.
+CREATE UNIQUE INDEX unique_counterparty_national_id
+    ON counterparties (UPPER(BTRIM(national_id)))
+    WHERE national_id IS NOT NULL AND BTRIM(national_id) <> '';
 
 CREATE TABLE counterparty_documents (
     id SERIAL PRIMARY KEY,

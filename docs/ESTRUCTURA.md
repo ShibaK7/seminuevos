@@ -94,6 +94,7 @@ seminuevos/
 │   │   ├── persistence/             PostgreSQL (Qt Sql)
 │   │   │   ├── connectionpool        Una conexión por hilo; en Debug prohíbe SQL en el hilo de la interfaz
 │   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
+│   │   │   ├── common/              sqlcounterpartydirectory (búsqueda y actualización de personas compartidas)
 │   │   │   └── inventory/           sqlvehiclerepository (alta y corrección transaccionales, con versión),
 │   │   │                            sqlcounterpartyrepository (contraparte: buscar, crear, corregir o religar),
 │   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA),

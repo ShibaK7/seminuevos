@@ -92,6 +92,11 @@ seminuevos_add_test(tst_registrationservice
     LIBS seminuevos_application
 )
 
+seminuevos_add_test(tst_saleservice
+    SOURCES application/tst_saleservice.cpp
+    LIBS seminuevos_application
+)
+
 seminuevos_add_test(tst_vehiclerecordservice
     SOURCES application/tst_vehiclerecordservice.cpp support/fakes.h support/registrationfixtures.h
     LIBS seminuevos_application
@@ -170,6 +175,11 @@ seminuevos_add_test(tst_formsupport
 
 seminuevos_add_test(tst_inventoryview
     SOURCES presentation/tst_inventoryview.cpp support/fakes.h
+    LIBS seminuevos_views
+)
+
+seminuevos_add_test(tst_commercialview
+    SOURCES presentation/tst_commercialview.cpp
     LIBS seminuevos_views
 )
 

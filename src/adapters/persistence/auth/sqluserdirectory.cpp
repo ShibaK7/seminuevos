@@ -11,6 +11,29 @@ SqlUserDirectory::SqlUserDirectory(ConnectionPool &pool)
 {
 }
 
+bool SqlUserDirectory::recordSuccessfulLogin(int userId, QString *error)
+{
+    QString failure;
+    {
+        ConnectionPool::Handle handle = m_pool.acquire();
+        QSqlDatabase &db = handle.database();
+        if (!db.isOpen()) {
+            failure = db.lastError().text();
+        } else {
+            QSqlQuery query(db);
+            query.prepare(QStringLiteral("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :id"));
+            query.bindValue(QStringLiteral(":id"), userId);
+            if (!query.exec())
+                failure = query.lastError().text();
+        }
+    }
+    if (!failure.isEmpty())
+        m_pool.discardThreadConnection();
+    if (error)
+        *error = failure;
+    return failure.isEmpty();
+}
+
 std::optional<application::UserRecordDto> SqlUserDirectory::findByUsername(const QString &username,
                                                                             QString *error)
 {
@@ -24,14 +47,15 @@ std::optional<application::UserRecordDto> SqlUserDirectory::findByUsername(const
         } else {
             QSqlQuery query(db);
             query.prepare(QStringLiteral(
-                "SELECT password_hash, display_name, role FROM users WHERE username = :username"));
+                "SELECT password_hash, display_name, role, id FROM users WHERE username = :username"));
             query.bindValue(QStringLiteral(":username"), username);
             if (!query.exec()) {
                 failure = query.lastError().text();
             } else if (query.next()) {
                 record = application::UserRecordDto{query.value(0).toString(),
                                                     query.value(1).toString(),
-                                                    query.value(2).toString()};
+                                                    query.value(2).toString(),
+                                                    query.value(3).toInt()};
             }
         }
     }

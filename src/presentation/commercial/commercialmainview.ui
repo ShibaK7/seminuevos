@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CommercialMainView</class>
+ <widget class="QWidget" name="CommercialMainView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>CommercialMainView</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,9">
+   <item>
+    <widget class="QFrame" name="menuBar">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>9999999</height>
+      </size>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <property name="lineWidth">
+      <number>1</number>
+     </property>
+     <property name="class" stdset="0">
+      <string>navBar</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="NavTabItem" name="salesTab">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="title" stdset="0">
+         <string>Ventas</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="NavTabItem" name="collectionsTab">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="title" stdset="0">
+         <string>Cobranza</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="filterBar">
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <property name="lineWidth">
+      <number>1</number>
+     </property>
+     <property name="class" stdset="0">
+      <string>navBar</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0,0,0,0,0,4,0,1">
+      <property name="spacing">
+       <number>15</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Periodo:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="ComboMonth">
+        <item>
+         <property name="text">
+          <string>Enero</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Febrero</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Marzo</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Abril</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Mayo</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Junio</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Julio</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Agosto</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Septiembre</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Octubre</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Noviembre</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Diciembre</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Año: </string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="ComboYear"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Tipo pago: </string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="ComboPaymentType">
+        <item>
+         <property name="text">
+          <string>Contado</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Crédito</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="newSaleButton">
+        <property name="text">
+         <string>Nueva Venta</string>
+        </property>
+        <property name="class" stdset="0">
+         <string>primary</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="searchBox">
+        <property name="placeholderText">
+         <string>Buscar</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="contentView">
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Plain</enum>
+     </property>
+     <property name="lineWidth">
+      <number>0</number>
+     </property>
+     <property name="class" stdset="0">
+      <string>navBar</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QTableWidget" name="tableWidget">
+        <property name="editTriggers">
+         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+        </property>
+        <property name="dragDropOverwriteMode">
+         <bool>false</bool>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="sortingEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string>data-table</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>NavTabItem</class>
+   <extends>QPushButton</extends>
+   <header>presentation/common/components/navtabitem.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

@@ -119,6 +119,7 @@ public:
     QMap<QString, application::UserRecordDto> users;
     QString failWith; // si no está vacío, la consulta "falla" con este error
     int lookups = 0;
+    int successfulLogins = 0;
 
     std::optional<application::UserRecordDto> findByUsername(const QString &username,
                                                              QString *error) override
@@ -132,6 +133,14 @@ public:
         if (!users.contains(username))
             return std::nullopt;
         return users.value(username);
+    }
+
+    bool recordSuccessfulLogin(int, QString *error) override
+    {
+        ++successfulLogins;
+        if (error)
+            error->clear();
+        return true;
     }
 };
 
