@@ -13,6 +13,10 @@ public:
     virtual ~ICommercialSaleDetailsView() = default;
 
     virtual void showSaleDetails(const application::CommercialSaleDetailsDto &details) = 0;
+    virtual void showNextPaymentEntry(
+        const application::CommercialPaymentLookupResultDto &result) = 0;
+    virtual void paymentEntrySaved() = 0;
+    virtual void showPaymentEntrySaveError(const QString &message) = 0;
     virtual void showFullSaleDetails(
         const application::CommercialSaleRegistrationDetailsDto &details) = 0;
     virtual void showSaleDetailsError(const QString &message) = 0;

@@ -1,6 +1,7 @@
 #include "presentation/commercial/saledetails/SaleDetails.h"
 #include "ui_SaleDetails.h"
 
+#include "presentation/commercial/saledetails/addpaymentdialog.h"
 #include "presentation/commercial/saledetails/saledetailspresenter.h"
 
 #include <QCheckBox>
@@ -12,6 +13,8 @@
 #include <QTableWidgetItem>
 #include <QLocale>
 #include <QWidget>
+
+#include <algorithm>
 
 namespace {
 
@@ -118,6 +121,10 @@ void SaleDetails::bind(presentation::CommercialSaleDetailsPresenter &presenter)
             &presenter, &presentation::CommercialSaleDetailsPresenter::loadFullDetails);
     connect(this, &SaleDetails::paymentWaiverChanged,
             &presenter, &presentation::CommercialSaleDetailsPresenter::setPaymentWaived);
+    connect(this, &SaleDetails::paymentEntryRequested,
+            &presenter, &presentation::CommercialSaleDetailsPresenter::loadNextPaymentEntry);
+    connect(this, &SaleDetails::paymentEntrySubmitted,
+            &presenter, &presentation::CommercialSaleDetailsPresenter::recordPayment);
 }
 
 void SaleDetails::requestFullDetails()
@@ -127,6 +134,7 @@ void SaleDetails::requestFullDetails()
 
 void SaleDetails::showSaleDetails(const application::CommercialSaleDetailsDto &details)
 {
+    m_saleDetails = details;
     ui->saleFolioValue->setText(QString::number(details.folio));
     ui->vehicleValue->setText(details.vehicleName);
     ui->saleDateValue->setText(displayDate(details.saleDate));
@@ -191,6 +199,37 @@ void SaleDetails::showSaleDetailsError(const QString &message)
     ui->errorLabel->show();
 }
 
+void SaleDetails::showNextPaymentEntry(
+    const application::CommercialPaymentLookupResultDto &result)
+{
+    if (!result.found) {
+        QMessageBox::information(this, QStringLiteral("Agregar pago"),
+                                 QStringLiteral("No hay cuotas pendientes de pago para esta venta."));
+        return;
+    }
+
+    AddPaymentDialog dialog(result.payment, this);
+    m_paymentDialog = &dialog;
+    connect(&dialog, &AddPaymentDialog::submitted,
+            this, &SaleDetails::paymentEntrySubmitted);
+    dialog.exec();
+    m_paymentDialog = nullptr;
+}
+
+void SaleDetails::paymentEntrySaved()
+{
+    if (m_paymentDialog)
+        m_paymentDialog->finishSave();
+}
+
+void SaleDetails::showPaymentEntrySaveError(const QString &message)
+{
+    if (m_paymentDialog)
+        m_paymentDialog->showSaveError(message);
+    else
+        showSaleDetailsError(message);
+}
+
 void SaleDetails::showFullSaleDetails(
     const application::CommercialSaleRegistrationDetailsDto &details)
 {
@@ -211,9 +250,7 @@ void SaleDetails::onUpdateFinancingRequested()
 
 void SaleDetails::onAddPaymentRequested()
 {
-    // TODO: implementar el registro de un pago.
-    QMessageBox::information(this, QStringLiteral("Agregar pago"),
-                             QStringLiteral("Funcionalidad pendiente."));
+    emit paymentEntryRequested(m_saleDetails.folio);
 }
 
 void SaleDetails::onPrintRequested()
@@ -226,14 +263,18 @@ void SaleDetails::onPrintRequested()
     }
 
     const QTableWidgetItem *folio = ui->paymentsTable->item(row, ColPaymentFolio);
-    const QTableWidgetItem *paidDate = ui->paymentsTable->item(row, ColPaidDate);
-    if (!paidDate || paidDate->text().trimmed().isEmpty()) {
-        QMessageBox::information(this, QStringLiteral("Pago"),
-                                 QStringLiteral("No existe una nota para ese pago."));
+    bool folioOk = false;
+    const int paymentFolio = folio ? folio->text().toInt(&folioOk) : -1;
+    const auto payment = std::find_if(
+        m_saleDetails.payments.cbegin(), m_saleDetails.payments.cend(),
+        [folioOk, paymentFolio](const application::CommercialPaymentDto &item) {
+            return folioOk && item.folio == paymentFolio;
+        });
+    if (payment == m_saleDetails.payments.cend()) {
+        QMessageBox::warning(this, QStringLiteral("Guardar pagaré"),
+                             QStringLiteral("No se encontraron los datos del pago seleccionado."));
         return;
     }
 
-    QMessageBox::information(this, QStringLiteral("Folio de pago"),
-                             QStringLiteral("Folio de pago: %1")
-                                 .arg(folio ? folio->text() : QString()));
+    emit paymentPrintRequested(m_saleDetails, *payment);
 }

@@ -4,8 +4,10 @@
 // recurso.
 
 #include "adapters/contract/pdfmaintenancereceiptgenerator.h"
+#include "adapters/contract/paymentnotetemplate.h"
 
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -29,6 +31,66 @@ class TstMaintenanceReceipt : public QObject
     Q_OBJECT
 
 private slots:
+    void fillsAndExportsPaymentNoteTemplate()
+    {
+        application::CommercialSaleDetailsDto sale;
+        sale.saleDate = QDate(2026, 11, 3);
+        sale.buyerName = QStringLiteral("Ana <López>");
+        sale.buyerAddress = QStringLiteral("Calle Uno 10");
+        sale.buyerPopulation = QStringLiteral("Martínez de la Torre, Veracruz");
+        sale.guarantorName = QStringLiteral("Luis Pérez");
+        sale.guarantorAddress = QStringLiteral("Calle Dos 20");
+        sale.guarantorPopulation = QStringLiteral("Veracruz, Veracruz");
+        sale.guarantorPhone = QStringLiteral("2321234567");
+        sale.expectedInstallments = 24;
+
+        application::CommercialPaymentDto payment;
+        payment.folio = 345;
+        payment.saleFolio = 91;
+        payment.installmentNumber = 3;
+        payment.expectedAmount = 13125.50;
+        payment.scheduledDate = QDate(2027, 2, 3);
+
+        QCOMPARE(PaymentNoteTemplate::suggestedFileName(payment),
+                 QStringLiteral("pagare_91_3.pdf"));
+
+        QString error;
+        const QString html = PaymentNoteTemplate::fillTemplate(sale, payment, &error);
+        QVERIFY2(!html.isEmpty(), qPrintable(error));
+        QVERIFY(html.contains(QStringLiteral("3/24")));
+        QVERIFY(html.contains(QStringLiteral("$13,125.50")));
+        QVERIFY(html.contains(QStringLiteral("TRECE MIL CIENTO VEINTICINCO")));
+        QVERIFY(html.contains(QStringLiteral("50/100 M.N.")));
+        QVERIFY(html.contains(QStringLiteral("3 de noviembre de 2026")));
+        QVERIFY(html.contains(QStringLiteral("3 de febrero de 2027")));
+        QVERIFY(html.contains(QStringLiteral("Ana &lt;López&gt;")));
+        QVERIFY(html.contains(QStringLiteral("Luis Pérez")));
+        QVERIFY(html.contains(QStringLiteral("background-color: #000000")));
+        QVERIFY(html.contains(QStringLiteral("background-color: #D9D9D9")));
+        QVERIFY(html.contains(QStringLiteral("padding: 4px 16px")));
+        QVERIFY(html.contains(QStringLiteral("table.campos.beneficiario { width: 100%;")));
+        QVERIFY(html.contains(QStringLiteral("<table class=\"campos beneficiario\" width=\"100%\">")));
+        QVERIFY(html.contains(QStringLiteral("table.campos.fecha-pago { width: 100%; table-layout: fixed;")));
+        QVERIFY(html.contains(QStringLiteral("<td class=\"linea mitad\" width=\"50%\">")));
+        QVERIFY(html.contains(QStringLiteral("p.aceptacion { margin: 0 0 42px 0;")));
+        QVERIFY(html.contains(QStringLiteral("table.firma-deudor { width: 100%; table-layout: fixed;")));
+        QVERIFY(html.contains(QStringLiteral("<table class=\"firma-deudor\" width=\"100%\">")));
+        QVERIFY(html.contains(QStringLiteral("height: 4.75in")));
+        QVERIFY(html.contains(QStringLiteral("<table class=\"aval\" width=\"90%\" align=\"center\">")));
+        QVERIFY(html.contains(QStringLiteral("<table class=\"firma\" width=\"45%\" align=\"center\">")));
+        QVERIFY(html.contains(QStringLiteral("table.firma { width: 45%;")));
+        QVERIFY(html.contains(QStringLiteral("margin: 30px 0 18px 0;")));
+        QVERIFY(html.contains(QStringLiteral("margin: 28px auto 48px auto;")));
+        QVERIFY(!html.contains(QRegularExpression(QStringLiteral("\\{\\{[a-z_]+\\}\\}"))));
+
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString outputPath = directory.filePath(
+            PaymentNoteTemplate::suggestedFileName(payment));
+        QVERIFY2(PaymentNoteTemplate::writePdf(html, outputPath, &error), qPrintable(error));
+        QVERIFY(QFileInfo(outputPath).size() > 0);
+    }
+
     void everyMarkIsReplacedWithTheRowData()
     {
         QString error;

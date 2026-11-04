@@ -13,6 +13,7 @@ public:
 
     virtual bool updatePaymentWaiver(int paymentFolio, bool waived, domain::UserRole role,
                                     QString *error) = 0;
+    virtual bool recordPayment(const CommercialPaymentDto &payment, QString *error) = 0;
 
 protected:
     CommercialPaymentWriter() = default;
