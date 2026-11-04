@@ -14,9 +14,11 @@ public:
 
     CommercialResultDto search(const CommercialFilterDto &filter) const;
     CommercialSaleDetailsResultDto saleDetails(int folio) const;
+    CommercialPaymentLookupResultDto nextUnpaidPayment(int saleFolio) const;
     CommercialSaleRegistrationDetailsResultDto saleRegistrationDetails(int folio) const;
     CommercialWriteResultDto updatePaymentWaiver(int paymentFolio, bool waived,
                                                   domain::UserRole role) const;
+    CommercialWriteResultDto recordPayment(const CommercialPaymentDto &payment) const;
 
 private:
     CommercialReader &m_reader;

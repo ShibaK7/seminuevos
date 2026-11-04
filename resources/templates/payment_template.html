@@ -1,0 +1,190 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!--
+      PLANTILLA DE PAGARE (un pagare por hoja tamano carta: frente arriba, avales abajo)
+
+      Variables a reemplazar:
+        {{numero_pagare}}       No. del pagare (ej. 1)
+        {{total_pagares}}       Total de pagares de la serie (ej. 24)
+        {{monto_numero}}        Monto con formato (ej. 13,125.00)
+        {{monto_letras}}        Monto en letra sin centavos (ej. TRECE MIL CIENTO VEINTICINCO)
+        {{monto_centavos}}      Centavos de dos digitos (ej. 00)
+        {{lugar_suscripcion}}   Lugar de suscripcion (ej. Martinez de la Torre, Veracruz)
+        {{dia}} {{mes}} {{anio}} Fecha de suscripcion (ej. 3 / noviembre / 2026)
+        {{beneficiario}}        Nombre de la persona a quien ha de pagarse
+        {{lugar_pago}}          Lugar del pago
+        {{fecha_pago}}          Fecha de vencimiento de este pagare
+        {{interes_moratorio}}   Interes moratorio mensual, sin el signo % (ej. 5)
+        {{deudor_nombre}} {{deudor_domicilio}} {{deudor_poblacion}}
+        {{aval1_nombre}} {{aval1_domicilio}} {{aval1_poblacion}} {{aval1_telefono}}
+        {{aval2_nombre}} {{aval2_domicilio}} {{aval2_poblacion}} {{aval2_telefono}}
+
+      Si un dato no se conoce, reemplazar la variable por cadena vacia: el campo queda en blanco.
+      Para imprimir varios pagares, repetir el bloque <div class="pagina"> ... </div> por cada uno.
+    -->
+    <style>
+        @page { size: letter; margin: 0.3in; }
+        body { margin: 0; padding: 0; font-family: "Segoe UI", Arial, sans-serif; font-size: 9.5pt; color: #000000; }
+        div.pagina { page-break-after: always; }
+        div.pagina:last-child { page-break-after: auto; }
+        table { border-collapse: collapse; }
+
+        table.hoja { width: 100%; border: 1px solid #000000; margin-bottom: 10px; }
+        table.hoja td.contenido { height: 4.75in; vertical-align: top; padding: 0; }
+
+        td.tab { background-color: #000000; color: #FFFFFF; font-weight: bold; font-size: 11pt; padding: 4px 16px; }
+        div.cuerpo { padding: 2px 16px 6px 16px; }
+
+        table.folio { margin: 2px 0 0 0; }
+        table.folio td { padding: 2px 8px; }
+        td.caja { background-color: #D9D9D9; border: 1px solid #808080; text-align: center; width: 1.3in; }
+
+        p.derecha { text-align: right; margin: 4px 0 4px 0; }
+        p.texto { text-align: justify; margin: 5px 0; }
+
+        table.campos { width: 100%; margin-top: 6px; }
+        table.campos td.linea { border-bottom: 1px solid #1F6FD0; padding: 4px 6px; }
+        td.pie { text-align: center; font-size: 9pt; padding-top: 1px; }
+        table.campos.beneficiario { width: 100%;  text-align: center;}
+        table.campos.beneficiario td.linea { padding: 5px 8px; }
+        table.campos.fecha-pago { width: 100%; table-layout: fixed; text-align: center;}
+        table.campos.fecha-pago td.mitad { width: 50%; }
+
+        table.inferior { width: 100%; margin-top: 8px; }
+        td.contenedor-deudor { width: 3.2in; vertical-align: top; padding: 8px;}
+        table.deudor { width: 100%; background-color: #D9D9D9; border: 1px solid #808080; border-collapse: collapse; height: 1.1in; }
+        table.deudor td { padding: 2px 8px; background-color: #D9D9D9; }
+        p.aceptacion { margin: 0 0 42px 0; }
+        table.firma-deudor { width: 100%; table-layout: fixed; }
+        table.firma-deudor td.etiqueta { width: 0.65in; white-space: nowrap; }
+        table.firma-deudor td.firma-linea { border-bottom: 1px solid #000; width: 100%; }
+
+        p.titulo-avales { text-align: center; font-weight: bold; font-size: 10pt; margin: 30px 0 18px 0; }
+        table.aval { width: 90%; table-layout: fixed; margin: 0 auto; }
+        table.aval td { border: 1px solid #000000; padding: 3px 8px; height: 17px; }
+        table.aval td.label { width: 1.1in; font-weight: bold; font-size: 9pt; background-color: #D9D9D9; }
+        table.firma { width: 45%; table-layout: fixed; margin: 28px auto 48px auto; }
+        table.firma.final { margin-bottom: 0; }
+        table.firma td { text-align: center; font-weight: bold; font-size: 9pt; }
+        table.firma td.linea { border-top: 1px solid #808080; padding-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="pagina">
+
+    <!-- ======================= FRENTE ======================= -->
+    <table class="hoja" width="100%">
+        <tr><td class="contenido">
+
+            <table width="100%" style="width:100%;"><tr><td class="tab" style="width:1%; white-space:nowrap;">PAGARÉ</td><td>&nbsp;</td></tr></table>
+
+            <div class="cuerpo">
+
+                <table class="folio" align="right">
+                    <tr>
+                        <td>No.</td>
+                        <td class="caja">{{numero_pagare}}/{{total_pagares}}</td>
+                        <td>BUENO POR</td>
+                        <td class="caja">${{monto_numero}}</td>
+                    </tr>
+                </table>
+                <div style="clear:both;"></div>
+
+                <p class="derecha">En {{lugar_suscripcion}}. A {{dia}} de {{mes}} de {{anio}}.</p>
+
+                <p class="texto" style="margin-bottom:2px; margin-left:8px;">Debe(mos) y pagare(mos) incondicionalmente por este Pagaré a la orden de</p>
+                <table class="campos beneficiario" width="100%">
+                    <tr><td class="linea" colspan="3" align="center">{{beneficiario}}</td></tr>
+                    <tr><td class="pie" colspan="3">Nombre de la persona a quien ha de pagarse</td></tr>
+                </table>
+                <table class="campos fecha-pago" width="100%" style="margin-top:8px;">
+                    <tr>
+                        <td class="linea mitad" width="50%" align="center">en {{lugar_pago}}</td>
+                        <td class="linea mitad" width="50%" align="center">{{fecha_pago}}</td>
+                    </tr>
+                    <tr>
+                        <td class="pie mitad" width="50%" align="center">Lugar del pago</td>
+                        <td class="pie mitad" width="50%" align="center">Fecha del pago</td>
+                    </tr>
+                </table>
+
+                <p class="texto" style="margin-top:8px; margin-left:8px;">la cantidad de: ({{monto_letras}} pesos {{monto_centavos}}/100 M.N.)</p>
+
+                <p class="texto" style="margin-left:8px;">Valor recibido a mi (nuestra) entera satisfacción. Este pagaré forma parte de una serie numerada del 1 al {{total_pagares}} y
+                    todos están sujetos a la condición de que, al no pagarse cualquiera de ellos a su vencimiento, serán exigibles
+                    todos los que le sigan en número, además de los ya vencidos, desde la fecha de vencimiento de este
+                    documento hasta el día de su liquidación, causará intereses moratorios al tipo de {{interes_moratorio}}% mensual, pagadero en
+                    esta ciudad juntamente con el principal.</p>
+
+                <table class="inferior">
+                    <tr>
+                        <td class="contenedor-deudor">
+                            <table class="deudor">
+                                <tr><td>Nombre y datos del deudor</td></tr>
+                                <tr><td><b>Nombre:</b> {{deudor_nombre}}</td></tr>
+                                <tr><td><b>Dirección:</b> {{deudor_domicilio}}</td></tr>
+                                <tr><td><b>Población:</b> {{deudor_poblacion}}</td></tr>
+                            </table>
+                        </td>
+
+                        <td style="vertical-align:top; padding-left:18px;">
+                            <p class="aceptacion">Acepto(amos)</p>
+                            <table class="firma-deudor">
+                                <tr></tr>
+                                <tr></tr>
+                                <tr></tr>
+                                <tr>
+                                    <td class="etiqueta">Firma(s)</td>
+                                    <td class="firma-linea">
+                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+    </table>
+
+    <!-- ======================= REVERSO (AVALES) ======================= -->
+    <table class="hoja" width="100%">
+        <tr><td class="contenido">
+
+            <table width="100%" style="width:100%;"><tr><td class="tab" style="width:1%; white-space:nowrap;">PAGARÉ</td><td>&nbsp;</td></tr></table>
+
+            <div class="cuerpo" style="width:100%; padding:2px 12px 6px 12px;">
+
+                <p class="titulo-avales">Datos personales y firma(s) de (los) aval(es)</p>
+
+                <table class="aval" width="90%" align="center">
+                    <tr><td class="label">Nombre:</td><td>{{aval1_nombre}}</td></tr>
+                    <tr><td class="label">Dirección:</td><td>{{aval1_domicilio}}</td></tr>
+                    <tr><td class="label">Población:</td><td>{{aval1_poblacion}}</td></tr>
+                    <tr><td class="label">Teléfono:</td><td>{{aval1_telefono}}</td></tr>
+                </table>
+                <table class="firma" width="45%" align="center"><tr><td class="linea">Firma</td></tr></table>
+
+                <table class="aval" width="90%" align="center">
+                    <tr><td class="label">Nombre:</td><td>{{aval2_nombre}}</td></tr>
+                    <tr><td class="label">Dirección:</td><td>{{aval2_domicilio}}</td></tr>
+                    <tr><td class="label">Población:</td><td>{{aval2_poblacion}}</td></tr>
+                    <tr><td class="label">Teléfono:</td><td>{{aval2_telefono}}</td></tr>
+                </table>
+                <table class="firma final" width="45%" align="center"><tr><td class="linea">Firma</td></tr></table>
+
+            </div>
+        </td></tr>
+    </table>
+
+</div>
+
+</body>
+</html>

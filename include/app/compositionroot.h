@@ -7,6 +7,7 @@
 #include "adapters/security/pbkdf2passwordhasher.h"
 #include "app/appsettings.h"
 #include "application/auth/dto/authdtos.h"
+#include "application/commercial/dto/commercialdtos.h"
 #include "presentation/common/tasks/pooledtaskrunner.h"
 
 #include <QObject>
@@ -26,6 +27,7 @@ class SqlSaleRepository;
 class SqlUserDirectory;
 class SqlVehicleRecordReader;
 class SqlVehicleRepository;
+class QWidget;
 
 namespace application {
 class AuthenticationService;
@@ -64,6 +66,9 @@ public:
 
 private:
     void showMain(const application::SessionDto &session);
+    void savePaymentNote(QWidget *parent,
+                         const application::CommercialSaleDetailsDto &sale,
+                         const application::CommercialPaymentDto &payment);
 
     AppSettings m_settings;
     ConnectionPool m_pool;

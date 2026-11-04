@@ -46,6 +46,36 @@ void CommercialSaleDetailsPresenter::loadFullDetails()
                  });
 }
 
+void CommercialSaleDetailsPresenter::loadNextPaymentEntry()
+{
+    const application::CommercialService *service = &m_service;
+    const int saleFolio = m_saleFolio;
+    m_runner.run(this, [service, saleFolio] {
+                     return service->nextUnpaidPayment(saleFolio);
+                 },
+                 [this](const application::CommercialPaymentLookupResultDto &result) {
+                     if (!result.errorMessage.isEmpty())
+                         m_view.showSaleDetailsError(result.errorMessage);
+                     else
+                         m_view.showNextPaymentEntry(result);
+                 });
+}
+
+void CommercialSaleDetailsPresenter::recordPayment(
+    const application::CommercialPaymentDto &payment)
+{
+    const application::CommercialService *service = &m_service;
+    m_runner.run(this, [service, payment] { return service->recordPayment(payment); },
+                 [this](const application::CommercialWriteResultDto &result) {
+                     if (result.ok) {
+                         m_view.paymentEntrySaved();
+                         load();
+                     } else {
+                         m_view.showPaymentEntrySaveError(result.errorMessage);
+                     }
+                 });
+}
+
 void CommercialSaleDetailsPresenter::setPaymentWaived(int paymentFolio, bool waived)
 {
     const application::CommercialService *service = &m_service;

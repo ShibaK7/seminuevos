@@ -12,6 +12,7 @@
 #include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 #include "adapters/storage/localfilestorage.h"
+#include "adapters/contract/paymentnotetemplate.h"
 #include "application/auth/services/authenticationservice.h"
 #include "application/commercial/sales/services/saleservice.h"
 #include "application/commercial/services/commercialservice.h"
@@ -44,6 +45,8 @@
 
 #include <QApplication>
 #include <QFile>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QGraphicsOpacityEffect>
 #include <QMessageBox>
 #include <QPropertyAnimation>
@@ -234,6 +237,11 @@ void CompositionRoot::showMain(const application::SessionDto &session)
 
         mainWindow->setSaleDetailsFactory([this, role = session.role](QWidget *parent, int folio) {
             auto *view = new SaleDetails(role, parent);
+            connect(view, &SaleDetails::paymentPrintRequested, this,
+                    [this, parent](const application::CommercialSaleDetailsDto &sale,
+                                   const application::CommercialPaymentDto &payment) {
+                        savePaymentNote(parent, sale, payment);
+                    });
             auto *presenter = new presentation::CommercialSaleDetailsPresenter(
                 *view, *m_commercial, m_runner, folio, role, view);
             view->bind(*presenter);
@@ -272,4 +280,27 @@ void CompositionRoot::showMain(const application::SessionDto &session)
         mainWindow->showMaximized();
         fade(mainWindow, 0.0, 1.0);
     });
+}
+
+void CompositionRoot::savePaymentNote(
+    QWidget *parent, const application::CommercialSaleDetailsDto &sale,
+    const application::CommercialPaymentDto &payment)
+{
+    QString error;
+    const QString html = PaymentNoteTemplate::fillTemplate(sale, payment, &error);
+    if (html.isEmpty()) {
+        QMessageBox::warning(parent, QStringLiteral("Guardar pagaré"), error);
+        return;
+    }
+
+    QString outputPath = QFileDialog::getSaveFileName(
+        parent, QStringLiteral("Guardar pagaré"),
+        PaymentNoteTemplate::suggestedFileName(payment),
+        QStringLiteral("Documento PDF (*.pdf)"));
+    if (outputPath.isEmpty())
+        return;
+    if (QFileInfo(outputPath).suffix().isEmpty())
+        outputPath += QStringLiteral(".pdf");
+    if (!PaymentNoteTemplate::writePdf(html, outputPath, &error))
+        QMessageBox::warning(parent, QStringLiteral("Guardar pagaré"), error);
 }

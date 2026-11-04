@@ -38,6 +38,12 @@ enum DetailsColumn {
     DetailsPaidInstallments,
     DetailsExpectedInstallments,
     DetailsOriginalDueAmount,
+    DetailsBuyerAddress,
+    DetailsBuyerPopulation,
+    DetailsGuarantorName,
+    DetailsGuarantorAddress,
+    DetailsGuarantorPopulation,
+    DetailsGuarantorPhone,
 };
 
 enum PaymentColumn {
@@ -53,6 +59,10 @@ enum PaymentColumn {
     PaymentRemainingBalance,
     PaymentWaived,
     PaymentNotes,
+    PaymentSaleFolio,
+    PaymentLateFee,
+    PaymentStatus,
+    PaymentReferenceNumber,
 };
 
 enum RegistrationDetailsColumn {
@@ -151,12 +161,26 @@ SELECT s.folio,
        COALESCE(payments.paid_installments, 0) AS paid_installments,
        COALESCE(fin.months_term, 0) AS expected_installments,
        COALESCE(fin.final_calculated_price, s.total_amount)
-           - COALESCE(fin.down_payment, 0) AS original_due_amount
+           - COALESCE(fin.down_payment, 0) AS original_due_amount,
+       concat_ws(', ', NULLIF(buyer.street_address, ''), NULLIF(buyer.suburb, ''),
+                 CASE WHEN NULLIF(buyer.postal_code, '') IS NOT NULL
+                      THEN 'C.P. ' || buyer.postal_code END) AS buyer_address,
+       concat_ws(', ', NULLIF(buyer.locality, ''), NULLIF(buyer.state, ''))
+           AS buyer_population,
+       COALESCE(guarantor.full_name, '') AS guarantor_name,
+       concat_ws(', ', NULLIF(guarantor.street_address, ''),
+                 NULLIF(guarantor.suburb, ''),
+                 CASE WHEN NULLIF(guarantor.postal_code, '') IS NOT NULL
+                      THEN 'C.P. ' || guarantor.postal_code END) AS guarantor_address,
+       concat_ws(', ', NULLIF(guarantor.locality, ''), NULLIF(guarantor.state, ''))
+           AS guarantor_population,
+       COALESCE(guarantor.phone, '') AS guarantor_phone
   FROM sales s
   JOIN vehicles v ON v.folio = s.vehicle_folio
   LEFT JOIN brands_cat brand ON brand.id = v.brand_id
   JOIN counterparties buyer ON buyer.id = s.buyer_id
   LEFT JOIN sale_financing fin ON fin.sale_folio = s.folio
+  LEFT JOIN counterparties guarantor ON guarantor.id = fin.aval_id
   LEFT JOIN LATERAL (
       SELECT SUM(payment.paid_amount) FILTER (
                  WHERE payment.paid_amount <> 0 AND payment.paid_date IS NOT NULL
@@ -188,10 +212,24 @@ SELECT id,
        interest_allocation,
        remaining_balance,
        is_waived,
-       notes
+       notes,
+       sale_folio,
+       late_fee,
+       status,
+       reference_number
   FROM sale_payments
  WHERE sale_folio = :folio
  ORDER BY installment_number, id
+)SQL";
+
+constexpr auto kNextUnpaidPaymentSelect = R"SQL(
+SELECT id, sale_folio, installment_number, scheduled_date, expected_amount
+  FROM sale_payments
+ WHERE sale_folio = :sale_folio
+   AND paid_date IS NULL
+   AND paid_amount = 0
+ ORDER BY installment_number, id
+ LIMIT 1
 )SQL";
 
 constexpr auto kSaleRegistrationDetailsSelect = R"SQL(
@@ -352,6 +390,18 @@ application::CommercialSaleDetailsDto SqlCommercial::saleDetails(int folio, QStr
                         detailsQuery.value(DetailsExpectedInstallments).toInt();
                     sale.originalDueAmount =
                         detailsQuery.value(DetailsOriginalDueAmount).toDouble();
+                    sale.buyerAddress =
+                        detailsQuery.value(DetailsBuyerAddress).toString();
+                    sale.buyerPopulation =
+                        detailsQuery.value(DetailsBuyerPopulation).toString();
+                    sale.guarantorName =
+                        detailsQuery.value(DetailsGuarantorName).toString();
+                    sale.guarantorAddress =
+                        detailsQuery.value(DetailsGuarantorAddress).toString();
+                    sale.guarantorPopulation =
+                        detailsQuery.value(DetailsGuarantorPopulation).toString();
+                    sale.guarantorPhone =
+                        detailsQuery.value(DetailsGuarantorPhone).toString();
 
                     QSqlQuery paymentsQuery(db);
                     if (!paymentsQuery.prepare(QString::fromLatin1(kSalePaymentsSelect))) {
@@ -363,6 +413,12 @@ application::CommercialSaleDetailsDto SqlCommercial::saleDetails(int folio, QStr
                         while (failure.isEmpty() && paymentsQuery.next()) {
                             application::CommercialPaymentDto payment;
                             payment.folio = paymentsQuery.value(PaymentFolio).toInt();
+                            payment.saleFolio =
+                                paymentsQuery.value(PaymentSaleFolio).toInt();
+                            payment.lateFee = paymentsQuery.value(PaymentLateFee).toDouble();
+                            payment.status = paymentsQuery.value(PaymentStatus).toString();
+                            payment.referenceNumber =
+                                paymentsQuery.value(PaymentReferenceNumber).toString();
                             payment.installmentNumber =
                                 paymentsQuery.value(PaymentInstallment).toInt();
                             payment.paymentMethod = paymentsQuery.value(PaymentMethod).toString();
@@ -396,6 +452,43 @@ application::CommercialSaleDetailsDto SqlCommercial::saleDetails(int folio, QStr
         error->clear();
     }
     return sale;
+}
+
+application::CommercialPaymentLookupResultDto SqlCommercial::nextUnpaidPayment(int saleFolio)
+{
+    application::CommercialPaymentLookupResultDto result;
+    QString failure;
+    {
+        ConnectionPool::Handle handle = m_pool.acquire();
+        QSqlDatabase &db = handle.database();
+        if (!db.isOpen()) {
+            failure = db.lastError().text();
+        } else {
+            QSqlQuery query(db);
+            if (!query.prepare(QString::fromLatin1(kNextUnpaidPaymentSelect))) {
+                failure = query.lastError().text();
+            } else {
+                query.bindValue(QStringLiteral(":sale_folio"), saleFolio);
+                if (!query.exec()) {
+                    failure = query.lastError().text();
+                } else if (query.next()) {
+                    result.found = true;
+                    result.payment.folio = query.value(0).toInt();
+                    result.payment.saleFolio = query.value(1).toInt();
+                    result.payment.installmentNumber = query.value(2).toInt();
+                    result.payment.scheduledDate = query.value(3).toDate();
+                    result.payment.expectedAmount = query.value(4).toDouble();
+                }
+            }
+        }
+    }
+
+    if (!failure.isEmpty()) {
+        m_pool.discardThreadConnection();
+        result.errorMessage = failure;
+        result.found = false;
+    }
+    return result;
 }
 
 application::CommercialSaleRegistrationDetailsDto SqlCommercial::saleRegistrationDetails(
@@ -620,5 +713,69 @@ bool SqlCommercial::updatePaymentWaiver(int paymentFolio, bool waived,
     } else if (error) {
         error->clear();
     }
+    return updated;
+}
+
+bool SqlCommercial::recordPayment(const application::CommercialPaymentDto &payment,
+                                  QString *error)
+{
+    constexpr auto sql = R"SQL(
+UPDATE sale_payments
+   SET paid_date = :paid_date,
+       paid_amount = :paid_amount,
+       late_fee = :late_fee,
+       payment_method = :payment_method,
+       status = :status,
+       reference_number = :reference_number,
+       notes = :notes
+ WHERE id = :id
+   AND sale_folio = :sale_folio
+   AND installment_number = :installment_number
+   AND paid_date IS NULL
+   AND paid_amount = 0
+)SQL";
+
+    QString failure;
+    bool updated = false;
+    {
+        ConnectionPool::Handle handle = m_pool.acquire();
+        QSqlDatabase &db = handle.database();
+        if (!db.isOpen()) {
+            failure = db.lastError().text();
+        } else {
+            QSqlQuery query(db);
+            if (!query.prepare(QString::fromLatin1(sql))) {
+                failure = query.lastError().text();
+            } else {
+                query.bindValue(QStringLiteral(":paid_date"), payment.paidDate);
+                query.bindValue(QStringLiteral(":paid_amount"), payment.paidAmount);
+                query.bindValue(QStringLiteral(":late_fee"), payment.lateFee);
+                query.bindValue(QStringLiteral(":payment_method"), payment.paymentMethod.trimmed());
+                query.bindValue(QStringLiteral(":status"), payment.status);
+                query.bindValue(QStringLiteral(":reference_number"),
+                                payment.referenceNumber.trimmed().isEmpty()
+                                    ? QVariant() : QVariant(payment.referenceNumber.trimmed()));
+                query.bindValue(QStringLiteral(":notes"),
+                                payment.notes.trimmed().isEmpty()
+                                    ? QVariant() : QVariant(payment.notes.trimmed()));
+                query.bindValue(QStringLiteral(":id"), payment.folio);
+                query.bindValue(QStringLiteral(":sale_folio"), payment.saleFolio);
+                query.bindValue(QStringLiteral(":installment_number"), payment.installmentNumber);
+                if (!query.exec()) {
+                    failure = query.lastError().text();
+                } else if (query.numRowsAffected() == 0) {
+                    failure = QStringLiteral(
+                        "La cuota ya fue registrada o dejó de estar disponible. Actualiza el detalle e inténtalo nuevamente.");
+                } else {
+                    updated = true;
+                }
+            }
+        }
+    }
+
+    if (!failure.isEmpty())
+        m_pool.discardThreadConnection();
+    if (error)
+        *error = failure;
     return updated;
 }

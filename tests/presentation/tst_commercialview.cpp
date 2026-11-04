@@ -1,23 +1,24 @@
 #include "application/commercial/services/commercialservice.h"
 #include "presentation/commercial/commercialmainview.h"
 #include "presentation/commercial/commercialpresenter.h"
+#include "presentation/commercial/saledetails/addpaymentdialog.h"
 #include "presentation/commercial/saledetails/SaleDetails.h"
 #include "presentation/commercial/saledetails/saledetailspresenter.h"
 #include "presentation/commercial/registration/saledetailsview.h"
 #include "presentation/shell/mainwindow.h"
 #include "presentation/common/tasks/taskrunner.h"
 
-#include <QApplication>
 #include <QComboBox>
 #include <QCheckBox>
 #include <QDateEdit>
+#include <QDateTimeEdit>
 #include <QDoubleSpinBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QLocale>
-#include <QMessageBox>
 #include <QPushButton>
+#include <QPlainTextEdit>
 #include <QTimer>
 #include <QTableWidget>
 #include <QTableView>
@@ -44,10 +45,14 @@ public:
     application::CommercialFilterDto lastFilter;
     application::CommercialSaleDetailsDto details;
     application::CommercialSaleRegistrationDetailsDto registrationDetails;
+    application::CommercialPaymentLookupResultDto nextPayment;
     int registrationDetailReads = 0;
     int waiverUpdates = 0;
+    int nextPaymentReads = 0;
+    int paymentWrites = 0;
     int lastPaymentFolio = -1;
     bool lastWaiverValue = false;
+    application::CommercialPaymentDto lastRecordedPayment;
 
     QList<application::CommercialSaleDto> search(
         const application::CommercialFilterDto &filter, QString *) override
@@ -72,6 +77,14 @@ public:
         return details;
     }
 
+    application::CommercialPaymentLookupResultDto nextUnpaidPayment(int saleFolio) override
+    {
+        ++nextPaymentReads;
+        if (nextPayment.payment.saleFolio != saleFolio)
+            return {};
+        return nextPayment;
+    }
+
     application::CommercialSaleRegistrationDetailsDto saleRegistrationDetails(
         int, QString *) override
     {
@@ -92,6 +105,16 @@ public:
         lastWaiverValue = waived;
         return true;
     }
+
+    bool recordPayment(const application::CommercialPaymentDto &payment,
+                       QString *error) override
+    {
+        ++paymentWrites;
+        lastRecordedPayment = payment;
+        if (error)
+            error->clear();
+        return true;
+    }
 };
 
 } // namespace
@@ -101,6 +124,160 @@ class TstCommercialView : public QObject
     Q_OBJECT
 
 private slots:
+    void paymentEntryDialogValidatesAndEmitsPaymentFields()
+    {
+        application::CommercialPaymentDto payment;
+        payment.folio = 550;
+        payment.saleFolio = 123;
+        payment.installmentNumber = 4;
+        payment.scheduledDate = QDate::currentDate().addDays(10);
+        payment.expectedAmount = 2500.0;
+
+        AddPaymentDialog dialog(payment);
+        dialog.show();
+        QCOMPARE(dialog.findChild<QLabel *>(QStringLiteral("saleFolioLabel"))->text(),
+                 QStringLiteral("123"));
+        QCOMPARE(dialog.findChild<QLabel *>(QStringLiteral("installmentNumberLabel"))->text(),
+                 QStringLiteral("4"));
+        QCOMPARE(dialog.findChild<QLabel *>(QStringLiteral("expectedAmountLabel"))->text(),
+                 QLocale(QLocale::Spanish, QLocale::Mexico)
+                     .toCurrencyString(2500.0, QStringLiteral("$"), 2));
+        auto *scheduledDate = dialog.findChild<QLabel *>(
+            QStringLiteral("scheduledDateLabel"));
+        QVERIFY(scheduledDate);
+        QCOMPARE(scheduledDate->text(), payment.scheduledDate.toString(QStringLiteral("dd/MM/yyyy")));
+        QVERIFY(!dialog.findChild<QDateEdit *>(QStringLiteral("scheduledDateEdit")));
+        auto *paidDate = dialog.findChild<QDateTimeEdit *>(QStringLiteral("paidDateEdit"));
+        QVERIFY(paidDate);
+        QCOMPARE(paidDate->minimumDateTime().date(), QDate::currentDate().addMonths(-2));
+        QCOMPARE(paidDate->maximumDateTime().date(), QDate::currentDate());
+
+        auto *accept = dialog.findChild<QPushButton *>(QStringLiteral("acceptPaymentButton"));
+        auto *amount = dialog.findChild<QLineEdit *>(QStringLiteral("paidAmountEdit"));
+        auto *method = dialog.findChild<QLineEdit *>(QStringLiteral("paymentMethodEdit"));
+        auto *lateFee = dialog.findChild<QLineEdit *>(QStringLiteral("lateFeeEdit"));
+        auto *status = dialog.findChild<QComboBox *>(QStringLiteral("paymentStatusCombo"));
+        QVERIFY(accept && amount && method && lateFee && status);
+        QCOMPARE(status->count(), 4);
+        QCOMPARE(status->currentText(), QStringLiteral("Pendiente"));
+
+        application::CommercialPaymentDto submittedPayment;
+        int submissions = 0;
+        connect(&dialog, &AddPaymentDialog::submitted, &dialog,
+                [&submittedPayment, &submissions](
+                    const application::CommercialPaymentDto &value) {
+                    submittedPayment = value;
+                    ++submissions;
+                });
+        accept->click();
+        QVERIFY(!dialog.findChild<QLabel *>(QStringLiteral("paidAmountError"))->isHidden());
+        QVERIFY(!dialog.findChild<QLabel *>(QStringLiteral("paymentMethodError"))->isHidden());
+        QCOMPARE(submissions, 0);
+
+        amount->setText(QStringLiteral("1250.755"));
+        QVERIFY(!amount->hasAcceptableInput());
+        amount->setText(QStringLiteral("1250.75"));
+        lateFee->setText(QStringLiteral("15.25"));
+        method->setText(QStringLiteral("Transferencia"));
+        status->setCurrentText(QStringLiteral("Parcial"));
+        dialog.findChild<QLineEdit *>(QStringLiteral("referenceNumberEdit"))
+            ->setText(QStringLiteral("REF-123"));
+        dialog.findChild<QPlainTextEdit *>(QStringLiteral("paymentNotesEdit"))
+            ->setPlainText(QStringLiteral("Pago de prueba"));
+        accept->click();
+
+        QCOMPARE(submissions, 1);
+        QCOMPARE(submittedPayment.folio, 550);
+        QCOMPARE(submittedPayment.saleFolio, 123);
+        QCOMPARE(submittedPayment.installmentNumber, 4);
+        QCOMPARE(submittedPayment.paidAmount, 1250.75);
+        QCOMPARE(submittedPayment.lateFee, 15.25);
+        QCOMPARE(submittedPayment.paymentMethod, QStringLiteral("Transferencia"));
+        QCOMPARE(submittedPayment.status, QStringLiteral("Parcial"));
+        QCOMPARE(submittedPayment.referenceNumber, QStringLiteral("REF-123"));
+        QCOMPARE(submittedPayment.notes, QStringLiteral("Pago de prueba"));
+        QVERIFY(!accept->isEnabled());
+    }
+
+    void addPaymentButtonLoadsAndSavesTheNextUnpaidPayment()
+    {
+        application::CommercialSaleDetailsDto details;
+        details.folio = 123;
+        application::CommercialPaymentDto unpaid;
+        unpaid.folio = 923;
+        unpaid.saleFolio = details.folio;
+        unpaid.installmentNumber = 5;
+        unpaid.scheduledDate = QDate::currentDate().addDays(15);
+        unpaid.expectedAmount = 1800.0;
+
+        FakeCommercialReader reader;
+        reader.details = details;
+        reader.nextPayment.payment = unpaid;
+        reader.nextPayment.found = true;
+        application::CommercialService service(reader, reader);
+        InlineTaskRunner runner;
+        SaleDetails view(domain::UserRole::Admin);
+        presentation::CommercialSaleDetailsPresenter presenter(
+            view, service, runner, details.folio, domain::UserRole::Admin);
+        view.bind(presenter);
+        presenter.load();
+
+        QTimer::singleShot(0, &view, [&view] {
+            auto *dialog = view.findChild<AddPaymentDialog *>(
+                QStringLiteral("addPaymentDialog"));
+            QVERIFY(dialog);
+            dialog->findChild<QLineEdit *>(QStringLiteral("paidAmountEdit"))
+                ->setText(QStringLiteral("1700.00"));
+            dialog->findChild<QLineEdit *>(QStringLiteral("paymentMethodEdit"))
+                ->setText(QStringLiteral("Efectivo"));
+            dialog->findChild<QComboBox *>(QStringLiteral("paymentStatusCombo"))
+                ->setCurrentText(QStringLiteral("Pagado"));
+            dialog->findChild<QPushButton *>(QStringLiteral("acceptPaymentButton"))->click();
+        });
+
+        view.findChild<QPushButton *>(QStringLiteral("addPaymentButton"))->click();
+
+        QCOMPARE(reader.nextPaymentReads, 1);
+        QCOMPARE(reader.paymentWrites, 1);
+        QCOMPARE(reader.lastRecordedPayment.folio, unpaid.folio);
+        QCOMPARE(reader.lastRecordedPayment.saleFolio, details.folio);
+        QCOMPARE(reader.lastRecordedPayment.installmentNumber, unpaid.installmentNumber);
+        QCOMPARE(reader.lastRecordedPayment.paidAmount, 1700.0);
+        QCOMPARE(reader.lastRecordedPayment.paymentMethod, QStringLiteral("Efectivo"));
+        QCOMPARE(reader.lastRecordedPayment.status, QStringLiteral("Pagado"));
+    }
+
+    void paymentServiceRejectsInvalidAmountsBeforePersistence()
+    {
+        FakeCommercialReader reader;
+        application::CommercialService service(reader, reader);
+        application::CommercialPaymentDto payment;
+        payment.folio = 550;
+        payment.saleFolio = 123;
+        payment.installmentNumber = 4;
+        payment.paidDate = QDate::currentDate();
+        payment.paymentMethod = QStringLiteral("Efectivo");
+        payment.status = QStringLiteral("Pagado");
+        payment.paidAmount = 0.0;
+
+        const auto zeroAmount = service.recordPayment(payment);
+        QVERIFY(!zeroAmount.ok);
+        QVERIFY(!zeroAmount.errorMessage.isEmpty());
+        QCOMPARE(reader.paymentWrites, 0);
+
+        payment.paidAmount = 100.0;
+        payment.lateFee = -0.01;
+        const auto negativeLateFee = service.recordPayment(payment);
+        QVERIFY(!negativeLateFee.ok);
+        QCOMPARE(reader.paymentWrites, 0);
+
+        payment.lateFee = 0.0;
+        payment.paidAmount = 100.001;
+        const auto excessiveDecimals = service.recordPayment(payment);
+        QVERIFY(!excessiveDecimals.ok);
+        QCOMPARE(reader.paymentWrites, 0);
+    }
+
     void loadsSalesIntoTheRequestedColumns()
     {
         CommercialMainView view;
@@ -260,6 +437,7 @@ private slots:
 
         application::CommercialPaymentDto payment;
         payment.folio = 1232;
+        payment.saleFolio = 123;
         payment.installmentNumber = 2;
         payment.paymentMethod = QStringLiteral("Efectivo");
         payment.scheduledDate = QDate(2026, 2, 1);
@@ -273,6 +451,7 @@ private slots:
         details.payments << payment;
         application::CommercialPaymentDto pendingPayment;
         pendingPayment.folio = 1233;
+        pendingPayment.saleFolio = 123;
         pendingPayment.installmentNumber = 3;
         pendingPayment.scheduledDate = QDate(2026, 3, 1);
         pendingPayment.expectedAmount = 27500.0;
@@ -336,28 +515,27 @@ private slots:
 
         auto *printButton = administrator.findChild<QPushButton *>(QStringLiteral("printButton"));
         QVERIFY(printButton);
-        QString paymentMessage;
-        QTimer::singleShot(0, [&paymentMessage] {
-            auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
-            if (!dialog)
-                return;
-            paymentMessage = dialog->text();
-            dialog->accept();
-        });
+        bool printRequested = false;
+        int printedPaymentFolio = -1;
+        connect(&administrator, &SaleDetails::paymentPrintRequested, &administrator,
+                [&printRequested, &printedPaymentFolio](
+                    const application::CommercialSaleDetailsDto &printedSale,
+                    const application::CommercialPaymentDto &printedPayment) {
+                    printRequested = true;
+                    printedPaymentFolio = printedPayment.folio;
+                    QCOMPARE(printedSale.folio, 123);
+                    QCOMPARE(printedPayment.saleFolio, printedSale.folio);
+                });
         adminTable->selectRow(0);
         printButton->click();
-        QCOMPARE(paymentMessage, QStringLiteral("Folio de pago: 1232"));
+        QVERIFY(printRequested);
+        QCOMPARE(printedPaymentFolio, 1232);
 
-        QTimer::singleShot(0, [&paymentMessage] {
-            auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
-            if (!dialog)
-                return;
-            paymentMessage = dialog->text();
-            dialog->accept();
-        });
+        printRequested = false;
         adminTable->selectRow(1);
         printButton->click();
-        QCOMPARE(paymentMessage, QStringLiteral("No existe una nota para ese pago."));
+        QVERIFY(printRequested);
+        QCOMPARE(printedPaymentFolio, 1233);
 
         waived->click();
         QCOMPARE(reader.waiverUpdates, 1);

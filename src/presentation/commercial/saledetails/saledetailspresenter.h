@@ -19,6 +19,8 @@ public:
 
     void load();
     void loadFullDetails();
+    void loadNextPaymentEntry();
+    void recordPayment(const application::CommercialPaymentDto &payment);
     void setPaymentWaived(int paymentFolio, bool waived);
 
 private:

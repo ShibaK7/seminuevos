@@ -15,10 +15,14 @@ public:
     QList<application::CommercialSaleDto> search(
         const application::CommercialFilterDto &filter, QString *error) override;
     application::CommercialSaleDetailsDto saleDetails(int folio, QString *error) override;
+    application::CommercialPaymentLookupResultDto nextUnpaidPayment(
+        int saleFolio) override;
     application::CommercialSaleRegistrationDetailsDto saleRegistrationDetails(
         int folio, QString *error) override;
     bool updatePaymentWaiver(int paymentFolio, bool waived, domain::UserRole role,
                              QString *error) override;
+    bool recordPayment(const application::CommercialPaymentDto &payment,
+                       QString *error) override;
 
 private:
     ConnectionPool &m_pool;

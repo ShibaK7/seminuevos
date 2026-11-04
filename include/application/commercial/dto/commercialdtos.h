@@ -37,17 +37,28 @@ struct CommercialSaleDto
 struct CommercialPaymentDto
 {
     int folio = -1;
+    int saleFolio = -1;
     int installmentNumber = 0;
     QString paymentMethod;
+    QString status;
+    QString referenceNumber;
     QDate scheduledDate;
     QDate paidDate;
     double expectedAmount = 0.0;
     double paidAmount = 0.0;
+    double lateFee = 0.0;
     double capitalAllocation = 0.0;
     double interestAllocation = 0.0;
     double remainingBalance = 0.0;
     bool waived = false;
     QString notes;
+};
+
+struct CommercialPaymentLookupResultDto
+{
+    CommercialPaymentDto payment;
+    bool found = false;
+    QString errorMessage;
 };
 
 struct CommercialSaleDetailsDto
@@ -64,6 +75,12 @@ struct CommercialSaleDetailsDto
     double interestPaid = 0.0;
     double originalDueAmount = 0.0;
     double balanceDue = 0.0;
+    QString buyerAddress;
+    QString buyerPopulation;
+    QString guarantorName;
+    QString guarantorAddress;
+    QString guarantorPopulation;
+    QString guarantorPhone;
     int paidInstallments = 0;
     int expectedInstallments = 0;
     QList<CommercialPaymentDto> payments;
