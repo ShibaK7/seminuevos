@@ -13,8 +13,8 @@
 <style>
   body { font-family: Arial, "Segoe UI", sans-serif; font-size: 14pt; color: #000000; }
   p.header { text-align: center; margin: 0 0 50px 0; }
-  p.place-date { text-align: right; margin: 0 0 14px 0; }
-  p.amount { text-align: right; font-weight: bold; margin: 0 0 16px 0; }
+  p.place-date { text-align: right; margin: 0 0 24px 0; }
+  p.amount { text-align: right; font-weight: bold; margin: 0 0 40px 0; }
   p.body { text-align: justify; line-height: 200%; margin: 0; }
   table.signature { width: 100%; margin-top: 30px; }
   table.signature td { text-align: center; border: none; }
@@ -22,8 +22,6 @@
 </style>
 </head>
 <body>
-
-<p class="header"><img src="../images/logo-seminuevos.jpeg" width="600" height="150"/></p>
 
 <!-- La fecha y el importe van en la misma tabla que el texto para que sus
      orillas coincidan. QTextDocument repite el fondo de una celda desde su
@@ -37,9 +35,12 @@
 <p class="amount">Bueno por: $[Costo]</p>
     </td>
   </tr>
+  <tr></tr>
   <tr>
     <td background="../images/logo-seminuevos-watermark.png" height="263">
-<p class="body">Recibí del <b>Sr. Miguel Nicolás De La Hoz Couturier</b> la cantidad de $[Costo] (Moneda Nacional)
+<!-- align además del CSS: QTextDocument no siempre aplica el text-align de
+     una clase dentro de una celda con fondo, y el atributo sí lo respeta. -->
+<p class="body" align="justify">Recibí del <b>Sr. Miguel Nicolás De La Hoz Couturier</b> la cantidad de $[Costo] [Costo_Letra]
 derivado del tipo de mantenimiento [Tipo_Mantenimiento] el cual se describe a continuación,
 <b>[Descripción].</b></p>
     </td>
@@ -48,9 +49,9 @@ derivado del tipo de mantenimiento [Tipo_Mantenimiento] el cual se describe a co
 
 <table class="signature">
   <tr>
-    <td width="35%">&nbsp;</td>
-    <td width="30%" class="line">Nombre y Firma</td>
-    <td width="35%">&nbsp;</td>
+    <td width="25%">&nbsp;</td>
+    <td width="50%" class="line">Nombre y Firma</td>
+    <td width="25%">&nbsp;</td>
   </tr>
 </table>
 
