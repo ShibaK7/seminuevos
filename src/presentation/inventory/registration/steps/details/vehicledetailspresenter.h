@@ -38,6 +38,11 @@ public:
     // Lo capturado más la factura que cuenta como adjunta.
     application::VehicleDetailsDto dto() const;
 
+    // Pinta una unidad ya guardada (el expediente), factura incluida, de
+    // modo que dto() devuelva lo mismo. Va después de setLookups().
+    void showStored(int folio, const application::VehicleDetailsDto &details);
+    void showMaintenanceCost(double cost);
+
     void onInvoiceTypeChanged();
 
     // La sección de Adquisición: la vista le conecta los botones de la factura.

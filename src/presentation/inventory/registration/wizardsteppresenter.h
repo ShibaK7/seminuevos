@@ -4,6 +4,7 @@
 #include "domain/common/value_objects/validationresult.h"
 
 #include <QString>
+#include <QStringList>
 
 namespace presentation {
 
@@ -40,6 +41,9 @@ public:
     // Le da el foco al primer error de este paso que tenga un campo en
     // pantalla. Devuelve si encontró uno.
     bool focusFirstError(const domain::ValidationResult &result);
+
+    // Pone el paso en solo lectura o lo vuelve editable (ver IStepView).
+    void setReadOnly(bool readOnly, const QStringList &lockedFields = {});
 
 protected:
     explicit WizardStepPresenter(IStepView &view);

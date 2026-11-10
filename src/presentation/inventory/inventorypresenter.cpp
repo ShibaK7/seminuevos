@@ -57,6 +57,16 @@ void InventoryPresenter::scheduleReload()
 
 void InventoryPresenter::vehicleRegistered(int folio)
 {
+    reloadShowing(folio);
+}
+
+void InventoryPresenter::vehicleUpdated(int folio)
+{
+    reloadShowing(folio);
+}
+
+void InventoryPresenter::reloadShowing(int folio)
+{
     m_scrollToFolio = folio;
     reload();
 }

@@ -31,6 +31,11 @@ public:
     void attach(const QString &path);
     // La solicitud de CFDI se abrió bien.
     void markCfdiRequestGenerated();
+    // Parte de una compra ya guardada (el expediente), olvidando lo anterior:
+    // la factura guardada es la adjunta. En autofactura con factura, la
+    // solicitud cuenta como generada: sin ella no se habría podido subir. Sin
+    // factura no hay cómo saberlo, así que se vuelve a pedir antes de subir.
+    void restore(const QString &path, bool autofactura);
 
     // La factura que cuenta como adjunta; vacía si no hay o si está apartada.
     QString attachedPath() const;
@@ -39,6 +44,9 @@ public:
 
     bool canUpload() const;
     bool showsCfdiButton() const;
+    // Si hay una factura adjunta que abrir. La apartada no cuenta: no es la
+    // que se guardaría.
+    bool canView() const;
     QString label() const;
     QString labelToolTip() const;
     QString uploadToolTip() const;

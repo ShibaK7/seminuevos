@@ -54,7 +54,7 @@ seminuevos_layer(seminuevos_presentation
 
 seminuevos_layer(seminuevos_views
     FILES ${SEMINUEVOS_FRONT_VIEWS}
-    DEPENDS seminuevos_presentation
+    DEPENDS seminuevos_presentation seminuevos_contract
     QT Widgets
     SOURCE_HEADERS
 )
@@ -108,13 +108,13 @@ target_include_directories(desktop-win-car-dealership PRIVATE
 qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 
 target_link_libraries(desktop-win-car-dealership PRIVATE
+    seminuevos_contract
     seminuevos_views
     seminuevos_domain
     seminuevos_application
     seminuevos_presentation
     seminuevos_persistence
     seminuevos_storage
-    seminuevos_contract
     seminuevos_security
     Qt6::Widgets
     Qt6::Sql

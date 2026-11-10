@@ -60,6 +60,12 @@ bool WizardNavigator::isAttempted(int step) const
     return contains(step) && m_steps.at(step).attempted;
 }
 
+void WizardNavigator::resetAttempts()
+{
+    for (StepState &state : m_steps)
+        state.attempted = false;
+}
+
 bool WizardNavigator::canEnter(int target) const
 {
     if (!contains(target))

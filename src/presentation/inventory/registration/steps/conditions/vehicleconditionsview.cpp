@@ -95,6 +95,39 @@ void VehicleConditionsView::showChecklistMessage(const QString &message)
     ui->checklistMessageLabel->setVisible(true);
 }
 
+void VehicleConditionsView::showConditions(const application::VehicleConditionsDto &conditions)
+{
+    formsupport::selectOption(ui->fuelTypeCombo, conditions.fuelType);
+    formsupport::selectText(ui->cylindersCombo, conditions.cylinders
+                                                    ? QString::number(*conditions.cylinders)
+                                                    : QString());
+    formsupport::selectEnum(ui->transmissionCombo, conditions.transmission);
+    formsupport::selectText(ui->interiorMaterialCombo, conditions.interiorMaterial);
+    formsupport::selectEnum(ui->windowRegulatorsCombo, conditions.windowRegulators);
+    formsupport::selectEnum(ui->airConditioningCombo, conditions.airConditioning);
+
+    m_shownInspection = conditions.inspection;
+    applyShownInspection();
+}
+
+void VehicleConditionsView::applyShownInspection()
+{
+    if (!m_shownInspection)
+        return;
+    // Una fila sin renglón guardado es un elemento que la unidad no trae (o
+    // que se agregó al catálogo después de guardarla): va desmarcada.
+    for (ConditionChecklistRow *row : std::as_const(m_checklistRows)) {
+        std::optional<application::InspectionEntryDto> entry;
+        for (const application::InspectionEntryDto &stored : std::as_const(*m_shownInspection)) {
+            if (stored.elementId == row->elementId()) {
+                entry = stored;
+                break;
+            }
+        }
+        row->showEntry(entry);
+    }
+}
+
 void VehicleConditionsView::markAllInGroup(const QString &category, bool checked)
 {
     bool allChecked = true;
@@ -137,8 +170,48 @@ bool VehicleConditionsView::focusField(const QString &field)
     return formsupport::focusField(this, field);
 }
 
+void VehicleConditionsView::setReadOnly(bool readOnly, const QStringList &lockedFields)
+{
+    m_readOnly = readOnly;
+    formsupport::setReadOnly(ui->specsCard, readOnly, lockedFields);
+    for (ConditionChecklistRow *row : std::as_const(m_checklistRows))
+        row->setReadOnly(readOnly);
+    for (QWidget *button : std::as_const(m_markAllButtons))
+        button->setVisible(!readOnly);
+}
+
+void VehicleConditionsView::clearChecklist()
+{
+    // Se borran en el acto, no con deleteLater(): esto nunca corre dentro de
+    // una señal de las filas, y así watchEdits() no vuelve a conectar las
+    // viejas.
+    while (QLayoutItem *item = ui->checklistLayout->takeAt(0)) {
+        if (QLayout *header = item->layout()) {
+            while (QLayoutItem *child = header->takeAt(0)) {
+                delete child->widget();
+                delete child;
+            }
+            // item y header son el mismo objeto: un layout agregado con
+            // addLayout() es su propio QLayoutItem.
+            delete header;
+        } else {
+            delete item->widget();
+            delete item;
+        }
+    }
+    m_checklistRows.clear();
+    m_markAllButtons.clear();
+}
+
 void VehicleConditionsView::setChecklist(const QList<application::ChecklistItemDto> &items)
 {
+    // Si ya había un checklist (los catálogos se volvieron a pedir), se
+    // reemplaza: sumar filas repetiría renglones en la inspección.
+    clearChecklist();
+    // Con el catálogo ya aquí, un aviso de que no estaba disponible (de una
+    // lectura anterior que falló) ya no es cierto.
+    ui->checklistMessageLabel->setVisible(false);
+
     const ConditionChecklistRow::ColumnWidths columns =
         ConditionChecklistRow::measureColumns(items);
 
@@ -162,6 +235,9 @@ void VehicleConditionsView::setChecklist(const QList<application::ChecklistItemD
             const QString category = currentCategory;
             connect(markAllButton, &QPushButton::clicked, this,
                     [this, category]() { markAllInGroup(category, true); });
+            // En consulta no hay nada que marcar.
+            markAllButton->setVisible(!m_readOnly);
+            m_markAllButtons << markAllButton;
 
             groupHeaderLayout->addWidget(groupLabel);
             groupHeaderLayout->addStretch();
@@ -170,6 +246,9 @@ void VehicleConditionsView::setChecklist(const QList<application::ChecklistItemD
         }
 
         auto *row = new ConditionChecklistRow(item, columns, ui->checklistContent);
+        // Las filas nacen con el modo del paso: el checklist llega con los
+        // catálogos, a veces después de que el paso se puso en solo lectura.
+        row->setReadOnly(m_readOnly);
         ui->checklistLayout->addWidget(row);
         m_checklistRows << row;
     }
@@ -178,6 +257,10 @@ void VehicleConditionsView::setChecklist(const QList<application::ChecklistItemD
     separator->setFrameShape(QFrame::HLine);
     ui->checklistLayout->addWidget(separator);
     ui->checklistLayout->addStretch();
+
+    // Si lo guardado llegó antes que el catálogo, se pinta ahora, antes de
+    // vigilar las filas: pintar no es una edición.
+    applyShownInspection();
 
     // Las filas nacen después del constructor, así que se vigilan aquí.
     formsupport::watchEdits(ui->checklistContent, this, [this] { emit edited(); });

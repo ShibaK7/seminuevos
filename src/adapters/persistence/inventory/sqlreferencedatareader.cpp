@@ -60,6 +60,12 @@ QList<application::CatalogOptionDto> SqlReferenceDataReader::fuelTypes(QString *
     return readOptions(QStringLiteral("SELECT id, name FROM fuel_type_cat ORDER BY name"), error);
 }
 
+QList<application::CatalogOptionDto> SqlReferenceDataReader::maintenanceTypes(QString *error)
+{
+    return readOptions(
+        QStringLiteral("SELECT id, name FROM vehicle_maintenance_cat ORDER BY name"), error);
+}
+
 QList<application::ChecklistItemDto> SqlReferenceDataReader::conditionChecklist(QString *error)
 {
     QList<application::ChecklistItemDto> items;

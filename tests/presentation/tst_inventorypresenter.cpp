@@ -93,6 +93,19 @@ private slots:
         QCOMPARE(m_view.scrolledTo.size(), 1);
     }
 
+    // Lo que se corrige en el expediente se ve en su tarjeta: se relee y se
+    // lleva la lista hasta ella, igual que con una unidad nueva.
+    void updatedVehicleIsReloadedAndScrolledTo()
+    {
+        m_reader.items << item(7);
+        const application::InventoryService service(m_reader, m_files);
+        fakes::InlineTaskRunner runner;
+        presentation::InventoryPresenter presenter(m_view, service, runner);
+        presenter.vehicleUpdated(7);
+        QCOMPARE(m_reader.filters.size(), 1);
+        QCOMPARE(m_view.scrolledTo, QList<int>{7});
+    }
+
     // Si la lectura del registro no trae la unidad (falló), una recarga
     // posterior no debe saltar a ella.
     void pendingScrollIsDroppedWhenTheReadFails()

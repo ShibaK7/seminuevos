@@ -1,6 +1,8 @@
 #include "presentation/inventory/acquisition/acquisitiontermssection.h"
 #include "ui_acquisitiontermssection.h"
 
+#include "presentation/common/forms/formsupport.h"
+
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDoubleSpinBox>
@@ -39,6 +41,11 @@ AcquisitionTermsSection::AcquisitionTermsSection(QWidget *parent)
             &AcquisitionTermsSection::cfdiRequestRequested);
     connect(ui->invoiceUploadButton, &QPushButton::clicked, this,
             &AcquisitionTermsSection::browseInvoiceRequested);
+    // "Ver" solo existe con una factura adjunta; también lo decide el
+    // presenter.
+    ui->invoiceViewButton->setVisible(false);
+    connect(ui->invoiceViewButton, &QPushButton::clicked, this,
+            &AcquisitionTermsSection::viewInvoiceRequested);
 }
 
 AcquisitionTermsSection::~AcquisitionTermsSection()
@@ -55,10 +62,19 @@ void AcquisitionTermsSection::fill(application::VehicleDetailsDto &dto) const
         static_cast<domain::PaymentMethod>(ui->paymentMethodCombo->currentData().toInt());
 }
 
+void AcquisitionTermsSection::showTerms(const application::VehicleDetailsDto &dto)
+{
+    formsupport::showValue(ui->purchasePriceSpin, dto.purchasePrice);
+    formsupport::showValue(ui->salePriceSpin, dto.salePrice);
+    formsupport::selectEnum(ui->paymentTypeCombo, dto.paymentType);
+    formsupport::selectEnum(ui->paymentMethodCombo, dto.paymentMethod);
+}
+
 QList<QWidget *> AcquisitionTermsSection::focusOrder() const
 {
-    return {ui->cfdiRequestButton, ui->invoiceUploadButton, ui->purchasePriceSpin,
-            ui->paymentTypeCombo,  ui->paymentMethodCombo,  ui->salePriceSpin};
+    return {ui->cfdiRequestButton, ui->invoiceUploadButton, ui->invoiceViewButton,
+            ui->purchasePriceSpin, ui->paymentTypeCombo,    ui->paymentMethodCombo,
+            ui->salePriceSpin};
 }
 
 QGridLayout *AcquisitionTermsSection::grid() const
@@ -68,15 +84,30 @@ QGridLayout *AcquisitionTermsSection::grid() const
 
 void AcquisitionTermsSection::showInvoiceAttachment(const presentation::InvoiceAttachmentState &state)
 {
-    // Ocultar el botón por su cuenta no choca con que la sección entera se
+    m_invoiceState = state;
+    ui->invoiceFileLabel->setText(state.fileLabel);
+    ui->invoiceFileLabel->setToolTip(state.fileToolTip);
+    applyInvoiceButtons();
+}
+
+void AcquisitionTermsSection::setReadOnly(bool readOnly)
+{
+    m_readOnly = readOnly;
+    applyInvoiceButtons();
+}
+
+void AcquisitionTermsSection::applyInvoiceButtons()
+{
+    // Ocultar un botón por su cuenta no choca con que la sección entera se
     // oculte en la consignación: un hijo ocultado explícitamente sigue oculto
     // cuando su padre se vuelve a mostrar, así que un mecanismo no deshace al
     // otro.
-    ui->cfdiRequestButton->setVisible(state.cfdiButtonVisible);
-    ui->invoiceUploadButton->setEnabled(state.uploadEnabled);
-    ui->invoiceUploadButton->setToolTip(state.uploadToolTip);
-    ui->invoiceFileLabel->setText(state.fileLabel);
-    ui->invoiceFileLabel->setToolTip(state.fileToolTip);
+    ui->cfdiRequestButton->setVisible(m_invoiceState.cfdiButtonVisible && !m_readOnly);
+    ui->invoiceUploadButton->setVisible(!m_readOnly);
+    ui->invoiceUploadButton->setEnabled(m_invoiceState.uploadEnabled);
+    ui->invoiceUploadButton->setToolTip(m_invoiceState.uploadToolTip);
+    // Abrir no cambia nada: en consulta también se puede.
+    ui->invoiceViewButton->setVisible(m_invoiceState.viewVisible);
 }
 
 QString AcquisitionTermsSection::askInvoiceFile()

@@ -2,6 +2,7 @@
 #define PRESENTATION_INVENTORY_REGISTRATION_IVEHICLEWIZARDVIEW_H
 
 #include "presentation/common/navigation/wizardnavigator.h"
+#include "presentation/inventory/registration/ivehicleformview.h"
 
 #include <QList>
 #include <QString>
@@ -32,19 +33,14 @@ struct StepIndicator
 };
 
 // El marco del asistente: stepper, aviso y botones. Las páginas de cada paso
-// tienen su propia interfaz (IVehicleDetailsView y compañía).
-class IVehicleWizardView
+// tienen su propia interfaz (IVehicleDetailsView y compañía). Lo que comparte
+// con el expediente (el paso que se ve, el aviso, ocupado) viene de
+// IVehicleFormView.
+class IVehicleWizardView : public IVehicleFormView
 {
 public:
-    virtual ~IVehicleWizardView() = default;
-
-    virtual void showStep(int step) = 0;
     virtual void showStepIndicators(const QList<StepIndicator> &indicators) = 0;
-    // El aviso bajo las páginas. Vacío = ocultarlo.
-    virtual void showMessage(const QString &message) = 0;
     virtual void setPrimaryAction(PrimaryAction action) = 0;
-    // Ocupado: stepper, páginas y botones deshabilitados.
-    virtual void setBusy(bool busy) = 0;
     // La unidad ya se guardó: las páginas se quedan deshabilitadas, el botón
     // de cancelar pasa a "Volver al Inventario" y el del contrato se habilita
     // si hay contrato.

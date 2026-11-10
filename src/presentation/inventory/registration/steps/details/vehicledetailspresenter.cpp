@@ -45,6 +45,19 @@ application::VehicleDetailsDto VehicleDetailsPresenter::dto() const
     return details;
 }
 
+void VehicleDetailsPresenter::showStored(int folio, const application::VehicleDetailsDto &details)
+{
+    m_view.showDetails(folio, details);
+    const bool autofactura =
+        details.invoiceType && *details.invoiceType == domain::InvoiceType::Autofactura;
+    m_acquisitionTerms.restoreInvoice(details.invoiceFilePath, autofactura);
+}
+
+void VehicleDetailsPresenter::showMaintenanceCost(double cost)
+{
+    m_view.showMaintenanceCost(cost);
+}
+
 domain::ValidationResult VehicleDetailsPresenter::collectErrors() const
 {
     return m_service.validateDetails(dto(), m_umaDailyValue);

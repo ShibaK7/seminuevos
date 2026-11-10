@@ -51,6 +51,9 @@ public:
 signals:
     // El botón "Agregar Vehículo". Abrir el asistente le toca a la ventana.
     void addVehicleRequested();
+    // El botón "Detalles" de una tarjeta. Abrir el expediente le toca a la
+    // ventana.
+    void vehicleDetailsRequested(int folio);
 
 private:
     // La línea gris bajo las pestañas es lo único de esa fila que no viene del

@@ -118,6 +118,17 @@ QString toDbString(AirConditioning value)
     return QString();
 }
 
+QString toDbString(UserRole value)
+{
+    switch (value) {
+    case UserRole::Admin:
+        return QStringLiteral("Administrador");
+    case UserRole::SalesAgent:
+        return QStringLiteral("Vendedor");
+    }
+    return QString();
+}
+
 // ---------------------------------------------------------------------------
 // Lectura desde la base
 // ---------------------------------------------------------------------------
@@ -168,6 +179,11 @@ std::optional<AirConditioning> airConditioningFromDb(const QString &raw)
     return fromDbString(allAirConditioningModes(), raw);
 }
 
+std::optional<UserRole> userRoleFromDb(const QString &raw)
+{
+    return fromDbString(allUserRoles(), raw);
+}
+
 // ---------------------------------------------------------------------------
 // Etiquetas de interfaz. Coinciden hoy con toDbString() a propósito -- ver el
 // comentario del header sobre por qué son funciones separadas.
@@ -209,6 +225,11 @@ QString displayLabel(WindowRegulators value)
 }
 
 QString displayLabel(AirConditioning value)
+{
+    return toDbString(value);
+}
+
+QString displayLabel(UserRole value)
 {
     return toDbString(value);
 }
@@ -278,6 +299,15 @@ const QList<AirConditioning> &allAirConditioningModes()
     static const QList<AirConditioning> values = {
         AirConditioning::Automatico,
         AirConditioning::Manual,
+    };
+    return values;
+}
+
+const QList<UserRole> &allUserRoles()
+{
+    static const QList<UserRole> values = {
+        UserRole::Admin,
+        UserRole::SalesAgent,
     };
     return values;
 }

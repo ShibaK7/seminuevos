@@ -22,6 +22,7 @@ public:
     // "no existe" de "no se pudo preguntar".
     virtual std::optional<UserRecordDto> findByUsername(const QString &username,
                                                         QString *error) = 0;
+    virtual bool recordSuccessfulLogin(int userId, QString *error) = 0;
 
 protected:
     UserDirectory() = default;

@@ -23,6 +23,14 @@ public:
     // Llena Tipo Vehículo, Subtipo y Marca.
     virtual void setLookups(const application::RegistrationLookupsDto &lookups) = 0;
 
+    // Pinta una unidad ya guardada (el expediente): su folio y lo capturado,
+    // de modo que details() devuelva lo mismo. Va después de setLookups().
+    // La factura adjunta tampoco viene aquí: su fila la pinta el presenter de
+    // Adquisición.
+    virtual void showDetails(int folio, const application::VehicleDetailsDto &details) = 0;
+    // Solo el total de mantenimientos, que crece con el historial.
+    virtual void showMaintenanceCost(double cost) = 0;
+
     // La sección de Adquisición (archivo de factura, precios y pago).
     virtual IAcquisitionTermsView &acquisitionTerms() = 0;
 };

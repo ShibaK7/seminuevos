@@ -7,21 +7,7 @@
 #include "presentation/inventory/registration/steps/files/vehiclefilespresenter.h"
 #include "presentation/common/tasks/taskrunner.h"
 
-#include <utility>
-
 namespace presentation {
-
-namespace {
-
-// Cuánto se espera después de la última edición para revalidar. Lo bastante
-// corto para que la palomita y el aviso sigan al usuario mientras escribe, y
-// lo bastante largo para no revalidar con cada tecla: un mismo cambio además
-// avisa varias veces (un spinbox y el QLineEdit que lleva dentro, por ejemplo).
-constexpr int kRevalidateDelayMs = 150;
-
-constexpr int kStepCount = 3;
-
-} // namespace
 
 VehicleWizardPresenter::VehicleWizardPresenter(IVehicleWizardView &wizard,
                                                IVehicleDetailsView &details,
@@ -30,34 +16,14 @@ VehicleWizardPresenter::VehicleWizardPresenter(IVehicleWizardView &wizard,
                                                const application::VehicleRegistrationService &service,
                                                TaskRunner &runner, bool freeNavigation,
                                                QObject *parent)
-    : QObject(parent)
+    : VehicleFormPresenter(wizard, details, conditions, files, service, freeNavigation, parent)
     , m_wizard(wizard)
     , m_service(service)
     , m_runner(runner)
-    , m_details(std::make_unique<VehicleDetailsPresenter>(details, service))
-    , m_conditions(std::make_unique<VehicleConditionsPresenter>(conditions, service))
-    , m_files(std::make_unique<VehicleFilesPresenter>(files, service))
-    , m_nav(kStepCount, freeNavigation)
 {
-    m_steps = {m_details.get(), m_conditions.get(), m_files.get()};
-
-    m_revalidateTimer.setSingleShot(true);
-    m_revalidateTimer.setInterval(kRevalidateDelayMs);
-    connect(&m_revalidateTimer, &QTimer::timeout, this,
-            &VehicleWizardPresenter::revalidateEditedSteps);
 }
 
 VehicleWizardPresenter::~VehicleWizardPresenter() = default;
-
-VehicleDetailsPresenter &VehicleWizardPresenter::details()
-{
-    return *m_details;
-}
-
-VehicleFilesPresenter &VehicleWizardPresenter::files()
-{
-    return *m_files;
-}
 
 void VehicleWizardPresenter::start()
 {
@@ -78,8 +44,7 @@ void VehicleWizardPresenter::start()
 
 void VehicleWizardPresenter::onLookupsLoaded(const application::RegistrationLookupsDto &lookups)
 {
-    m_details->setLookups(lookups);
-    m_conditions->setLookups(lookups);
+    applyLookups(lookups);
     m_loaded = true;
     setBusy(false);
     if (!lookups.errorMessage.isEmpty()) {
@@ -95,8 +60,7 @@ void VehicleWizardPresenter::onLookupsLoaded(const application::RegistrationLook
     // stepper sepa desde el principio qué pasos están bloqueados. Lo que se
     // haya avisado como editado mientras se llenaban los combos ya quedó
     // cubierto aquí.
-    m_editedSteps.clear();
-    m_revalidateTimer.stop();
+    cancelRevalidation();
     for (int step = 0; step < kStepCount; ++step)
         m_nav.setValid(step, m_steps[step]->validate().isValid());
     refreshStepper();
@@ -136,20 +100,8 @@ void VehicleWizardPresenter::onPrimaryAction()
     // quedan como intentados. Así cualquier paso con datos pendientes se
     // marca en el stepper, aunque la navegación libre haya dejado pasar sin
     // validar.
-    m_nav.markAllAttempted();
-    int firstInvalidStep = -1;
     domain::ValidationResult firstInvalidResult;
-    for (int step = 0; step < kStepCount; ++step) {
-        domain::ValidationResult result = m_steps[step]->validate();
-        m_nav.setValid(step, result.isValid());
-        // Los tres quedaron como intentados, así que cada uno marca sus campos,
-        // también los que no se ven: al regresar a ellos ya dicen qué falta.
-        markStepFields(step, result);
-        if (!result.isValid() && firstInvalidStep < 0) {
-            firstInvalidStep = step;
-            firstInvalidResult = std::move(result);
-        }
-    }
+    const int firstInvalidStep = validateAllSteps(firstInvalidResult);
     if (firstInvalidStep >= 0) {
         showInvalidStep(firstInvalidStep, firstInvalidResult);
         return;
@@ -261,20 +213,6 @@ void VehicleWizardPresenter::onCancel()
     emit closeRequested();
 }
 
-int VehicleWizardPresenter::stepOwning(const domain::ValidationResult &result) const
-{
-    // El primer paso que tenga errores, igual que al avanzar: el usuario
-    // corrige en el orden del asistente, sin depender del orden en que el
-    // dominio haya reportado los errores.
-    for (int step = 0; step < kStepCount; ++step) {
-        for (const domain::ValidationError &error : result.errors()) {
-            if (m_steps[step]->ownsField(error.field))
-                return step;
-        }
-    }
-    return 0;
-}
-
 void VehicleWizardPresenter::advanceTo(int target)
 {
     if (target <= m_nav.current() || target >= m_nav.stepCount())
@@ -314,95 +252,22 @@ void VehicleWizardPresenter::advanceTo(int target)
     m_wizard.showMessage(QString());
 }
 
-void VehicleWizardPresenter::showInvalidStep(int step, const domain::ValidationResult &result)
+bool VehicleWizardPresenter::editCounts() const
+{
+    return m_loaded && !m_registered;
+}
+
+QString VehicleWizardPresenter::invalidStepTitle(int step, bool alreadyVisible) const
 {
     // Si el paso inválido es el que ya se ve, el aviso solo pide revisarlo. Si
-    // no, el asistente lleva al usuario hasta él, y el aviso dice por qué está
+    // no, el asistente llevó al usuario hasta él, y el aviso dice por qué está
     // ahí y no en el paso que pidió.
-    const bool alreadyVisible = (step == m_nav.current());
-    if (!alreadyVisible)
-        m_nav.moveTo(step);
-    showCurrentStep();
-    // Quien llama ya marcó los campos; marcarlos otra vez no cambia nada y
-    // dice qué errores no quedaron a la vista, que son los que lleva el aviso.
-    showValidationErrors(alreadyVisible ? QStringLiteral("Revisa los campos marcados")
-                                        : blockedHint(step),
-                         markStepFields(step, result));
-
-    // Solo aquí se mueve el foco, porque el usuario acaba de pedir avanzar o
-    // guardar; la revalidación en vivo nunca lo toca, ya que a media captura lo
-    // mandaría a teclear en otro campo.
-    m_steps[step]->focusFirstError(result);
-}
-
-domain::ValidationResult VehicleWizardPresenter::markStepFields(int step,
-                                                                const domain::ValidationResult &result)
-{
-    return m_steps[step]->showErrors(result);
-}
-
-void VehicleWizardPresenter::onStepEdited(int step)
-{
-    // Mientras se llenan los catálogos, los combos también avisan cambios; la
-    // validación inicial ya los cubre.
-    if (!m_loaded || m_registered || step < 0 || step >= kStepCount)
-        return;
-    m_editedSteps.insert(step);
-    // start() reinicia la cuenta si ya corría: la revalidación espera a que
-    // el usuario deje de teclear, en vez de correr con cada cambio.
-    m_revalidateTimer.start();
-}
-
-void VehicleWizardPresenter::revalidateEditedSteps()
-{
-    m_revalidateTimer.stop();
-    const QSet<int> editedSteps = std::exchange(m_editedSteps, QSet<int>());
-    for (int step : editedSteps) {
-        const domain::ValidationResult result = m_steps[step]->validate();
-        m_nav.setValid(step, result.isValid());
-
-        // Los errores se muestran solo en un paso ya intentado: antes de eso,
-        // nadie quiere ver en rojo un formulario que apenas está llenando.
-        if (!m_nav.isAttempted(step))
-            continue;
-
-        // Los campos se marcan y se limpian mientras el usuario corrige, pero
-        // el foco se queda donde está.
-        const domain::ValidationResult unshown = markStepFields(step, result);
-
-        // El aviso habla del paso que se ve.
-        if (step == m_nav.current()) {
-            if (result.isValid())
-                m_wizard.showMessage(QString());
-            else
-                showValidationErrors(QStringLiteral("Revisa los campos marcados"), unshown);
-        }
-    }
-    // La palomita y los bloqueos siguen a la validez: un paso que deja de ser
-    // válido pierde la palomita y vuelve a bloquear los siguientes.
-    refreshStepper();
-}
-
-void VehicleWizardPresenter::showValidationErrors(const QString &title,
-                                                  const domain::ValidationResult &unshown)
-{
-    // Cada mensaje ya se ve bajo su campo, así que el aviso no los repite:
-    // solo pide revisar los campos marcados. Lista los que no tienen campo en
-    // pantalla (la UMA, o uno de otro paso), que si no, no se verían en
-    // ningún lado. Todos y no solo el primero: quien captura prefiere ver de
-    // una vez todo lo que le falta.
-    if (unshown.isValid()) {
-        m_wizard.showMessage(title);
-        return;
-    }
-    m_wizard.showMessage(title + QStringLiteral(":\n• ")
-                         + unshown.joinedMessages(QStringLiteral("\n• ")));
+    return alreadyVisible ? QStringLiteral("Revisa los campos marcados") : blockedHint(step);
 }
 
 void VehicleWizardPresenter::showCurrentStep()
 {
-    m_wizard.showStep(m_nav.current());
-    refreshStepper();
+    VehicleFormPresenter::showCurrentStep();
     refreshPrimaryAction();
 }
 

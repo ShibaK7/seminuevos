@@ -18,6 +18,8 @@ struct InventoryFilterDto
     // nullopt = "Todos". Se usa optional y NO un miembro VehicleStatus::Todos:
     // "sin filtro" es la ausencia de una elección, no un estado del dominio.
     std::optional<domain::VehicleStatus> status;
+    // nullopt = las dos ramas. La rejilla siempre elige una (sus pestañas).
+    std::optional<domain::AcquisitionType> acquisitionType;
     QDate addedFrom; // inválida = sin cota inferior
     QDate addedTo;   // inválida = sin cota superior
     // Fusible, no paginación: evita que un inventario grande instancie miles de

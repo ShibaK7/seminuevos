@@ -27,6 +27,8 @@ public:
     void setLookups(const application::RegistrationLookupsDto &lookups);
 
     application::VehicleConditionsDto dto() const;
+    // Pinta lo guardado (el expediente), de modo que dto() devuelva lo mismo.
+    void showStored(const application::VehicleConditionsDto &conditions);
 
 protected:
     domain::ValidationResult collectErrors() const override;

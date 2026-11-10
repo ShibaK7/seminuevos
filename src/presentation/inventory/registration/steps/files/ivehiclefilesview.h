@@ -17,6 +17,9 @@ struct ImagePreview
 {
     QString path;
     QByteArray bytes;
+    // Solo cuenta en showFiles(), que pinta la portada guardada. Al agregar
+    // fotos, la portada la decide la galería (la primera, si no había).
+    bool isPrimary = false;
 };
 
 // Paso 3 del asistente: galería y documentos. La vista junta rutas de origen;
@@ -36,6 +39,13 @@ public:
     virtual void attachDocument(const QString &documentType, const QString &path) = 0;
     // Aviso de los documentos sobre el último intento. Vacío = ocultarlo.
     virtual void showDocumentsMessage(const QString &message) = 0;
+
+    // Pinta lo guardado (el expediente) en lugar de lo que hubiera: las
+    // fotos con su portada y los documentos, con rutas que se puedan abrir.
+    // Empieza de cero, sin casillas sueltas ni avisos de intentos anteriores,
+    // así que files() devuelve justo lo pintado.
+    virtual void showFiles(const QList<ImagePreview> &images,
+                           const QList<domain::VehicleDocument> &documents) = 0;
 };
 
 } // namespace presentation

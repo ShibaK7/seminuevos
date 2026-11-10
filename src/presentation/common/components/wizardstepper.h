@@ -1,6 +1,8 @@
 #ifndef PRESENTATION_COMMON_COMPONENTS_WIZARDSTEPPER_H
 #define PRESENTATION_COMMON_COMPONENTS_WIZARDSTEPPER_H
 
+#include "presentation/common/navigation/wizardnavigator.h"
+
 #include <QList>
 #include <QStringList>
 #include <QWidget>
@@ -59,6 +61,11 @@ public:
     // bloqueado (en los demás estados se ignora y el paso queda sin tooltip).
     // Un índice fuera de rango no hace nada.
     void setStepState(int index, const QString &state, bool complete, const QString &hint);
+    // Lo mismo, a partir del estado que calcula el navegador. Es lo que usan
+    // los marcos del asistente y del expediente, así la traducción a los
+    // nombres del QSS vive en un solo lugar.
+    void setStepVisual(int index, presentation::StepVisual visual, bool complete,
+                       const QString &hint);
     bool isStepCompleted(int index) const;
 
 signals:

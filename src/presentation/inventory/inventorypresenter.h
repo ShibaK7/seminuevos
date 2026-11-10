@@ -41,8 +41,12 @@ public:
 
     // Una unidad nueva: se recarga y, al llegar, se lleva la lista hasta ella.
     void vehicleRegistered(int folio);
+    // Una unidad que cambió desde su expediente (o que ya no existe): lo
+    // mismo, para que su tarjeta muestre lo nuevo.
+    void vehicleUpdated(int folio);
 
 private:
+    void reloadShowing(int folio);
     void onLoaded(int generation, const application::InventoryResultDto &result);
 
     IInventoryView &m_view;

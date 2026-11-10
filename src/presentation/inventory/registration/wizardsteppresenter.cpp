@@ -47,6 +47,11 @@ bool WizardStepPresenter::focusFirstError(const domain::ValidationResult &result
     return false;
 }
 
+void WizardStepPresenter::setReadOnly(bool readOnly, const QStringList &lockedFields)
+{
+    m_view.setReadOnly(readOnly, lockedFields);
+}
+
 domain::ValidationResult WizardStepPresenter::ownErrors(const domain::ValidationResult &result) const
 {
     domain::ValidationResult own;

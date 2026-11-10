@@ -25,14 +25,57 @@ public:
         QString errorMessage;
     };
 
+    // Lo que se esperaba encontrar al corregir una unidad.
+    struct Expected
+    {
+        // La versión de la unidad que se leyó.
+        QString vehicleVersion;
+        // Si el usuario cambió los datos de la contraparte. Si no, la unidad
+        // se queda ligada a la que tiene y esa no se escribe: otro usuario pudo
+        // corregirla mientras tanto desde otra operación de la misma persona.
+        bool counterpartyEdited = false;
+        // La versión de la contraparte que se leyó. Corregirla en su lugar
+        // (misma identificación) solo procede si sigue siendo esa.
+        QString counterpartyVersion;
+    };
+
+    struct UpdateOutcome
+    {
+        bool ok = false;
+        // El folio ya no existe.
+        bool notFound = false;
+        // Su versión, o la de su contraparte, ya no es la que se leyó: otro
+        // usuario la cambió.
+        bool conflict = false;
+        // El VIN ya es de otra unidad.
+        bool duplicateSerialNumber = false;
+        // Falló el COMMIT: no se sabe si quedó guardado, así que quien llama
+        // no debe borrar ningún archivo (más vale uno huérfano que una
+        // referencia rota).
+        bool commitFailed = false;
+        // La identificación capturada ya es de otra persona, con otro nombre:
+        // el suyo. No se liga sin que el usuario lo revise.
+        QString takenNationalIdOwner;
+        QString errorMessage;
+    };
+
     virtual ~VehicleRepository() = default;
 
     // Consulta previa para no copiar archivos de una unidad que la base va a
     // rechazar. Si la consulta falla devuelve false y deja el error en `error`.
     virtual bool serialNumberExists(const QString &serialNumber, QString *error) = 0;
+    // Lo mismo sin contar a la unidad `folio`: al corregirla, su propio VIN no
+    // es un duplicado.
+    virtual bool serialNumberExistsElsewhere(const QString &serialNumber, int folio,
+                                             QString *error) = 0;
 
     // Guarda todo o nada y asigna el folio a la unidad.
     virtual SaveOutcome add(domain::Vehicle &vehicle) = 0;
+
+    // Corrige la unidad ya guardada con el folio de `vehicle`, todo o nada, y
+    // solo si sigue como se leyó (`expected`). Nunca cambia su rama, su estado
+    // ni el costo de mantenimientos: ese lo acumula el historial.
+    virtual UpdateOutcome update(domain::Vehicle &vehicle, const Expected &expected) = 0;
 
 protected:
     VehicleRepository() = default;

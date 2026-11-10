@@ -14,6 +14,9 @@ struct InvoiceAttachmentState
     bool cfdiButtonVisible = false;
     bool uploadEnabled = true;
     QString uploadToolTip; // por qué está bloqueada la subida
+    // Hay una factura adjunta que se puede abrir ("Ver"); también en
+    // consulta.
+    bool viewVisible = false;
 };
 
 // Lo propio de una compra dentro del Paso 1: el archivo de la factura (y la

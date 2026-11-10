@@ -72,6 +72,15 @@ enum class AirConditioning {
     Manual,
 };
 
+// Rol de quien inició sesión (CHECK de users.role). Los nombres son los de
+// las historias de usuario ("Admin/Sales Agent", UserRole::Admin); el texto
+// que guarda la base es el de toDbString(). Qué puede hacer cada rol no se
+// decide aquí, sino en las reglas del dominio que lo consultan.
+enum class UserRole {
+    Admin,
+    SalesAgent,
+};
+
 // --- Serialización hacia PostgreSQL -----------------------------------
 // Devuelven el literal EXACTO que espera el CHECK correspondiente, acentos
 // incluidos. NUNCA envolver estos valores en tr().
@@ -84,6 +93,7 @@ QString toDbString(PaymentMethod value);
 QString toDbString(Transmission value);
 QString toDbString(WindowRegulators value);
 QString toDbString(AirConditioning value);
+QString toDbString(UserRole value);
 
 // --- Lectura desde PostgreSQL -----------------------------------------
 // nullopt = el texto de la base no pertenece al dominio (dato corrupto o
@@ -98,6 +108,7 @@ std::optional<PaymentMethod> paymentMethodFromDb(const QString &raw);
 std::optional<Transmission> transmissionFromDb(const QString &raw);
 std::optional<WindowRegulators> windowRegulatorsFromDb(const QString &raw);
 std::optional<AirConditioning> airConditioningFromDb(const QString &raw);
+std::optional<UserRole> userRoleFromDb(const QString &raw);
 
 // --- Etiquetas para la interfaz ---------------------------------------
 // Hoy coinciden con toDbString(), y esa duplicación es deliberada: separa lo
@@ -112,6 +123,7 @@ QString displayLabel(PaymentMethod value);
 QString displayLabel(Transmission value);
 QString displayLabel(WindowRegulators value);
 QString displayLabel(AirConditioning value);
+QString displayLabel(UserRole value);
 
 // --- Listas para poblar combos ----------------------------------------
 // Una sola fuente de verdad, en vez de literales repetidos en cada vista.
@@ -125,6 +137,7 @@ const QList<PaymentMethod> &allPaymentMethods();
 const QList<Transmission> &allTransmissions();
 const QList<WindowRegulators> &allWindowRegulators();
 const QList<AirConditioning> &allAirConditioningModes();
+const QList<UserRole> &allUserRoles();
 
 // Los tipos de factura válidos para cada rama. Es lo que debe poblar el
 // combo de factura del Paso 1, y tiene que repoblarse al cambiar el tipo de

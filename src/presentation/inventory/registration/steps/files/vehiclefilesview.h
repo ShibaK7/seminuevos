@@ -48,13 +48,20 @@ public:
     void showGalleryMessage(const QString &message) override;
     void attachDocument(const QString &documentType, const QString &path) override;
     void showDocumentsMessage(const QString &message) override;
+    void showFiles(const QList<presentation::ImagePreview> &images,
+                   const QList<domain::VehicleDocument> &documents) override;
     QList<domain::ValidationError>
     showFieldErrors(const QList<domain::ValidationError> &errors) override;
     bool focusField(const QString &field) override;
+    void setReadOnly(bool readOnly, const QStringList &lockedFields) override;
 
 signals:
     void imagesChosen(const QStringList &paths);
     void documentChosen(const QString &documentType, const QString &path);
+    // Cambió lo que se guardaría: fotos agregadas o quitadas, otra portada,
+    // un documento adjunto o quitado, una casilla o el número de póliza.
+    // Pintar lo guardado (showFiles) no lo emite.
+    void edited();
 
 protected:
     // Los tres aceptan un arrastre solo como copia, nunca como Move: la vista
@@ -78,6 +85,12 @@ private:
     // estiramiento de las tarjetas mismas.
     void rebuildGallery();
     void rebuildDocuments();
+    // Las fotos y las filas de documentos se rehacen en cada cambio, y Qt
+    // pone cada widget nuevo al final de la cadena de foco de la ventana,
+    // después de los botones del marco. Esto los vuelve a encadenar en su
+    // orden en pantalla: la galería, sus fotos, "+ Agregar fotografía" y los
+    // documentos.
+    void chainTabOrder();
     // Si ese tipo ya tiene archivo. Por la ruta y no por contains(): capturar
     // el número de póliza del Seguro crea su entrada aunque no tenga archivo.
     bool hasDocumentFile(const QString &type) const;
@@ -103,6 +116,11 @@ private:
     // archivo sale marcada de todos modos: solo pudo subirse con la casilla
     // puesta.
     QSet<QString> m_checkedDocumentTypes;
+
+    // En consulta: sin agregar, quitar, cambiar portada, subir ni reemplazar;
+    // solo "Ver". Lo consultan rebuildGallery() y rebuildDocuments(), así que
+    // vale también para las filas que se rehacen.
+    bool m_readOnly = false;
 
     static const QStringList &documentTypes();
 };
