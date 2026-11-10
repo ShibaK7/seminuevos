@@ -1,5 +1,7 @@
 #include "adapters/contract/pdfmaintenancereceiptgenerator.h"
 
+#include "adapters/contract/numbertowordses.h"
+
 #include <QFile>
 #include <QImage>
 #include <QIODevice>
@@ -64,6 +66,7 @@ QString PdfMaintenanceReceiptGenerator::fillTemplate(
                      .toHtmlEscaped());
     // El "$" ya está en la plantilla, antes de la marca.
     html.replace(QStringLiteral("[Costo]"), locale.toString(maintenance.cost, 'f', 2));
+    html.replace(QStringLiteral("[Costo_Letra]"), NumberToWordsEs::convert(maintenance.cost));
     html.replace(QStringLiteral("[Tipo_Mantenimiento]"), maintenance.typeName.toHtmlEscaped());
     html.replace(QStringLiteral("[Descripción]"),
                  maintenance.description.toHtmlEscaped().replace(QLatin1Char('\n'),
@@ -73,7 +76,7 @@ QString PdfMaintenanceReceiptGenerator::fillTemplate(
     // que alguien lo lee con cuidado. Es preferible no generarlo y decir cuál
     // falta.
     static const QRegularExpression leftover(
-        QStringLiteral("\\[(Fecha|Costo|Tipo_Mantenimiento|Descripción)\\]"));
+        QStringLiteral("\\[(Fecha|Costo|Costo_Letra|Tipo_Mantenimiento|Descripción)\\]"));
     const QRegularExpressionMatch match = leftover.match(html);
     if (match.hasMatch()) {
         *error = QStringLiteral("La plantilla del recibo quedó con el campo '%1' sin llenar, así "
