@@ -21,6 +21,7 @@ application::NewMaintenanceDto captured(const QString &cost = QStringLiteral("15
     dto.date = QDate(2026, 10, 19);
     dto.maintenanceTypeId = 1;
     dto.cost = cost;
+    dto.paymentMethod = domain::PaymentMethod::Efectivo;
     dto.description = QStringLiteral("Cambio de aceite");
     return dto;
 }

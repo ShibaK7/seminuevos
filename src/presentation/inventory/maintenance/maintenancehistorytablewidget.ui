@@ -121,6 +121,11 @@
         </column>
         <column>
          <property name="text">
+          <string>Método de pago</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
           <string>Descripción</string>
          </property>
         </column>

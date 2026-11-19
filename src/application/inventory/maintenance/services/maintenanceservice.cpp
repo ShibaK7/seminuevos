@@ -77,7 +77,8 @@ MaintenanceAddResult MaintenanceService::add(const NewMaintenanceDto &maintenanc
 
     const domain::MaintenanceRecord record(maintenance.vehicleFolio, maintenance.date,
                                            maintenance.maintenanceTypeId.value_or(-1),
-                                           maintenance.cost, maintenance.description);
+                                           maintenance.cost, maintenance.paymentMethod,
+                                           maintenance.description);
     const domain::ValidationResult validation = record.validate();
     if (!validation.isValid()) {
         result.status = Status::Rejected;

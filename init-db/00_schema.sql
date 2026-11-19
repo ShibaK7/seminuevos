@@ -218,7 +218,7 @@ CREATE TABLE vehicle_maintenance (
     maintenance_type_id INTEGER REFERENCES vehicle_maintenance_cat(id),
     cost NUMERIC(12, 2) NOT NULL,
     description TEXT,
-    -- TODO: Actualización para historial de mantenimientos, eliminar una vez dado el vobo de la integración de cambios.
+    payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Efectivo', 'Transferencia')),
     receipt_printed BOOLEAN NOT NULL DEFAULT FALSE
 );
 

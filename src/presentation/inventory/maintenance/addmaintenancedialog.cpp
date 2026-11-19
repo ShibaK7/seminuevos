@@ -19,6 +19,12 @@ AddMaintenanceDialog::AddMaintenanceDialog(
     // Hoy depende del día en que se abre: no cabe en el .ui.
     ui->maintenanceDate->setDate(QDate::currentDate());
     formsupport::fillCombo(ui->maintenanceTypeCombo, maintenanceTypes);
+    // Valores cerrados: salen del dominio. Sin elegir de entrada, como el
+    // tipo: suponer uno lo guardaría sin que nadie lo decidiera.
+    for (domain::PaymentMethod value : domain::allPaymentMethods())
+        ui->paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+    ui->paymentMethodCombo->setPlaceholderText(QStringLiteral("Seleccione una opción..."));
+    ui->paymentMethodCombo->setCurrentIndex(-1);
 
     connect(ui->maintenanceAcceptButton, &QPushButton::clicked, this,
             [this] { emit submitted(maintenance()); });
@@ -37,6 +43,9 @@ application::NewMaintenanceDto AddMaintenanceDialog::maintenance() const
     if (ui->maintenanceTypeCombo->currentIndex() >= 0)
         dto.maintenanceTypeId = ui->maintenanceTypeCombo->currentData().toInt();
     dto.cost = ui->maintenanceCost->text();
+    if (ui->paymentMethodCombo->currentIndex() >= 0)
+        dto.paymentMethod =
+            static_cast<domain::PaymentMethod>(ui->paymentMethodCombo->currentData().toInt());
     dto.description = ui->maintenanceDescription->toPlainText();
     return dto;
 }

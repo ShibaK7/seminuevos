@@ -47,11 +47,14 @@ QString costProblem(const QString &cost)
 } // namespace
 
 MaintenanceRecord::MaintenanceRecord(int vehicleFolio, const QDate &date, int typeId,
-                                     const QString &cost, const QString &description)
+                                     const QString &cost,
+                                     std::optional<PaymentMethod> paymentMethod,
+                                     const QString &description)
     : m_vehicleFolio(vehicleFolio)
     , m_date(date)
     , m_typeId(typeId)
     , m_cost(cost.trimmed())
+    , m_paymentMethod(paymentMethod)
     , m_description(description.trimmed())
 {
 }
@@ -76,6 +79,11 @@ const QString &MaintenanceRecord::cost() const
     return m_cost;
 }
 
+std::optional<PaymentMethod> MaintenanceRecord::paymentMethod() const
+{
+    return m_paymentMethod;
+}
+
 const QString &MaintenanceRecord::description() const
 {
     return m_description;
@@ -97,6 +105,10 @@ ValidationResult MaintenanceRecord::validate() const
     const QString problem = costProblem(m_cost);
     if (!problem.isEmpty())
         result.addError(QStringLiteral("cost"), problem);
+    // payment_method es NOT NULL: no hay un valor por omisión que suponer.
+    if (!m_paymentMethod)
+        result.addError(QStringLiteral("paymentMethod"),
+                        QStringLiteral("Selecciona el método de pago."));
     result.merge(validateDescription(m_description));
     return result;
 }

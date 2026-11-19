@@ -55,7 +55,8 @@ QList<application::MaintenanceItemDto> SqlMaintenanceRepository::listForVehicle(
         // LEFT JOIN: un mantenimiento sin tipo (la columna admite NULL) se
         // sigue viendo.
         query.prepare(QStringLiteral(
-            "SELECT m.id, m.maintenance_date, c.name, m.cost, m.description, m.receipt_printed "
+            "SELECT m.id, m.maintenance_date, c.name, m.cost, m.description, m.receipt_printed, "
+            "m.payment_method "
             "FROM vehicle_maintenance m "
             "LEFT JOIN vehicle_maintenance_cat c ON c.id = m.maintenance_type_id "
             "WHERE m.vehicle_folio = :folio "
@@ -72,6 +73,7 @@ QList<application::MaintenanceItemDto> SqlMaintenanceRepository::listForVehicle(
                 item.cost = query.value(3).toDouble();
                 item.description = query.value(4).toString();
                 item.receiptPrinted = query.value(5).toBool();
+                item.paymentMethod = domain::paymentMethodFromDb(query.value(6).toString());
                 items << item;
             }
         }
@@ -105,13 +107,18 @@ application::MaintenanceRepository::AddOutcome SqlMaintenanceRepository::add(
                 QSqlQuery insert(db);
                 insert.prepare(QStringLiteral(
                     "INSERT INTO vehicle_maintenance "
-                    "(vehicle_folio, maintenance_date, maintenance_type_id, cost, description) "
-                    "VALUES (:folio, :date, :type, CAST(:cost AS NUMERIC(12, 2)), :description) "
+                    "(vehicle_folio, maintenance_date, maintenance_type_id, cost, "
+                    "payment_method, description) "
+                    "VALUES (:folio, :date, :type, CAST(:cost AS NUMERIC(12, 2)), "
+                    ":paymentMethod, :description) "
                     "RETURNING id"));
                 insert.bindValue(QStringLiteral(":folio"), record.vehicleFolio());
                 insert.bindValue(QStringLiteral(":date"), record.date());
                 insert.bindValue(QStringLiteral(":type"), record.typeId());
                 insert.bindValue(QStringLiteral(":cost"), record.cost());
+                // Ya validado: el método de pago siempre viene elegido.
+                insert.bindValue(QStringLiteral(":paymentMethod"),
+                                 domain::toDbString(*record.paymentMethod()));
                 // Sin descripción se guarda NULL, no una cadena vacía.
                 insert.bindValue(QStringLiteral(":description"),
                                  record.description().isEmpty()

@@ -113,6 +113,9 @@ void MaintenanceHistoryTableWidget::showMaintenances(
             cell(QStringLiteral("$%1").arg(locale.toString(item.cost, 'f', 2)));
         cost->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         ui->historyTable->setItem(row, CostColumn, cost);
+        ui->historyTable->setItem(
+            row, PaymentMethodColumn,
+            cell(item.paymentMethod ? domain::displayLabel(*item.paymentMethod) : QString()));
         // La única celda que se edita (con doble clic, ver el .ui).
         QTableWidgetItem *description = cell(item.description);
         description->setFlags(description->flags() | Qt::ItemIsEditable);

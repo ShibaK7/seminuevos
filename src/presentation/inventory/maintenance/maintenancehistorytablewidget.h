@@ -52,6 +52,7 @@ public:
         DateColumn,
         TypeColumn,
         CostColumn,
+        PaymentMethodColumn,
         DescriptionColumn,
         ReceiptColumn,
     };

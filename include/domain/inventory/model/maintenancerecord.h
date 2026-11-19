@@ -1,10 +1,13 @@
 #ifndef DOMAIN_INVENTORY_MODEL_MAINTENANCERECORD_H
 #define DOMAIN_INVENTORY_MODEL_MAINTENANCERECORD_H
 
+#include "domain/common/value_objects/enums.h"
 #include "domain/common/value_objects/validationresult.h"
 
 #include <QDate>
 #include <QString>
+
+#include <optional>
 
 namespace domain {
 
@@ -22,8 +25,9 @@ public:
     static constexpr int kCostDecimals = 2;
 
     // typeId es el id de vehicle_maintenance_cat; -1 si no se eligió.
+    // paymentMethod es nullopt si no se eligió.
     MaintenanceRecord(int vehicleFolio, const QDate &date, int typeId, const QString &cost,
-                      const QString &description);
+                      std::optional<PaymentMethod> paymentMethod, const QString &description);
 
     int vehicleFolio() const;
     const QDate &date() const;
@@ -31,10 +35,13 @@ public:
     // El costo tal como se guarda ("1500.50"), sin espacios alrededor. Solo
     // es un número válido si validate() no reporta error en "cost".
     const QString &cost() const;
+    // Siempre tiene valor si validate() no reporta error en "paymentMethod".
+    std::optional<PaymentMethod> paymentMethod() const;
     // Sin espacios alrededor; solo de espacios cuenta como vacía.
     const QString &description() const;
 
-    // Campos: "maintenanceDate", "maintenanceType", "cost", "description" y
+    // Campos: "maintenanceDate", "maintenanceType", "cost", "paymentMethod",
+    // "description" y
     // "folio" (este último no se captura: falla solo si la unidad no está
     // guardada).
     ValidationResult validate() const;
@@ -48,6 +55,7 @@ private:
     QDate m_date;
     int m_typeId;
     QString m_cost;
+    std::optional<PaymentMethod> m_paymentMethod;
     QString m_description;
 };
 

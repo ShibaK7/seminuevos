@@ -40,8 +40,10 @@ QPushButton *button(QWidget *root, const QString &text)
 // Llena el formulario como lo haría el usuario.
 void fill(AddMaintenanceDialog &dialog, const QString &cost)
 {
-    dialog.findChild<QComboBox *>()->setCurrentIndex(1); // Llantas
+    dialog.findChild<QComboBox *>(QStringLiteral("maintenanceTypeCombo"))->setCurrentIndex(1); // Llantas
     dialog.findChild<QLineEdit *>(QStringLiteral("maintenanceCost"))->setText(cost);
+    QComboBox *payment = dialog.findChild<QComboBox *>(QStringLiteral("paymentMethodCombo"));
+    payment->setCurrentIndex(payment->findText(QStringLiteral("Transferencia")));
     dialog.findChild<QTextEdit *>()->setPlainText(QStringLiteral("Cuatro llantas nuevas"));
 }
 
@@ -53,6 +55,7 @@ application::MaintenanceItemDto row(int id, const QString &type, double cost,
     item.date = QDate(2026, 10, 19);
     item.typeName = type;
     item.cost = cost;
+    item.paymentMethod = domain::PaymentMethod::Efectivo;
     item.description = QStringLiteral("Detalle");
     item.receiptPrinted = receiptPrinted;
     return item;
@@ -76,6 +79,7 @@ private slots:
             labels << label->text();
         for (const QString &expected : {QStringLiteral("Fecha:"),
                                         QStringLiteral("Tipo de Mantenimiento:"),
+                                        QStringLiteral("Método de pago:"),
                                         QStringLiteral("Descripción:")})
             QVERIFY2(labels.contains(expected), qPrintable(expected));
         // Recibo ya no se captura: lo marca "Imprimir" en la tabla.
@@ -92,13 +96,28 @@ private slots:
         AddMaintenanceDialog dialog(types());
 
         QCOMPARE(dialog.findChild<QDateEdit *>()->date(), QDate::currentDate());
-        const QComboBox *combo = dialog.findChild<QComboBox *>();
+        const QComboBox *combo = dialog.findChild<QComboBox *>(QStringLiteral("maintenanceTypeCombo"));
         // Los dos tipos, sin elegir: "Seleccione una opción..." es el texto
         // de ayuda del combo, no un renglón.
         QCOMPARE(combo->count(), 2);
         QCOMPARE(combo->itemText(0), QStringLiteral("Mecánica"));
         QCOMPARE(combo->itemText(1), QStringLiteral("Llantas"));
         QCOMPARE(combo->currentIndex(), -1);
+    }
+
+    void offersThePaymentMethodsTheColumnAccepts()
+    {
+        AddMaintenanceDialog dialog(types());
+        const QComboBox *combo = dialog.findChild<QComboBox *>(QStringLiteral("paymentMethodCombo"));
+        QVERIFY(combo);
+        // Las mismas dos opciones que el CHECK de payment_method, sin elegir.
+        QCOMPARE(combo->count(), 2);
+        QCOMPARE(combo->itemText(0), QStringLiteral("Efectivo"));
+        QCOMPARE(combo->itemText(1), QStringLiteral("Transferencia"));
+        QCOMPARE(combo->currentIndex(), -1);
+        QVERIFY(!dialog.maintenance().paymentMethod);
+        // La clave con que el dominio reporta su error.
+        QCOMPARE(combo->property("field").toString(), QStringLiteral("paymentMethod"));
     }
 
     void acceptHandsOverWhatWasCapturedWithoutClosing()
@@ -116,6 +135,7 @@ private slots:
         QCOMPARE(dto.date, QDate(2026, 10, 1));
         QCOMPARE(dto.maintenanceTypeId, std::optional(5));
         QCOMPARE(dto.cost, QStringLiteral("2500.75"));
+        QCOMPARE(dto.paymentMethod, std::optional(domain::PaymentMethod::Transferencia));
         QCOMPARE(dto.description, QStringLiteral("Cuatro llantas nuevas"));
         // Cerrar lo decide quien guarda.
         QVERIFY(dialog.isVisible());
@@ -182,6 +202,9 @@ private slots:
         QCOMPARE(table->item(0, Column::DateColumn)->text(), QStringLiteral("19/10/2026"));
         QCOMPARE(table->item(0, Column::TypeColumn)->text(), QStringLiteral("Llantas"));
         QCOMPARE(table->item(0, Column::CostColumn)->text(), QStringLiteral("$1,500.50"));
+        QCOMPARE(table->horizontalHeaderItem(Column::PaymentMethodColumn)->text(),
+                 QStringLiteral("Método de pago"));
+        QCOMPARE(table->item(0, Column::PaymentMethodColumn)->text(), QStringLiteral("Efectivo"));
         QCOMPARE(table->item(0, Column::DescriptionColumn)->text(), QStringLiteral("Detalle"));
         QCOMPARE(table->item(0, Column::ReceiptColumn)->checkState(), Qt::Unchecked);
         QCOMPARE(table->item(1, Column::ReceiptColumn)->checkState(), Qt::Checked);
@@ -202,7 +225,7 @@ private slots:
 
         QCOMPARE(table->editTriggers(), QAbstractItemView::DoubleClicked);
         for (int column : {Column::DateColumn, Column::TypeColumn, Column::CostColumn,
-                           Column::ReceiptColumn})
+                           Column::PaymentMethodColumn, Column::ReceiptColumn})
             QVERIFY(!(table->item(0, column)->flags() & Qt::ItemIsEditable));
         QVERIFY(table->item(0, Column::DescriptionColumn)->flags() & Qt::ItemIsEditable);
     }
@@ -296,6 +319,8 @@ private slots:
 
         QCOMPARE(maintenances.added.size(), 1);
         QCOMPARE(maintenances.added.first().vehicleFolio(), 7);
+        QCOMPARE(maintenances.added.first().paymentMethod(),
+                 std::optional(domain::PaymentMethod::Transferencia));
         QCOMPARE(table->rowCount(), 1);
         // Nace sin recibo impreso.
         QCOMPARE(table->item(0, MaintenanceHistoryTableWidget::ReceiptColumn)->checkState(),

@@ -507,8 +507,8 @@ private slots:
         auto *table = history->findChild<QTableWidget *>(QStringLiteral("historyTable"));
         QVERIFY(table);
         const QStringList expected{QStringLiteral("Fecha"), QStringLiteral("Tipo de mantenimiento"),
-                                   QStringLiteral("Costo"), QStringLiteral("Descripción"),
-                                   QStringLiteral("Recibo")};
+                                   QStringLiteral("Costo"), QStringLiteral("Método de pago"),
+                                   QStringLiteral("Descripción"), QStringLiteral("Recibo")};
         QCOMPARE(table->columnCount(), expected.size());
         for (int column = 0; column < expected.size(); ++column)
             QCOMPARE(table->horizontalHeaderItem(column)->text(), expected.at(column));

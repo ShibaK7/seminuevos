@@ -1,5 +1,5 @@
 // Las reglas de un mantenimiento (#46): tipo elegido, fecha válida, un costo
-// que cabe en cost NUMERIC(12, 2) y una descripción.
+// que cabe en cost NUMERIC(12, 2), un método de pago y una descripción.
 
 #include "domain/inventory/model/maintenancerecord.h"
 
@@ -9,7 +9,8 @@ namespace {
 
 domain::MaintenanceRecord withCost(const QString &cost)
 {
-    return {7, QDate(2026, 10, 19), 1, cost, QStringLiteral("Cambio de aceite")};
+    return {7, QDate(2026, 10, 19), 1, cost, domain::PaymentMethod::Efectivo,
+            QStringLiteral("Cambio de aceite")};
 }
 
 } // namespace
@@ -30,13 +31,22 @@ private slots:
     void theTypeMustBeChosen()
     {
         const domain::MaintenanceRecord record(7, QDate(2026, 10, 19), -1, QStringLiteral("10"),
+                                               domain::PaymentMethod::Transferencia,
                                                QStringLiteral("Afinación"));
         QCOMPARE(record.validate().fields(), QStringList{QStringLiteral("maintenanceType")});
+    }
+
+    void thePaymentMethodMustBeChosen()
+    {
+        const domain::MaintenanceRecord record(7, QDate(2026, 10, 19), 1, QStringLiteral("10"),
+                                               std::nullopt, QStringLiteral("Afinación"));
+        QCOMPARE(record.validate().fields(), QStringList{QStringLiteral("paymentMethod")});
     }
 
     void theDateMustBeValid()
     {
         const domain::MaintenanceRecord record(7, QDate(), 1, QStringLiteral("10"),
+                                               domain::PaymentMethod::Transferencia,
                                                QStringLiteral("Afinación"));
         QCOMPARE(record.validate().fields(), QStringList{QStringLiteral("maintenanceDate")});
     }
@@ -51,6 +61,7 @@ private slots:
     {
         QFETCH(QString, description);
         const domain::MaintenanceRecord record(7, QDate(2026, 10, 19), 1, QStringLiteral("10"),
+                                               domain::PaymentMethod::Transferencia,
                                                description);
         QCOMPARE(record.validate().fields(), QStringList{QStringLiteral("description")});
     }

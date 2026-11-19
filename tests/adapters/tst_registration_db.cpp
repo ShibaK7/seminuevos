@@ -1058,6 +1058,7 @@ private slots:
         maintenance.date = QDate(2026, 10, 19);
         maintenance.maintenanceTypeId = types.first().id;
         maintenance.cost = QStringLiteral("1234.56");
+        maintenance.paymentMethod = domain::PaymentMethod::Transferencia;
         maintenance.description = QStringLiteral("Prueba de integración");
         const auto added = service.add(maintenance, domain::UserRole::Admin);
         QVERIFY2(added.status == application::MaintenanceAddResult::Status::Saved,
@@ -1072,6 +1073,9 @@ private slots:
         QCOMPARE(history.items.first().id, added.id);
         QCOMPARE(history.items.first().date, QDate(2026, 10, 19));
         QCOMPARE(history.items.first().typeName, types.first().name);
+        // Ida y vuelta por el CHECK de payment_method.
+        QCOMPARE(history.items.first().paymentMethod,
+                 std::optional(domain::PaymentMethod::Transferencia));
         QCOMPARE(history.items.first().description, QStringLiteral("Prueba de integración"));
         // Nace sin recibo impreso; "Imprimir" lo anota.
         QVERIFY(!history.items.first().receiptPrinted);

@@ -410,6 +410,7 @@ public:
         item.date = record.date();
         item.typeName = QStringLiteral("Tipo %1").arg(record.typeId());
         item.cost = record.cost().toDouble();
+        item.paymentMethod = record.paymentMethod();
         item.description = record.description();
         byFolio[record.vehicleFolio()].prepend(item);
         if (totals.contains(record.vehicleFolio())) {

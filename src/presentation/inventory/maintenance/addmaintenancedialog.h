@@ -15,7 +15,8 @@ namespace Ui {
 QT_END_NAMESPACE
 
 // El formulario modal de "+ Agregar Mantenimiento": fecha (hoy de entrada),
-// tipo (del catálogo vehicle_maintenance_cat), costo y descripción. Su
+// tipo (del catálogo vehicle_maintenance_cat), costo, método de pago y
+// descripción. Su
 // formulario es addmaintenancedialog.ui, en esta misma carpeta.
 //
 // Vista pasiva: Aceptar no cierra ni valida nada, solo entrega lo capturado

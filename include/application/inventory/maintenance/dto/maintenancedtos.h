@@ -2,6 +2,7 @@
 #define APPLICATION_INVENTORY_MAINTENANCE_DTO_MAINTENANCEDTOS_H
 
 #include "application/common/dto/catalogoptiondto.h"
+#include "domain/common/value_objects/enums.h"
 #include "domain/common/value_objects/validationresult.h"
 
 #include <QDate>
@@ -36,6 +37,8 @@ struct MaintenanceItemDto
     QDate date;
     QString typeName;
     double cost = 0.0;
+    // nullopt si la base trae un texto que el dominio no conoce.
+    std::optional<domain::PaymentMethod> paymentMethod;
     QString description;
     // Si ya se imprimió su recibo alguna vez. Solo informa: se puede volver a
     // imprimir.
@@ -62,6 +65,7 @@ struct NewMaintenanceDto
     QDate date;
     std::optional<int> maintenanceTypeId; // sin elegir
     QString cost;
+    std::optional<domain::PaymentMethod> paymentMethod; // sin elegir
     QString description;
 };
 
