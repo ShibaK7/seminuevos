@@ -51,6 +51,10 @@ MainWindow::MainWindow(QWidget *parent)
             &MainWindow::openVehicleRecord, Qt::QueuedConnection);
     connect(ui->commercial_main_view, &CommercialMainView::newSaleRequested,
             this, &MainWindow::openSaleWizard, Qt::QueuedConnection);
+    connect(ui->commercialPage, &SaleWizardView::returnToCommercial, this, [this] {
+        ui->commercialItem->setChecked(true);
+        ui->mainContentStack->setCurrentWidget(ui->commercial_main_view);
+    });
     connect(ui->commercial_main_view, &CommercialMainView::saleDetailsRequested,
             this, &MainWindow::openSaleDetails, Qt::QueuedConnection);
     connect(ui->commercial_main_view, &CommercialMainView::fullSaleDetailsRequested,

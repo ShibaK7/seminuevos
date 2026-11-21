@@ -177,7 +177,6 @@ private slots:
         QCOMPARE(table->item(0, 4)->data(Qt::UserRole).toDouble(), 250000.0);
         QCOMPARE(table->item(0, 5)->data(Qt::UserRole).toDouble(), 200000.0);
         QCOMPARE(table->item(0, 6)->data(Qt::UserRole).toDouble(), 50000.0);
-
         int requestedFolio = -1;
         connect(&view, &CommercialMainView::saleDetailsRequested, &view,
                 [&requestedFolio](int folio) { requestedFolio = folio; });
@@ -204,6 +203,117 @@ private slots:
         QCOMPARE(reader.lastFilter.month, std::optional(3));
         QCOMPARE(reader.lastFilter.year, std::optional(QDate::currentDate().year()));
         QCOMPARE(reader.lastFilter.paymentType, QStringLiteral("Crédito"));
+    }
+
+    void cancellingANewSaleReturnsToCommercialView()
+    {
+        MainWindow window;
+        auto *stack = window.findChild<QStackedWidget *>(QStringLiteral("mainContentStack"));
+        auto *newSaleButton = window.findChild<QPushButton *>(QStringLiteral("newSaleButton"));
+        auto *cancelButton = window.findChild<QPushButton *>(QStringLiteral("cancelButton"));
+        QWidget *saleWizard = window.findChild<QWidget *>(QStringLiteral("commercialPage"));
+        QVERIFY(stack && newSaleButton && cancelButton && saleWizard);
+
+        newSaleButton->click();
+        QTRY_COMPARE(stack->currentWidget(), saleWizard);
+
+        QTimer::singleShot(0, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                auto *dialog = qobject_cast<QMessageBox *>(widget);
+                if (!dialog)
+                    continue;
+                for (QAbstractButton *button : dialog->buttons()) {
+                    if (button->text() == QStringLiteral("Sí")) {
+                        button->click();
+                        return;
+                    }
+                }
+            }
+        });
+        cancelButton->click();
+
+        QCOMPARE(stack->currentWidget(), &window.commercialView());
+    }
+
+    void saleCostsAndFinancingProjectionFollowVehicleType()
+    {
+        SaleDetailsView form;
+        application::SaleVehicleOptionDto acquisition;
+        acquisition.folio = 71;
+        acquisition.acquisitionType = domain::AcquisitionType::Adquisicion;
+        acquisition.salePrice = 200000.0;
+        acquisition.maintenanceCost = 1200.0;
+        form.setVehicleMatches({acquisition});
+
+        auto *vehicleCombo = form.findChild<QComboBox *>(QStringLiteral("vehicleCombo"));
+        auto *ivaCheck = form.findChild<QCheckBox *>(QStringLiteral("ivaCheckBox"));
+        auto *maintenanceCheck = form.findChild<QCheckBox *>(QStringLiteral("maintenanceCheckBox"));
+        auto *iva = form.findChild<QDoubleSpinBox *>(QStringLiteral("ivaSpin"));
+        auto *total = form.findChild<QDoubleSpinBox *>(QStringLiteral("totalSpin"));
+        auto *paymentType = form.findChild<QComboBox *>(QStringLiteral("paymentTypeCombo"));
+        auto *deposit = form.findChild<QDoubleSpinBox *>(QStringLiteral("depositSpin"));
+        auto *financed = form.findChild<QDoubleSpinBox *>(QStringLiteral("financingSpin"));
+        auto *rate = form.findChild<QDoubleSpinBox *>(QStringLiteral("interestRateSpin"));
+        auto *months = form.findChild<QSpinBox *>(QStringLiteral("monthsSpin"));
+        auto *date = form.findChild<QDateEdit *>(QStringLiteral("dateEdit"));
+        auto *depositLabel = form.findChild<QLabel *>(QStringLiteral("depositLabel"));
+        auto *table = form.findChild<QTableView *>(QStringLiteral("paymentsTable"));
+        QVERIFY(vehicleCombo && ivaCheck && maintenanceCheck && iva && total && paymentType
+                && deposit && financed && rate && months && date && depositLabel && table);
+
+        vehicleCombo->setCurrentIndex(0);
+        QVERIFY(QMetaObject::invokeMethod(vehicleCombo, "activated", Qt::DirectConnection,
+                                          Q_ARG(int, 0)));
+        QVERIFY(ivaCheck->isChecked());
+        QVERIFY(maintenanceCheck->isChecked());
+        QCOMPARE(iva->value(), 32000.0);
+        QCOMPARE(total->value(), 233200.0);
+
+        paymentType->setCurrentIndex(
+            paymentType->findData(static_cast<int>(domain::PaymentType::Credito)));
+        QCOMPARE(rate->value(), 3.0);
+        QCOMPARE(deposit->value(), 116600.0);
+        QCOMPARE(depositLabel->text(), QStringLiteral("Enganche (50%):"));
+        deposit->setValue(100000.0);
+        QCOMPARE(depositLabel->text(), QStringLiteral("Enganche (42.88%):"));
+
+        financed->setValue(120000.0);
+        months->setValue(12);
+        date->setDate(QDate(2026, 6, 15));
+        form.findChild<QPushButton *>(QStringLiteral("calculateProjectionButton"))->click();
+        QCOMPARE(table->model()->rowCount(), 12);
+        QCOMPARE(table->model()->columnCount(), 8);
+        const QLocale locale(QLocale::Spanish, QLocale::Mexico);
+        QCOMPARE(table->model()->index(0, 2).data().toString(), locale.toCurrencyString(120000.0));
+        QCOMPARE(table->model()->index(0, 3).data().toString(), locale.toCurrencyString(10000.0));
+        QCOMPARE(table->model()->index(0, 4).data().toString(), locale.toCurrencyString(3600.0));
+        QCOMPARE(table->model()->index(0, 5).data().toString(), locale.toCurrencyString(576.0));
+        QCOMPARE(table->model()->index(0, 6).data().toString(), locale.toCurrencyString(14176.0));
+        QCOMPARE(table->model()->index(0, 7).data().toString(), locale.toCurrencyString(110000.0));
+        QCOMPARE(table->model()->index(1, 4).data().toString(), locale.toCurrencyString(3300.0));
+        QCOMPARE(table->model()->index(1, 5).data().toString(), locale.toCurrencyString(528.0));
+        QCOMPARE(table->model()->index(1, 6).data().toString(), locale.toCurrencyString(13828.0));
+        QCOMPARE(table->model()->index(0, 6).data(Qt::ForegroundRole).value<QBrush>().color(),
+                 QColor(QStringLiteral("#1769aa")));
+        QVERIFY(table->model()->index(0, 6).data(Qt::FontRole).value<QFont>().bold());
+
+        application::SaleVehicleOptionDto consignment = acquisition;
+        consignment.folio = 72;
+        consignment.acquisitionType = domain::AcquisitionType::Consignacion;
+        form.setVehicleMatches({consignment});
+        vehicleCombo->setCurrentIndex(0);
+        QVERIFY(QMetaObject::invokeMethod(vehicleCombo, "activated", Qt::DirectConnection,
+                                          Q_ARG(int, 0)));
+        QVERIFY(!ivaCheck->isChecked());
+        QVERIFY(maintenanceCheck->isChecked());
+        QCOMPARE(iva->value(), 0.0);
+        QCOMPARE(total->value(), 201200.0);
+        financed->setValue(120000.0);
+        form.findChild<QPushButton *>(QStringLiteral("calculateProjectionButton"))->click();
+        QCOMPARE(table->model()->columnCount(), 7);
+        QCOMPARE(table->model()->index(0, 5).data().toString(), locale.toCurrencyString(13600.0));
+        QCOMPARE(table->model()->index(0, 5).data(Qt::ForegroundRole).value<QBrush>().color(),
+                 QColor(QStringLiteral("#1769aa")));
     }
 
     void salesTabFolioRequestsFullSaleDetails()

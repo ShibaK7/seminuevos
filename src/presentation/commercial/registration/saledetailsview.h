@@ -63,6 +63,8 @@ private:
     void resetVehicleSelection();
     void initializeFinancingDefaults();
     void invalidatePaymentProjection();
+    void recalculateCostTotals();
+    void updateDepositLabel();
     void selectVendor(const QString &displayText);
     void applyCostCalculations(double vehiclePrice, bool isFinancing);
     void applyVehicle(const application::SaleVehicleOptionDto &vehicle);

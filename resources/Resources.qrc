@@ -35,6 +35,7 @@
         <file>icons/cancel_white.png</file>
         <file>icons/popup-link-icon.svg</file>
         <file>icons/edit.svg</file>
+        <file>icons/generate.png</file>
     </qresource>
     <qresource prefix="/templates">
         <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>

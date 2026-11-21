@@ -259,7 +259,7 @@ CREATE TABLE sale_financing (
 CREATE TABLE sale_payments (
     id SERIAL PRIMARY KEY,
     sale_folio INTEGER NOT NULL REFERENCES sale_financing(sale_folio) ON DELETE CASCADE,
-    installment_number INTEGER NOT NULL,
+    installment_number INTEGER,
     scheduled_date DATE NOT NULL,                          
     expected_amount NUMERIC(12, 2) NOT NULL,
     paid_date DATE,

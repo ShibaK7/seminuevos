@@ -102,6 +102,8 @@ enum RegistrationDetailsColumn {
     RegistrationGuarantorPostalCode,
     RegistrationGuarantorPhone,
     RegistrationGuarantorEmail,
+    RegistrationVehicleAcquisitionType,
+    RegistrationVehicleMaintenanceCost,
 };
 
 constexpr auto kSalesSelect = R"SQL(
@@ -208,7 +210,9 @@ SELECT s.folio, s.sale_date, s.payment_type, s.payment_method,
        fin.months_term, fin.monthly_payment, fin.final_calculated_price,
        guarantor.id, guarantor.full_name, guarantor.national_id,
        guarantor.street_address, guarantor.suburb, guarantor.locality,
-       guarantor.state, guarantor.postal_code, guarantor.phone, guarantor.email
+    guarantor.state, guarantor.postal_code, guarantor.phone, guarantor.email,
+    CASE WHEN acq.vehicle_folio IS NOT NULL THEN 'Adquisición' ELSE 'Consignación' END,
+    COALESCE(acq.maintenance_cost, csg.maintenance_cost, 0)
   FROM sales s
   JOIN vehicles v ON v.folio = s.vehicle_folio
   JOIN users vendor ON vendor.id = s.vendor_id
@@ -463,6 +467,12 @@ application::CommercialSaleRegistrationDetailsDto SqlCommercial::saleRegistratio
                             saleQuery.value(RegistrationVehiclePlates).toString();
                         result.vehicle.color =
                             saleQuery.value(RegistrationVehicleColor).toString();
+                        const auto acquisitionType = domain::acquisitionTypeFromDb(
+                            saleQuery.value(RegistrationVehicleAcquisitionType).toString());
+                        if (acquisitionType)
+                            result.vehicle.acquisitionType = *acquisitionType;
+                        result.vehicle.maintenanceCost =
+                            saleQuery.value(RegistrationVehicleMaintenanceCost).toDouble();
 
                         result.vendor.displayName =
                             saleQuery.value(RegistrationVendorName).toString();

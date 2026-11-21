@@ -23,6 +23,7 @@ public:
 
 signals:
     void saveSaleRequested();
+    void returnToCommercial();
 
 private slots:
     void onCancelClicked();

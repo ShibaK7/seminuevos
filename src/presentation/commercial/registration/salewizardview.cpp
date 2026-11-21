@@ -60,6 +60,7 @@ void SaleWizardView::onCancelClicked()
         return;
 
     resetToInitialState();
+    emit returnToCommercial();
 }
 
 bool SaleWizardView::confirmDiscard()
@@ -261,4 +262,18 @@ void SaleWizardView::printContract()
     QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath));
     QMessageBox::information(this, QStringLiteral("Contrato"),
                              QStringLiteral("El contrato se generó correctamente."));
+
+    QMessageBox nextAction(this);
+    nextAction.setIcon(QMessageBox::Question);
+    nextAction.setWindowTitle(QStringLiteral("Contrato generado"));
+    nextAction.setText(QStringLiteral("¿Qué deseas hacer ahora?"));
+    QPushButton *returnButton = nextAction.addButton(
+        QStringLiteral("Volver a ventas"), QMessageBox::AcceptRole);
+    nextAction.addButton(QStringLiteral("Iniciar otra venta"), QMessageBox::ActionRole);
+    nextAction.setDefaultButton(returnButton);
+    nextAction.exec();
+
+    resetToInitialState();
+    if (nextAction.clickedButton() == returnButton)
+        emit returnToCommercial();
 }

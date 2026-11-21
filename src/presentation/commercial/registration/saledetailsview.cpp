@@ -61,7 +61,7 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
     ui->financingCard->setVisible(false);
     ui->paymentsCard->setVisible(false);
 
-    for (QDoubleSpinBox *spin : {ui->subtotalSpin, ui->ivaSpin, ui->totalSpin,
+    for (QDoubleSpinBox *spin : {ui->subtotalSpin, ui->ivaSpin, ui->totalSpin, ui->maintenanceSpin,
                                  ui->salePriceSpin, ui->depositSpin, ui->financingSpin,
                                  ui->finalPriceSpin}) {
         spin->setDecimals(2);
@@ -77,17 +77,24 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
     ui->monthsSpin->setMaximum(600);
     ui->interestRateSpin->setDecimals(2);
     ui->interestRateSpin->setRange(0.0, 1000.0);
-    ui->interestRateSpin->setValue(5.0);
+    ui->interestRateSpin->setValue(3.0);
 
     auto *projectionModel = new QStandardItemModel(this);
-    projectionModel->setHorizontalHeaderLabels({QStringLiteral("Pago"),
-                                                 QStringLiteral("Fecha"),
-                                                 QStringLiteral("Cuota"),
-                                                 QStringLiteral("Capital"),
+    projectionModel->setHorizontalHeaderLabels({QStringLiteral("No."),
+                                                 QStringLiteral("Fecha de pago"),
+                                                 QStringLiteral("Saldo insoluto"),
+                                                 QStringLiteral("Amortización"),
                                                  QStringLiteral("Interés"),
+                                                 QStringLiteral("IVA de intereses"),
+                                                 QStringLiteral("Pago mensual"),
                                                  QStringLiteral("Saldo")});
     ui->paymentsTable->setModel(projectionModel);
-    ui->paymentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    ui->paymentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->paymentsTable->horizontalHeader()->setStretchLastSection(true);
+    ui->paymentsTable->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+    ui->paymentsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    ui->paymentsTable->setTextElideMode(Qt::ElideNone);
+    ui->paymentsTable->verticalHeader()->setVisible(false);
     ui->paymentsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     ui->dateEdit->setMaximumDate(QDate::currentDate());
@@ -166,14 +173,24 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
             [this](double deposit) {
                 const QSignalBlocker blocker(ui->financingSpin);
                 ui->financingSpin->setValue(qMax(0.0, ui->salePriceSpin->value() - deposit));
+                updateDepositLabel();
                 invalidatePaymentProjection();
             });
     connect(ui->financingSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
             [this](double financed) {
                 const QSignalBlocker blocker(ui->depositSpin);
                 ui->depositSpin->setValue(qMax(0.0, ui->salePriceSpin->value() - financed));
+                updateDepositLabel();
                 invalidatePaymentProjection();
             });
+    connect(ui->ivaCheckBox, &QCheckBox::toggled, this, [this] {
+        recalculateCostTotals();
+    });
+    connect(ui->maintenanceCheckBox, &QCheckBox::toggled, this, [this] {
+        recalculateCostTotals();
+    });
+    connect(ui->maintenanceSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+            [this] { recalculateCostTotals(); });
     connect(ui->monthsSpin, qOverload<int>(&QSpinBox::valueChanged), this,
             [this] { invalidatePaymentProjection(); });
     connect(ui->interestRateSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
@@ -268,8 +285,13 @@ void SaleDetailsView::initializeFinancingDefaults()
     ui->salePriceSpin->setValue(salePrice);
     ui->depositSpin->setMaximum(salePrice);
     ui->financingSpin->setMaximum(salePrice);
-    ui->depositSpin->setValue(qRound64(salePrice * 20.0) / 100.0);
-    ui->financingSpin->setValue(salePrice - ui->depositSpin->value());
+    {
+        const QSignalBlocker depositBlocker(ui->depositSpin);
+        const QSignalBlocker financingBlocker(ui->financingSpin);
+        ui->depositSpin->setValue(qRound64(salePrice * 50.0) / 100.0);
+        ui->financingSpin->setValue(salePrice - ui->depositSpin->value());
+    }
+    updateDepositLabel();
     ui->monthsSpin->setValue(12);
     ui->finalPriceSpin->setValue(0.0);
     ui->paymentsTable->model()->removeRows(0, ui->paymentsTable->model()->rowCount());
@@ -289,9 +311,24 @@ void SaleDetailsView::calculatePaymentProjection()
 {
     const int months = ui->monthsSpin->value();
     const double principal = ui->financingSpin->value();
-    const double monthlyRate = ui->interestRateSpin->value() / 1200.0;
+    const double monthlyRate = ui->interestRateSpin->value() / 100.0;
     auto *model = qobject_cast<QStandardItemModel *>(ui->paymentsTable->model());
     model->removeRows(0, model->rowCount());
+    const bool includeInterestIva = m_selectedVehicle.acquisitionType
+                                    == domain::AcquisitionType::Adquisicion;
+    QStringList headers{QStringLiteral("No."), QStringLiteral("Fecha de pago"),
+                        QStringLiteral("Saldo insoluto"), QStringLiteral("Amortización"),
+                        QStringLiteral("Interés")};
+    if (includeInterestIva)
+        headers << QStringLiteral("IVA de intereses");
+    headers << QStringLiteral("Pago mensual") << QStringLiteral("Saldo");
+    model->setColumnCount(headers.size());
+    model->setHorizontalHeaderLabels(headers);
+    ui->paymentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->paymentsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    ui->paymentsTable->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+    ui->paymentsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    ui->paymentsTable->setTextElideMode(Qt::ElideNone);
     m_projectionInstallments.clear();
 
     if (months <= 0 || principal <= 0.0) {
@@ -302,35 +339,46 @@ void SaleDetailsView::calculatePaymentProjection()
     }
 
     ui->calculateProjectionButton->setToolTip(QString());
-    const double regularPayment = monthlyRate == 0.0
-        ? principal / months
-        : principal * monthlyRate / (1.0 - qPow(1.0 + monthlyRate, -months));
     double balance = principal;
     double installmentTotal = 0.0;
     const QDate firstDueDate = ui->dateEdit->date().addMonths(1);
     const QLocale locale(QLocale::Spanish, QLocale::Mexico);
 
     for (int month = 1; month <= months; ++month) {
+        const double openingBalance = balance;
         const double interest = qRound64(balance * monthlyRate * 100.0) / 100.0;
         const double capital = month == months
             ? balance
-            : qMin(balance, qRound64((regularPayment - interest) * 100.0) / 100.0);
-        const double payment = qRound64((capital + interest) * 100.0) / 100.0;
+            : qMin(balance, qRound64((principal / months) * 100.0) / 100.0);
+        const double interestIva = includeInterestIva
+            ? qRound64(interest * 0.16 * 100.0) / 100.0
+            : 0.0;
+        const double payment = qRound64((capital + interest + interestIva) * 100.0) / 100.0;
         balance = qMax(0.0, qRound64((balance - capital) * 100.0) / 100.0);
         installmentTotal += payment;
 
-        const QList<QString> values = {
+        QList<QString> values = {
             QString::number(month),
             firstDueDate.addMonths(month - 1).toString(QStringLiteral("dd/MM/yyyy")),
-            locale.toCurrencyString(payment),
+            locale.toCurrencyString(openingBalance),
             locale.toCurrencyString(capital),
-            locale.toCurrencyString(interest),
-            locale.toCurrencyString(balance)
+            locale.toCurrencyString(interest)
         };
+        if (includeInterestIva)
+            values << locale.toCurrencyString(interestIva);
+        values << locale.toCurrencyString(payment) << locale.toCurrencyString(balance);
         QList<QStandardItem *> row;
         for (const QString &value : values)
             row << new QStandardItem(value);
+        const int paymentColumn = includeInterestIva ? 6 : 5;
+        auto *monthlyPaymentItem = row.at(paymentColumn);
+        monthlyPaymentItem->setForeground(QColor(QStringLiteral("#1769aa")));
+        QFont monthlyPaymentFont = monthlyPaymentItem->font();
+        monthlyPaymentFont.setBold(true);
+        monthlyPaymentItem->setFont(monthlyPaymentFont);
         model->appendRow(row);
+
+        ui->paymentsTable->resizeColumnToContents(0);
 
         application::SaleInstallmentDto installment;
         installment.number = month;
@@ -548,15 +596,19 @@ void SaleDetailsView::resetForm()
     ui->subtotalSpin->setValue(0.0);
     ui->ivaSpin->setValue(0.0);
     ui->totalSpin->setValue(0.0);
+    ui->ivaCheckBox->setChecked(false);
+    ui->maintenanceCheckBox->setChecked(false);
+    ui->maintenanceSpin->setValue(0.0);
     ui->salePriceSpin->setValue(0.0);
     ui->depositSpin->setValue(0.0);
     ui->financingSpin->setValue(0.0);
     ui->monthsSpin->setValue(0);
-    ui->interestRateSpin->setValue(5.0);
+    ui->interestRateSpin->setValue(3.0);
     ui->finalPriceSpin->setValue(0.0);
     ui->calculateProjectionButton->setToolTip(QString());
     if (ui->paymentsTable->model())
         ui->paymentsTable->model()->removeRows(0, ui->paymentsTable->model()->rowCount());
+    updateDepositLabel();
 
     emit vendorSearchRequested(QString());
     emit vehicleSearchRequested(QString());
@@ -621,10 +673,15 @@ void SaleDetailsView::showSavedSale(
         ui->paymentMethodCombo->setCurrentIndex(ui->paymentMethodCombo->count() - 1);
     }
 
-    ui->subtotalSpin->setValue(sale.subtotal);
+    ui->subtotalSpin->setValue(details.vehicle.salePrice);
     ui->ivaSpin->setValue(sale.iva);
     ui->totalSpin->setValue(sale.totalAmount);
     ui->salePriceSpin->setValue(sale.totalAmount);
+    ui->maintenanceSpin->setValue(details.vehicle.maintenanceCost);
+    ui->maintenanceCheckBox->setChecked(
+        qAbs(sale.subtotal - details.vehicle.salePrice - details.vehicle.maintenanceCost) < 0.01);
+    ui->ivaCheckBox->setChecked(sale.iva > 0.0);
+    updateDepositLabel();
     ui->observationsTextEdit->setPlainText(sale.observations);
     ui->updateGuarantorRecordCheck->setChecked(false);
     ui->updateGuarantorRecordCheck->hide();
@@ -654,27 +711,53 @@ void SaleDetailsView::showSavedSale(
         }
 
         auto *model = qobject_cast<QStandardItemModel *>(ui->paymentsTable->model());
+        const bool includeInterestIva = details.vehicle.acquisitionType
+                                        == domain::AcquisitionType::Adquisicion;
+        QStringList headers{QStringLiteral("No."), QStringLiteral("Fecha de pago"),
+                            QStringLiteral("Saldo insoluto"), QStringLiteral("Amortización"),
+                            QStringLiteral("Interés")};
+        if (includeInterestIva)
+            headers << QStringLiteral("IVA de intereses");
+        headers << QStringLiteral("Pago mensual") << QStringLiteral("Saldo");
+        model->setColumnCount(headers.size());
+        model->setHorizontalHeaderLabels(headers);
+        ui->paymentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        ui->paymentsTable->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+        ui->paymentsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        ui->paymentsTable->setTextElideMode(Qt::ElideNone);
+        double openingBalance = financing.amountToFinance;
+        const QLocale locale(QLocale::Spanish, QLocale::Mexico);
         for (const application::SaleInstallmentDto &installment : financing.installments) {
-            const QList<QString> values = {
+            QList<QString> values = {
                 QString::number(installment.number),
                 installment.dueDate.toString(QStringLiteral("dd/MM/yyyy")),
-                QLocale(QLocale::Spanish, QLocale::Mexico)
-                    .toCurrencyString(installment.expectedAmount),
-                QLocale(QLocale::Spanish, QLocale::Mexico)
-                    .toCurrencyString(installment.capitalAllocation),
-                QLocale(QLocale::Spanish, QLocale::Mexico)
-                    .toCurrencyString(installment.interestAllocation),
-                QLocale(QLocale::Spanish, QLocale::Mexico)
-                    .toCurrencyString(installment.remainingBalance)
+                locale.toCurrencyString(openingBalance),
+                locale.toCurrencyString(installment.capitalAllocation),
+                locale.toCurrencyString(installment.interestAllocation)
             };
+            if (includeInterestIva) {
+                const double interestIva =
+                    qRound64(installment.interestAllocation * 0.16 * 100.0) / 100.0;
+                values << locale.toCurrencyString(interestIva);
+            }
+            values << locale.toCurrencyString(installment.expectedAmount)
+                   << locale.toCurrencyString(installment.remainingBalance);
             QList<QStandardItem *> row;
             for (const QString &value : values) {
                 auto *item = new QStandardItem(value);
                 item->setEditable(false);
                 row << item;
             }
+            const int paymentColumn = includeInterestIva ? 6 : 5;
+            auto *monthlyPaymentItem = row.at(paymentColumn);
+            monthlyPaymentItem->setForeground(QColor(QStringLiteral("#1769aa")));
+            QFont monthlyPaymentFont = monthlyPaymentItem->font();
+            monthlyPaymentFont.setBold(true);
+            monthlyPaymentItem->setFont(monthlyPaymentFont);
             model->appendRow(row);
+            ui->paymentsTable->resizeColumnToContents(0);
             m_projectionInstallments << installment;
+            openingBalance = installment.remainingBalance;
         }
     } else {
         m_financingInitialized = false;
@@ -730,7 +813,9 @@ application::SaleRegistrationDto SaleDetailsView::registrationForm() const
     sale.vendorId = m_vendorId;
     sale.saleDate = ui->dateEdit->date();
     sale.paymentType = selectedPaymentType();
-    sale.subtotal = ui->subtotalSpin->value();
+    sale.subtotal = ui->subtotalSpin->value()
+                    + (ui->maintenanceCheckBox->isChecked()
+                           ? ui->maintenanceSpin->value() : 0.0);
     sale.iva = ui->ivaSpin->value();
     sale.totalAmount = ui->totalSpin->value();
     sale.observations = ui->observationsTextEdit->toPlainText().trimmed();
@@ -860,34 +945,90 @@ void SaleDetailsView::selectCounterparty(const QString &displayText, bool guaran
 void SaleDetailsView::resetVehicleSelection()
 {
     m_vehicleFolio = -1;
+    m_selectedVehicle = application::SaleVehicleOptionDto();
     m_financingInitialized = false;
+    {
+        const QSignalBlocker ivaBlocker(ui->ivaCheckBox);
+        const QSignalBlocker maintenanceBlocker(ui->maintenanceCheckBox);
+        const QSignalBlocker maintenanceSpinBlocker(ui->maintenanceSpin);
+        ui->ivaCheckBox->setChecked(false);
+        ui->maintenanceCheckBox->setChecked(false);
+        ui->maintenanceSpin->setValue(0.0);
+    }
     for (QDoubleSpinBox *spin : {ui->subtotalSpin, ui->ivaSpin, ui->totalSpin, ui->salePriceSpin,
                                  ui->depositSpin, ui->financingSpin, ui->finalPriceSpin})
         spin->setValue(0.0);
     ui->depositSpin->setMaximum(9999999999.99);
     ui->financingSpin->setMaximum(9999999999.99);
     invalidatePaymentProjection();
+    updateDepositLabel();
 }
 
 void SaleDetailsView::applyCostCalculations(double vehiclePrice, bool isFinancing)
 {
     ui->subtotalSpin->setValue(vehiclePrice);
-
-    const double subtotal = ui->subtotalSpin->value();
-    const double iva = subtotal * 0.16;
-    ui->ivaSpin->setValue(iva);
-    ui->totalSpin->setValue(subtotal + ui->ivaSpin->value());
-    ui->salePriceSpin->setValue(ui->totalSpin->value());
+    recalculateCostTotals();
     if (!isFinancing)
         m_financingInitialized = false;
     if (isFinancing)
         initializeFinancingDefaults();
 }
 
+void SaleDetailsView::recalculateCostTotals()
+{
+    const double vehiclePrice = ui->subtotalSpin->value();
+    const double iva = ui->ivaCheckBox->isChecked() ? vehiclePrice * 0.16 : 0.0;
+    const double maintenance = ui->maintenanceCheckBox->isChecked()
+                                  ? ui->maintenanceSpin->value() : 0.0;
+    ui->ivaSpin->setValue(iva);
+    ui->totalSpin->setValue(vehiclePrice + iva + maintenance);
+    ui->salePriceSpin->setValue(ui->totalSpin->value());
+    ui->depositSpin->setMaximum(ui->totalSpin->value());
+    ui->financingSpin->setMaximum(ui->totalSpin->value());
+
+    const bool refreshFinancing = m_financingInitialized
+                                  && selectedPaymentType() == domain::PaymentType::Credito;
+    if (refreshFinancing) {
+        const QSignalBlocker depositBlocker(ui->depositSpin);
+        const QSignalBlocker financingBlocker(ui->financingSpin);
+        const double halfPrice = qRound64(ui->totalSpin->value() * 50.0) / 100.0;
+        ui->depositSpin->setValue(halfPrice);
+        ui->financingSpin->setValue(ui->totalSpin->value() - halfPrice);
+        updateDepositLabel();
+        invalidatePaymentProjection();
+    } else {
+        updateDepositLabel();
+    }
+}
+
+void SaleDetailsView::updateDepositLabel()
+{
+    const double salePrice = ui->salePriceSpin->value();
+    const double percentage = salePrice > 0.0
+                                  ? ui->depositSpin->value() / salePrice * 100.0
+                                  : 0.0;
+    QString percentText = QString::number(percentage, 'f', 2);
+    while (percentText.contains(QLatin1Char('.')) && percentText.endsWith(QLatin1Char('0')))
+        percentText.chop(1);
+    if (percentText.endsWith(QLatin1Char('.')))
+        percentText.chop(1);
+    ui->depositLabel->setText(QStringLiteral("Enganche (%1%):").arg(percentText));
+}
+
 void SaleDetailsView::applyVehicle(const application::SaleVehicleOptionDto &vehicle)
 {
     m_vehicleFolio = vehicle.folio;
     m_selectedVehicle = vehicle;
+    m_financingInitialized = false;
+    {
+        const QSignalBlocker ivaBlocker(ui->ivaCheckBox);
+        const QSignalBlocker maintenanceBlocker(ui->maintenanceCheckBox);
+        const QSignalBlocker maintenanceSpinBlocker(ui->maintenanceSpin);
+        ui->ivaCheckBox->setChecked(
+            vehicle.acquisitionType == domain::AcquisitionType::Adquisicion);
+        ui->maintenanceCheckBox->setChecked(true);
+        ui->maintenanceSpin->setValue(vehicle.maintenanceCost);
+    }
     ui->vehicleCombo->setCurrentText(QStringLiteral("%1 %2 %3 — Folio %4")
                                         .arg(vehicle.brandName.isEmpty() ? QStringLiteral("Vehículo") : vehicle.brandName)
                                         .arg(vehicle.model)
