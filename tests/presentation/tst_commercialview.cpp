@@ -1,9 +1,12 @@
 #include "application/commercial/services/commercialservice.h"
+#include "adapters/contract/promissorynoteprinter.h"
 #include "presentation/commercial/commercialmainview.h"
 #include "presentation/commercial/commercialpresenter.h"
 #include "presentation/commercial/saledetails/SaleDetails.h"
 #include "presentation/commercial/saledetails/saledetailspresenter.h"
 #include "presentation/commercial/registration/saledetailsview.h"
+#include "presentation/commercial/registration/salepaymentconditions.h"
+#include "presentation/commercial/registration/salewizardview.h"
 #include "presentation/shell/mainwindow.h"
 #include "presentation/common/tasks/taskrunner.h"
 
@@ -12,6 +15,7 @@
 #include <QCheckBox>
 #include <QDateEdit>
 #include <QDoubleSpinBox>
+#include <QFile>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -23,6 +27,7 @@
 #include <QTableView>
 #include <QHeaderView>
 #include <QStackedWidget>
+#include <QTemporaryDir>
 #include <QtTest>
 
 namespace {
@@ -177,7 +182,6 @@ private slots:
         QCOMPARE(table->item(0, 4)->data(Qt::UserRole).toDouble(), 250000.0);
         QCOMPARE(table->item(0, 5)->data(Qt::UserRole).toDouble(), 200000.0);
         QCOMPARE(table->item(0, 6)->data(Qt::UserRole).toDouble(), 50000.0);
-
         int requestedFolio = -1;
         connect(&view, &CommercialMainView::saleDetailsRequested, &view,
                 [&requestedFolio](int folio) { requestedFolio = folio; });
@@ -204,6 +208,224 @@ private slots:
         QCOMPARE(reader.lastFilter.month, std::optional(3));
         QCOMPARE(reader.lastFilter.year, std::optional(QDate::currentDate().year()));
         QCOMPARE(reader.lastFilter.paymentType, QStringLiteral("Crédito"));
+    }
+
+    void cancellingANewSaleReturnsToCommercialView()
+    {
+        MainWindow window;
+        auto *stack = window.findChild<QStackedWidget *>(QStringLiteral("mainContentStack"));
+        auto *newSaleButton = window.findChild<QPushButton *>(QStringLiteral("newSaleButton"));
+        auto *cancelButton = window.findChild<QPushButton *>(QStringLiteral("cancelButton"));
+        QWidget *saleWizard = window.findChild<QWidget *>(QStringLiteral("commercialPage"));
+        QVERIFY(stack && newSaleButton && cancelButton && saleWizard);
+
+        newSaleButton->click();
+        QTRY_COMPARE(stack->currentWidget(), saleWizard);
+
+        QTimer::singleShot(0, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                auto *dialog = qobject_cast<QMessageBox *>(widget);
+                if (!dialog)
+                    continue;
+                for (QAbstractButton *button : dialog->buttons()) {
+                    if (button->text() == QStringLiteral("Sí")) {
+                        button->click();
+                        return;
+                    }
+                }
+            }
+        });
+        cancelButton->click();
+
+        QCOMPARE(stack->currentWidget(), &window.commercialView());
+    }
+
+    void saleCostsAndFinancingProjectionFollowVehicleType()
+    {
+        SaleDetailsView form;
+        application::SaleVehicleOptionDto acquisition;
+        acquisition.folio = 71;
+        acquisition.acquisitionType = domain::AcquisitionType::Adquisicion;
+        acquisition.salePrice = 200000.0;
+        acquisition.maintenanceCost = 1200.0;
+        form.setVehicleMatches({acquisition});
+
+        auto *vehicleCombo = form.findChild<QComboBox *>(QStringLiteral("vehicleCombo"));
+        auto *ivaCheck = form.findChild<QCheckBox *>(QStringLiteral("ivaCheckBox"));
+        auto *maintenanceCheck = form.findChild<QCheckBox *>(QStringLiteral("maintenanceCheckBox"));
+        auto *iva = form.findChild<QDoubleSpinBox *>(QStringLiteral("ivaSpin"));
+        auto *subtotal = form.findChild<QDoubleSpinBox *>(QStringLiteral("subtotalSpin"));
+        auto *total = form.findChild<QDoubleSpinBox *>(QStringLiteral("totalSpin"));
+        auto *paymentType = form.findChild<QComboBox *>(QStringLiteral("paymentTypeCombo"));
+        auto *deposit = form.findChild<QDoubleSpinBox *>(QStringLiteral("depositSpin"));
+        auto *financed = form.findChild<QDoubleSpinBox *>(QStringLiteral("financingSpin"));
+        auto *rate = form.findChild<QDoubleSpinBox *>(QStringLiteral("interestRateSpin"));
+        auto *months = form.findChild<QSpinBox *>(QStringLiteral("monthsSpin"));
+        auto *date = form.findChild<QDateEdit *>(QStringLiteral("dateEdit"));
+        auto *depositLabel = form.findChild<QLabel *>(QStringLiteral("depositLabel"));
+        auto *table = form.findChild<QTableView *>(QStringLiteral("paymentsTable"));
+        auto *printNotesButton = form.findChild<QPushButton *>(QStringLiteral("printButton"));
+        QVERIFY(vehicleCombo && ivaCheck && maintenanceCheck && iva && subtotal && total && paymentType
+            && deposit && financed && rate && months && date && depositLabel && table
+            && printNotesButton);
+        QVERIFY(date->calendarPopup());
+
+        vehicleCombo->setCurrentIndex(0);
+        QVERIFY(QMetaObject::invokeMethod(vehicleCombo, "activated", Qt::DirectConnection,
+                                          Q_ARG(int, 0)));
+        QVERIFY(ivaCheck->isChecked());
+        QVERIFY(maintenanceCheck->isChecked());
+        QCOMPARE(iva->value(), 32000.0);
+        QCOMPARE(total->value(), 233200.0);
+        QVERIFY(!subtotal->isReadOnly());
+        subtotal->setValue(210000.0);
+        QCOMPARE(iva->value(), 33600.0);
+        QCOMPARE(total->value(), 244800.0);
+        subtotal->setValue(200000.0);
+
+        paymentType->setCurrentIndex(
+            paymentType->findData(static_cast<int>(domain::PaymentType::Credito)));
+        QVERIFY(!printNotesButton->isHidden());
+        QVERIFY(!printNotesButton->isEnabled());
+        QCOMPARE(rate->value(), 3.0);
+        QCOMPARE(deposit->value(), 116600.0);
+        QCOMPARE(depositLabel->text(), QStringLiteral("Enganche (50%):"));
+        deposit->setValue(100000.0);
+        QCOMPARE(depositLabel->text(), QStringLiteral("Enganche (42.88%):"));
+
+        financed->setValue(120000.0);
+        months->setValue(12);
+        date->setDate(QDate(2026, 6, 15));
+        form.findChild<QPushButton *>(QStringLiteral("calculateProjectionButton"))->click();
+        QVERIFY(printNotesButton->isEnabled());
+        QCOMPARE(table->model()->rowCount(), 12);
+        QCOMPARE(table->model()->columnCount(), 8);
+        const QLocale locale(QLocale::Spanish, QLocale::Mexico);
+        QCOMPARE(table->model()->index(0, 2).data().toString(), locale.toCurrencyString(120000.0));
+        QCOMPARE(table->model()->index(0, 3).data().toString(), locale.toCurrencyString(10000.0));
+        QCOMPARE(table->model()->index(0, 4).data().toString(), locale.toCurrencyString(3600.0));
+        QCOMPARE(table->model()->index(0, 5).data().toString(), locale.toCurrencyString(576.0));
+        QCOMPARE(table->model()->index(0, 6).data().toString(), locale.toCurrencyString(14176.0));
+        QCOMPARE(table->model()->index(0, 7).data().toString(), locale.toCurrencyString(110000.0));
+        QCOMPARE(table->model()->index(1, 4).data().toString(), locale.toCurrencyString(3300.0));
+        QCOMPARE(table->model()->index(1, 5).data().toString(), locale.toCurrencyString(528.0));
+        QCOMPARE(table->model()->index(1, 6).data().toString(), locale.toCurrencyString(13828.0));
+        QCOMPARE(table->model()->index(0, 6).data(Qt::ForegroundRole).value<QBrush>().color(),
+                 QColor(QStringLiteral("#1769aa")));
+        QVERIFY(table->model()->index(0, 6).data(Qt::FontRole).value<QFont>().bold());
+
+        application::SaleVehicleOptionDto consignment = acquisition;
+        consignment.folio = 72;
+        consignment.acquisitionType = domain::AcquisitionType::Consignacion;
+        form.setVehicleMatches({consignment});
+        vehicleCombo->setCurrentIndex(0);
+        QVERIFY(QMetaObject::invokeMethod(vehicleCombo, "activated", Qt::DirectConnection,
+                                          Q_ARG(int, 0)));
+        QVERIFY(!ivaCheck->isChecked());
+        QVERIFY(maintenanceCheck->isChecked());
+        QCOMPARE(iva->value(), 0.0);
+        QCOMPARE(total->value(), 201200.0);
+        financed->setValue(120000.0);
+        form.findChild<QPushButton *>(QStringLiteral("calculateProjectionButton"))->click();
+        QCOMPARE(table->model()->columnCount(), 7);
+        QCOMPARE(table->model()->index(0, 5).data().toString(), locale.toCurrencyString(13600.0));
+        QCOMPARE(table->model()->index(0, 5).data(Qt::ForegroundRole).value<QBrush>().color(),
+                 QColor(QStringLiteral("#1769aa")));
+        QVERIFY(printNotesButton->isEnabled());
+    }
+
+    void promissoryNoteDocumentContainsOneCompletedNotePerProjection()
+    {
+        application::SaleRegistrationDto sale;
+        sale.saleDate = QDate(2026, 11, 23);
+        sale.buyer.fullName = QStringLiteral("María Pérez");
+        sale.buyer.streetAddress = QStringLiteral("Calle Norte 12");
+        sale.buyer.suburb = QStringLiteral("Centro");
+        sale.buyer.locality = QStringLiteral("Martínez de la Torre");
+        sale.buyer.state = QStringLiteral("Veracruz");
+        sale.buyer.postalCode = QStringLiteral("93600");
+        sale.buyer.phone = QStringLiteral("2321234567");
+
+        application::SaleFinancingDto financing;
+        financing.monthsTerm = 2;
+        application::SaleBuyerDto guarantor;
+        guarantor.fullName = QStringLiteral("Juan Aval");
+        guarantor.streetAddress = QStringLiteral("Av. Central 45");
+        guarantor.suburb = QStringLiteral("Reforma");
+        guarantor.locality = QStringLiteral("Martínez de la Torre");
+        guarantor.state = QStringLiteral("Veracruz");
+        guarantor.postalCode = QStringLiteral("93600");
+        guarantor.phone = QStringLiteral("2327654321");
+        financing.guarantor = guarantor;
+
+        application::SaleInstallmentDto first;
+        first.number = 1;
+        first.dueDate = QDate(2026, 12, 23);
+        first.expectedAmount = 13125.0;
+        financing.installments << first;
+        application::SaleInstallmentDto second;
+        second.number = 2;
+        second.dueDate = QDate(2027, 1, 23);
+        second.expectedAmount = 13125.0;
+        financing.installments << second;
+        sale.financing = financing;
+
+        QString error;
+        const QString html = PromissoryNotePrinter::renderHtml(sale, &error);
+
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        QVERIFY(!html.isEmpty());
+        QCOMPARE(html.count(QStringLiteral("PAGARÉ")), 4); // note + aval heading per page
+        QVERIFY(html.contains(QStringLiteral("1/2")));
+        QVERIFY(html.contains(QStringLiteral("2/2")));
+        QVERIFY(html.contains(QStringLiteral("$13,125.00")));
+        QVERIFY(html.contains(QStringLiteral("TRECE MIL CIENTO VEINTICINCO PESOS 00/100 M.N.")));
+        QVERIFY(html.contains(QStringLiteral("23/12/2026")));
+        QVERIFY(html.contains(QStringLiteral("23/01/2027")));
+        QVERIFY(html.contains(QStringLiteral("María Pérez")));
+        QVERIFY(html.contains(QStringLiteral("Calle Norte 12, Centro")));
+        QVERIFY(html.contains(QStringLiteral("Juan Aval")));
+        QVERIFY(html.contains(QStringLiteral("2327654321")));
+        QVERIFY(!html.contains(QStringLiteral("{{")));
+
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        const QString pdfPath = tempDir.filePath(QStringLiteral("pagares.pdf"));
+        const auto generated = PromissoryNotePrinter().generatePdf(sale, pdfPath);
+        QVERIFY2(generated.ok, qPrintable(generated.errorMessage));
+        QFile pdf(pdfPath);
+        QVERIFY(pdf.open(QIODevice::ReadOnly));
+        QCOMPARE(pdf.read(4), QByteArray("%PDF"));
+    }
+
+    void creditContractPaymentConditionsSpellOutDeposit()
+    {
+        application::SaleRegistrationDto sale;
+        sale.paymentType = domain::PaymentType::Credito;
+        application::SaleFinancingDto financing;
+        financing.downPayment = 200000.0;
+        financing.amountToFinance = 300000.0;
+        financing.monthsTerm = 24;
+        financing.interestRatePercent = 3.0;
+        sale.financing = financing;
+
+        QCOMPARE(presentation::salePaymentConditions(sale),
+                 QStringLiteral("ENGANCHE POR $200,000.00 (DOSCIENTOS MIL PESOS 00/100 M.N.) "
+                                "Y EL RESTO A 24 MESES CON UNA TASA DE INTERÉS DEL 3% "
+                                "SOBRE SALDOS INSOLUTOS."));
+    }
+
+    void cashContractPaymentConditionsUseSelectedMethod()
+    {
+        application::SaleRegistrationDto sale;
+        sale.paymentType = domain::PaymentType::Contado;
+        sale.paymentMethod = domain::PaymentMethod::Efectivo;
+        QCOMPARE(presentation::salePaymentConditions(sale),
+                 QStringLiteral("PAGO DE CONTADO (EFECTIVO) EN UNA SOLA EXHIBICIÓN."));
+
+        sale.paymentMethod = domain::PaymentMethod::Transferencia;
+        QCOMPARE(presentation::salePaymentConditions(sale),
+                 QStringLiteral("PAGO DE CONTADO (TRANSFERENCIA) EN UNA SOLA EXHIBICIÓN."));
     }
 
     void salesTabFolioRequestsFullSaleDetails()
@@ -452,6 +674,15 @@ private slots:
         auto *form = fullDetailsPage->findChild<SaleDetailsView *>(
             QStringLiteral("fullSaleDetailsView"));
         QVERIFY(form);
+        auto *goBackButton = fullDetailsPage->findChild<QPushButton *>(
+            QStringLiteral("goBackButton"));
+        QVERIFY(goBackButton && !goBackButton->isHidden());
+        QVERIFY(fullDetailsPage->findChild<QPushButton *>(QStringLiteral("cancelButton"))->isHidden());
+        QVERIFY(fullDetailsPage->findChild<QPushButton *>(QStringLiteral("saveButton"))->isHidden());
+        auto *reprintButton = fullDetailsPage->findChild<QPushButton *>(
+            QStringLiteral("printContractButton"));
+        QVERIFY(reprintButton && !reprintButton->isHidden() && reprintButton->isEnabled());
+        QCOMPARE(reprintButton->text(), QStringLiteral("Reimprimir contrato"));
         QCOMPARE(form->findChild<QLineEdit *>(QStringLiteral("folioEdit"))->text(),
                  QStringLiteral("456"));
         QCOMPARE(form->findChild<QLineEdit *>(QStringLiteral("buyerEdit"))->text(),
@@ -471,19 +702,13 @@ private slots:
         QVERIFY(form->findChild<QPushButton *>(
                      QStringLiteral("calculateProjectionButton"))->isHidden());
 
-        auto *backButton = fullDetailsPage->findChild<QPushButton *>(
-            QStringLiteral("backToSaleDetailsButton"));
-        QVERIFY(backButton);
-        QCOMPARE(backButton->text(), QString());
-        QVERIFY(!backButton->icon().isNull());
-        QCOMPARE(backButton->minimumSize(), QSize(44, 40));
-        backButton->click();
+        goBackButton->click();
         QTRY_COMPARE(stack->currentWidget(),
                      static_cast<QWidget *>(&window.commercialView()));
         QTRY_VERIFY(!stack->findChild<SaleDetails *>());
     }
 
-    void fullDetailsFromSaleSummaryReturnsToSummary()
+    void fullDetailsFromSaleSummaryReturnsToCommercial()
     {
         FakeCommercialReader reader;
         application::CommercialService service(reader, reader);
@@ -504,18 +729,18 @@ private slots:
         QTRY_VERIFY(qobject_cast<SaleDetails *>(stack->currentWidget()));
         auto *summary = qobject_cast<SaleDetails *>(stack->currentWidget());
         QVERIFY(summary);
-        auto *completeButton =
-            summary->findChild<QPushButton *>(QStringLiteral("detailsCompleteButton"));
-        QVERIFY(completeButton);
-        completeButton->click();
+        application::CommercialSaleRegistrationDetailsDto saved;
+        saved.folio = 42;
+        emit summary->fullSaleDetailsLoaded(saved);
 
         QTRY_COMPARE(stack->currentWidget()->objectName(),
                      QStringLiteral("fullSaleDetailsPage"));
-        auto *backButton = stack->currentWidget()->findChild<QPushButton *>(
-            QStringLiteral("backToSaleDetailsButton"));
-        QVERIFY(backButton);
-        backButton->click();
-        QTRY_COMPARE(stack->currentWidget(), static_cast<QWidget *>(summary));
+        auto *goBackButton = stack->currentWidget()->findChild<QPushButton *>(
+            QStringLiteral("goBackButton"));
+        QVERIFY(goBackButton);
+        goBackButton->click();
+        QTRY_COMPARE(stack->currentWidget(), static_cast<QWidget *>(&window.commercialView()));
+        QTRY_VERIFY(!stack->findChild<SaleDetails *>());
     }
 
     void collectionFolioOpensSaleDetailsAndBackReturnsToCommercial()

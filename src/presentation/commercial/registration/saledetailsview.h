@@ -54,6 +54,7 @@ signals:
 private slots:
     void onPaymentTypeChanged();
     void calculatePaymentProjection();
+    void printProjectedPromissoryNotes();
 
 private:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -63,6 +64,8 @@ private:
     void resetVehicleSelection();
     void initializeFinancingDefaults();
     void invalidatePaymentProjection();
+    void recalculateCostTotals();
+    void updateDepositLabel();
     void selectVendor(const QString &displayText);
     void applyCostCalculations(double vehiclePrice, bool isFinancing);
     void applyVehicle(const application::SaleVehicleOptionDto &vehicle);

@@ -13,6 +13,10 @@ application::SaleVehicleOptionDto readVehicleOption(const QSqlQuery &query)
 {
     application::SaleVehicleOptionDto result;
     result.folio = query.value(0).toInt();
+    const auto acquisitionType = domain::acquisitionTypeFromDb(query.value(9).toString());
+    if (acquisitionType)
+        result.acquisitionType = *acquisitionType;
+    result.maintenanceCost = query.value(10).toDouble();
     result.brandName = query.value(1).toString();
     result.model = query.value(2).toString();
     result.yearModel = query.value(3).toInt();
@@ -159,7 +163,9 @@ QList<application::SaleVehicleOptionDto> SqlSaleRepository::searchAvailableVehic
             QString sql = QStringLiteral(
                 "SELECT v.folio, b.name AS brand_name, v.model, v.year_model, "
                 "COALESCE(acq.sale_price, csg.sale_price) AS sale_price, "
-                "v.serial_number, v.motor_number, v.plates, v.color "
+                "v.serial_number, v.motor_number, v.plates, v.color, "
+                "CASE WHEN acq.vehicle_folio IS NOT NULL THEN 'Adquisición' ELSE 'Consignación' END, "
+                "COALESCE(acq.maintenance_cost, csg.maintenance_cost, 0) "
                 "FROM vehicles v "
                 "LEFT JOIN brands_cat b ON b.id = v.brand_id "
                 "LEFT JOIN vehicle_acquisitions acq ON acq.vehicle_folio = v.folio "
@@ -359,7 +365,7 @@ application::SaleRegistrationResultDto SqlSaleRepository::registerSale(
                         "VALUES (:sale_folio, :installment_number, :scheduled_date, :expected_amount, "
                         ":capital_allocation, :interest_allocation, :remaining_balance)"));
                     payment.bindValue(QStringLiteral(":sale_folio"), saleFolio);
-                    payment.bindValue(QStringLiteral(":installment_number"), installment.number);
+                    payment.bindValue(QStringLiteral(":installment_number"), QVariant(QMetaType(QMetaType::Int)));
                     payment.bindValue(QStringLiteral(":scheduled_date"), installment.dueDate);
                     payment.bindValue(QStringLiteral(":expected_amount"), installment.expectedAmount);
                     payment.bindValue(QStringLiteral(":capital_allocation"), installment.capitalAllocation);

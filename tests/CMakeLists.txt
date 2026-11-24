@@ -179,7 +179,7 @@ seminuevos_add_test(tst_inventoryview
 )
 
 seminuevos_add_test(tst_commercialview
-    SOURCES presentation/tst_commercialview.cpp
+    SOURCES presentation/tst_commercialview.cpp "${PROJECT_SOURCE_DIR}/resources/Resources.qrc"
     LIBS seminuevos_views
 )
 

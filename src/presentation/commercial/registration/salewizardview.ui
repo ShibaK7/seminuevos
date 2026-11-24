@@ -74,11 +74,7 @@
      <item>
       <widget class="QPushButton" name="goBackButton">
        <property name="text">
-        <string>&lt;</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>:/icons/cancel_dark.png</normaloff>:/icons/cancel_dark.png</iconset>
+        <string>Volver al Inicio</string>
        </property>
        <property name="iconSize">
         <size>
@@ -87,7 +83,7 @@
         </size>
        </property>
        <property name="class" stdset="0">
-        <string notr="true">cancelButton</string>
+        <string notr="true">secondary</string>
        </property>
       </widget>
      </item>

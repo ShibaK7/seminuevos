@@ -37,6 +37,8 @@ struct SaleVehicleOptionDto
     QString motorNumber;
     QString plates;
     QString color;
+    domain::AcquisitionType acquisitionType = domain::AcquisitionType::Adquisicion;
+    double maintenanceCost = 0.0;
 };
 
 struct SaleVendorOptionDto
