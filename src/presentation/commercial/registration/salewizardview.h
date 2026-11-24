@@ -3,6 +3,10 @@
 
 #include <QWidget>
 
+namespace application {
+struct CommercialSaleRegistrationDetailsDto;
+}
+
 namespace Ui {
 class SaleWizardView;
 }
@@ -18,6 +22,7 @@ public:
     ~SaleWizardView();
 
     SaleDetailsView &detailsView();
+    void showSavedSaleDetails(const application::CommercialSaleRegistrationDetailsDto &details);
     void setSaving(bool saving);
     void showSaveResult(bool success, int saleFolio, const QString &message);
 
@@ -32,6 +37,7 @@ private slots:
 private:
     Ui::SaleWizardView *ui;
     SaleDetailsView *m_detailsView = nullptr;
+    bool m_isSavedSaleView = false;
 
     bool eventFilter(QObject *watched, QEvent *event) override;
     bool confirmDiscard();

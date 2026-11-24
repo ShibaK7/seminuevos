@@ -547,16 +547,17 @@ application::CommercialSaleRegistrationDetailsDto SqlCommercial::saleRegistratio
                                     "SELECT installment_number, scheduled_date, expected_amount, "
                                     "capital_allocation, interest_allocation, remaining_balance "
                                     "FROM sale_payments WHERE sale_folio = :folio "
-                                    "ORDER BY installment_number, id"))) {
+                                    "ORDER BY scheduled_date, id"))) {
                                 failure = installmentsQuery.lastError().text();
                             } else {
                                 installmentsQuery.bindValue(QStringLiteral(":folio"), folio);
                                 if (!installmentsQuery.exec()) {
                                     failure = installmentsQuery.lastError().text();
                                 } else {
+                                    int displayNumber = 1;
                                     while (installmentsQuery.next()) {
                                         application::SaleInstallmentDto installment;
-                                        installment.number = installmentsQuery.value(0).toInt();
+                                        installment.number = displayNumber++;
                                         installment.dueDate = installmentsQuery.value(1).toDate();
                                         installment.expectedAmount =
                                             installmentsQuery.value(2).toDouble();

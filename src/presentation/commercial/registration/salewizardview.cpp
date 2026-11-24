@@ -1,6 +1,8 @@
 #include "salewizardview.h"
 #include "src/presentation/commercial/registration/ui_salewizardview.h"
 #include "presentation/commercial/registration/saledetailsview.h"
+#include "presentation/commercial/registration/salepaymentconditions.h"
+#include "application/commercial/dto/commercialdtos.h"
 
 #include "adapters/contract/pdfcontractgenerator.h"
 
@@ -18,10 +20,11 @@ SaleWizardView::SaleWizardView(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->goBackButton->setVisible(false);
+    ui->goBackButton->setVisible(true);
     ui->printContractButton->setVisible(false);
     connect(ui->saveButton, &QPushButton::clicked, this, &SaleWizardView::saveSaleRequested);
     connect(ui->cancelButton, &QPushButton::clicked, this, &SaleWizardView::onCancelClicked);
+    connect(ui->goBackButton, &QPushButton::clicked, this, &SaleWizardView::returnToCommercial);
     connect(ui->printContractButton, &QPushButton::clicked, this, &SaleWizardView::printContract);
 
     this->setupNewSaleFlow();
@@ -45,6 +48,7 @@ bool SaleWizardView::eventFilter(QObject *watched, QEvent *event){
 
 void SaleWizardView::setupNewSaleFlow()
 {
+    m_isSavedSaleView = false;
     m_detailsView = new SaleDetailsView(this);
     ui->contentScrollArea->setWidget(m_detailsView);
 
@@ -96,6 +100,22 @@ void SaleWizardView::resetToInitialState()
 SaleDetailsView &SaleWizardView::detailsView()
 {
     return *m_detailsView;
+}
+
+void SaleWizardView::showSavedSaleDetails(
+    const application::CommercialSaleRegistrationDetailsDto &details)
+{
+    m_isSavedSaleView = true;
+    m_detailsView->showSavedSale(details);
+    ui->titleLabel->setText(QStringLiteral("Detalles de venta"));
+    ui->errorLabel->clear();
+    ui->goBackButton->setText(QStringLiteral("Volver a ventas"));
+    ui->goBackButton->setVisible(true);
+    ui->cancelButton->setVisible(false);
+    ui->saveButton->setVisible(false);
+    ui->printContractButton->setText(QStringLiteral("Reimprimir contrato"));
+    ui->printContractButton->setVisible(true);
+    ui->printContractButton->setEnabled(true);
 }
 
 void SaleWizardView::setSaving(bool saving)
@@ -176,15 +196,7 @@ void SaleWizardView::printContract()
     }
     const QString buyerAddress = filteredAddressParts.join(QStringLiteral(", "));
 
-    const QString financingText = sale.paymentType == domain::PaymentType::Contado
-                                      ? QStringLiteral("Pago contado con %1")
-                                            .arg(sale.paymentMethod
-                                                     ? domain::displayLabel(*sale.paymentMethod)
-                                                     : QStringLiteral("método no definido"))
-                                      : QStringLiteral("Enganche %1, financiamiento %2 durante %3 meses")
-                                            .arg(locale.toString(sale.financing->downPayment, 'f', 2),
-                                                 locale.toString(sale.financing->amountToFinance, 'f', 2),
-                                                 QString::number(sale.financing->monthsTerm));
+        const QString paymentConditions = presentation::salePaymentConditions(sale);
 
     domain::ContractData contract;
     contract.title = QStringLiteral("CONTRATO DE COMPRA-VENTA");
@@ -237,7 +249,7 @@ void SaleWizardView::printContract()
     placeholders.insert(QStringLiteral("color"), !selectedVehicle.color.trimmed().isEmpty()
                                                       ? selectedVehicle.color.trimmed()
                                                       : QStringLiteral("No disponible"));
-    placeholders.insert(QStringLiteral("condiciones_pago"), financingText);
+    placeholders.insert(QStringLiteral("condiciones_pago"), paymentConditions);
     placeholders.insert(QStringLiteral("fecha"), sale.saleDate.toString(QStringLiteral("dd/MM/yyyy")));
     contract.placeholders = placeholders;
 
@@ -262,6 +274,9 @@ void SaleWizardView::printContract()
     QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath));
     QMessageBox::information(this, QStringLiteral("Contrato"),
                              QStringLiteral("El contrato se generó correctamente."));
+
+    if (m_isSavedSaleView)
+        return;
 
     QMessageBox nextAction(this);
     nextAction.setIcon(QMessageBox::Question);

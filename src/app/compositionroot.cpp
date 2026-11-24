@@ -166,7 +166,8 @@ bool CompositionRoot::start()
     m_saleRepository = std::make_unique<SqlSaleRepository>(pool);
     m_counterpartyLookup =
         std::make_unique<application::CounterpartyLookupService>(*m_counterparties);
-    m_saleService = std::make_unique<application::SaleService>(*m_saleRepository, *m_counterparties);
+    m_saleService = std::make_unique<application::SaleService>(
+        *m_saleRepository, *m_counterparties, m_referenceData.get());
     m_recordReader = std::make_unique<SqlVehicleRecordReader>(pool);
     m_records = std::make_unique<application::VehicleRecordService>(
         *m_recordReader, *m_vehicles, *m_files, *m_referenceData);

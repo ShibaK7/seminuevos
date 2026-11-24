@@ -3,6 +3,7 @@
 
 #include "application/common/ports/counterpartydirectory.h"
 #include "application/commercial/sales/ports/salerepository.h"
+#include "application/inventory/registration/ports/referencedatareader.h"
 #include "domain/common/value_objects/validationresult.h"
 
 namespace application {
@@ -13,7 +14,8 @@ namespace application {
 class SaleService final
 {
 public:
-    SaleService(SaleRepository &sales, CounterpartyDirectory &counterparties);
+    SaleService(SaleRepository &sales, CounterpartyDirectory &counterparties,
+                ReferenceDataReader *referenceData = nullptr);
 
     SaleSearchResultDto searchAvailableVehicles(const QString &text) const;
     SaleVendorSearchResultDto searchVendors(const QString &text) const;
@@ -25,6 +27,7 @@ public:
 private:
     SaleRepository &m_sales;
     CounterpartyDirectory &m_counterparties;
+    ReferenceDataReader *m_referenceData;
 };
 
 } // namespace application

@@ -1,0 +1,81 @@
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { size: A4; margin: 10mm; }
+  body { font-family: Arial, sans-serif; font-size: 9pt; color: #111; }
+  .note-page { border: 1px solid #222; padding: 8mm 6mm 5mm; }
+  .title { display: inline-block; background: #111; color: #fff; font-weight: bold;
+           padding: 5px 16px; margin: -8mm 0 7mm -6mm; font-size: 12pt; }
+  .topline { width: 100%; border-collapse: collapse; margin-bottom: 5mm; }
+  .topline td { padding: 3px 4px; }
+  .number, .good-for { background: #e6e6e6; border: 1px solid #888; text-align: center;
+                       min-width: 34mm; font-size: 11pt; padding: 4px 8px; }
+  .issue-date { text-align: right; padding: 5mm 2mm; }
+  p { margin: 4mm 0; text-align: justify; }
+  .line { border-bottom: 1px solid #6c8fc7; min-height: 6mm; padding: 1mm 2mm; }
+  .center { text-align: center; }
+  .field-caption { font-size: 8pt; text-align: center; margin-top: 1mm; }
+  .amount { font-weight: bold; margin-top: 4mm; }
+  .legal { line-height: 1.28; }
+  .signature-row { width: 100%; border-collapse: collapse; margin-top: 6mm; }
+  .signature-row td { vertical-align: top; width: 50%; padding: 2mm; }
+  .debtor-box { background: #dedede; border: 1px solid #888; padding: 3mm; min-height: 24mm; }
+  .signature-line { border-bottom: 1px solid #333; height: 13mm; margin: 2mm 0 1mm; }
+  .aval-title { text-align: center; font-weight: bold; margin: 7mm 0 4mm; }
+  table.aval { width: 100%; border-collapse: collapse; margin: 0 0 7mm; }
+  table.aval td { border: 1px solid #555; padding: 2mm; height: 5mm; }
+  table.aval td:first-child { width: 22mm; background: #ddd; font-weight: bold; }
+  .aval-sign { width: 48%; margin: 0 auto 6mm; text-align: center; }
+  .aval-sign .signature-line { height: 6mm; }
+</style>
+</head>
+<body>
+<div class="note-page">
+  <div class="title">PAGARÉ</div>
+  <table class="topline"><tr>
+    <td style="text-align:right;width:30%">No.</td>
+    <td class="number">{{installment_number}}</td>
+    <td style="text-align:right">BUENO POR</td>
+    <td class="good-for">{{payment_amount}}</td>
+  </tr></table>
+
+  <div class="issue-date">En Martínez de la Torre, Veracruz, a {{issue_date}}.</div>
+  <p>Debe(mos) y pagaré(mos) incondicionalmente por este Pagaré a la orden de</p>
+  <div class="line">{{creditor}}</div>
+  <div class="field-caption">Nombre de la persona a quien ha de pagarse</div>
+
+  <table class="topline" style="margin:4mm 0 0"><tr>
+    <td class="line">{{payment_place}}</td>
+    <td class="line">{{due_date}}</td>
+  </tr><tr>
+    <td class="field-caption">Lugar del pago</td>
+    <td class="field-caption">Fecha del pago</td>
+  </tr></table>
+
+  <p class="amount">La cantidad de: ({{amount_words}})</p>
+  <p class="legal">Valor recibido a mi (nuestra) entera satisfacción. Este pagaré forma parte de una serie numerada del 1 al {{term}} y todos están sujetos a la condición de que, al no pagarse cualquiera de ellos a su vencimiento, serán exigibles todos los que le sigan en número, además de los ya vencidos, desde la fecha de vencimiento de este documento hasta el día de su liquidación, causará intereses moratorios al tipo del 5% mensual, pagadero en esta ciudad juntamente con el principal.</p>
+
+  <table class="signature-row"><tr>
+    <td><div class="debtor-box"><b>Nombre y datos del deudor</b><br/><b>Nombre:</b> {{debtor_name}}<br/><b>Dirección:</b> {{debtor_address}}<br/><b>Población:</b> {{debtor_population}}<br/><b>Teléfono:</b> {{debtor_phone}}</div></td>
+    <td>Acepto(amos)<div class="signature-line"></div>Firma(s)</td>
+  </tr></table>
+</div>
+
+<div class="note-page aval-page">
+  <div class="title">PAGARÉ</div>
+  <div class="aval-title">Datos personales y firma(s) de (los) aval(es)</div>
+  <table class="aval"><tr><td>Nombre:</td><td>{{guarantor_name}}</td></tr>
+    <tr><td>Dirección:</td><td>{{guarantor_address}}</td></tr>
+    <tr><td>Población:</td><td>{{guarantor_population}}</td></tr>
+    <tr><td>Teléfono:</td><td>{{guarantor_phone}}</td></tr></table>
+  <div class="aval-sign"><div class="signature-line"></div>Firma</div>
+
+  <table class="aval"><tr><td>Nombre:</td><td></td></tr>
+    <tr><td>Dirección:</td><td></td></tr>
+    <tr><td>Población:</td><td></td></tr>
+    <tr><td>Teléfono:</td><td></td></tr></table>
+  <div class="aval-sign"><div class="signature-line"></div>Firma</div>
+</div>
+</body>
+</html>

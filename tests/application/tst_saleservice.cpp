@@ -1,4 +1,5 @@
 #include "application/commercial/sales/services/saleservice.h"
+#include "application/inventory/registration/ports/referencedatareader.h"
 
 #include <QtTest>
 
@@ -70,6 +71,54 @@ public:
     application::CounterpartyDto lastUpdated;
     int updateCalls = 0;
     bool updateSucceeds = true;
+};
+
+class FakeReferenceDataReader final : public application::ReferenceDataReader
+{
+public:
+    QList<application::CatalogOptionDto> vehicleCategories(QString *error) override
+    {
+        clearError(error);
+        return {};
+    }
+    QList<application::CatalogOptionDto> brands(QString *error) override
+    {
+        clearError(error);
+        return {};
+    }
+    QList<application::CatalogOptionDto> fuelTypes(QString *error) override
+    {
+        clearError(error);
+        return {};
+    }
+    QList<application::ChecklistItemDto> conditionChecklist(QString *error) override
+    {
+        clearError(error);
+        return {};
+    }
+    std::optional<double> umaDailyValue(QString *error) override
+    {
+        ++umaReads;
+        if (error)
+            *error = readError;
+        return umaValue;
+    }
+    QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override
+    {
+        clearError(error);
+        return {};
+    }
+
+    std::optional<double> umaValue = 117.31;
+    QString readError;
+    int umaReads = 0;
+
+private:
+    static void clearError(QString *error)
+    {
+        if (error)
+            error->clear();
+    }
 };
 
 application::SaleRegistrationDto validCashSale()
@@ -166,6 +215,80 @@ private slots:
         QCOMPARE(repository.lastSale.iva, sale.iva);
     }
 
+    void cashSaleBelowConfiguredUmaLimitIsAllowed()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.buyer.nationalId = QStringLiteral("BUYER-UMA");
+        sale.paymentMethod = domain::PaymentMethod::Efectivo;
+        sale.totalAmount = 3210.0 * *referenceData.umaValue - 0.01;
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Registered);
+        QCOMPARE(referenceData.umaReads, 1);
+        QCOMPARE(repository.registerCalls, 1);
+    }
+
+    void cashSaleAtConfiguredUmaLimitIsRejected()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.buyer.nationalId = QStringLiteral("BUYER-UMA");
+        sale.paymentMethod = domain::PaymentMethod::Efectivo;
+        sale.totalAmount = 3210.0 * *referenceData.umaValue;
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
+        QCOMPARE(result.field, QStringLiteral("paymentMethod"));
+        QVERIFY(result.message.contains(QStringLiteral("3,210 UMA")));
+        QCOMPARE(repository.registerCalls, 0);
+    }
+
+    void cashSaleIsRejectedWhenUmaIsNotConfigured()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        referenceData.umaValue.reset();
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.buyer.nationalId = QStringLiteral("BUYER-UMA");
+        sale.paymentMethod = domain::PaymentMethod::Efectivo;
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
+        QCOMPARE(result.field, QStringLiteral("paymentMethod"));
+        QVERIFY(result.message.contains(QStringLiteral("No hay UMA configurada")));
+        QCOMPARE(repository.registerCalls, 0);
+    }
+
+    void transferSaleDoesNotRequireUmaConfiguration()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        referenceData.umaValue.reset();
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.buyer.nationalId = QStringLiteral("BUYER-UMA");
+        sale.totalAmount = 10000000.0;
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Registered);
+        QCOMPARE(referenceData.umaReads, 0);
+        QCOMPARE(repository.registerCalls, 1);
+    }
+
     void invalidSaleIsRejectedBeforePersistence()
     {
         FakeSaleRepository repository;
@@ -244,6 +367,52 @@ private slots:
         QVERIFY(result.fields().contains(QStringLiteral("guarantor.fullName")));
         QVERIFY(result.fields().contains(QStringLiteral("guarantor.nationalId")));
         QVERIFY(result.fields().contains(QStringLiteral("guarantor.postalCode")));
+    }
+
+    void creditRejectsBuyerAsGuarantor()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        application::SaleService service(repository, counterparties);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.paymentType = domain::PaymentType::Credito;
+        sale.paymentMethod.reset();
+        sale.buyer.counterpartyId = 17;
+
+        application::SaleFinancingDto financing;
+        application::SaleBuyerDto guarantor = sale.buyer;
+        financing.guarantor = guarantor;
+        sale.financing = financing;
+
+        const domain::ValidationResult result = service.validateSale(sale);
+
+        QVERIFY(!result.isValid());
+        QVERIFY(result.fields().contains(QStringLiteral("guarantor.nationalId")));
+        QVERIFY(result.joinedMessages().contains(QStringLiteral("personas distintas")));
+        QCOMPARE(repository.registerCalls, 0);
+    }
+
+    void creditRejectsMatchingBuyerAndGuarantorNationalIdsRegardlessOfCase()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        application::SaleService service(repository, counterparties);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.paymentType = domain::PaymentType::Credito;
+        sale.paymentMethod.reset();
+        sale.buyer.nationalId = QStringLiteral("INE-123");
+
+        application::SaleFinancingDto financing;
+        application::SaleBuyerDto guarantor = sale.buyer;
+        guarantor.counterpartyId = 0;
+        guarantor.nationalId = QStringLiteral(" ine-123 ");
+        financing.guarantor = guarantor;
+        sale.financing = financing;
+
+        const domain::ValidationResult result = service.validateSale(sale);
+
+        QVERIFY(!result.isValid());
+        QVERIFY(result.fields().contains(QStringLiteral("guarantor.nationalId")));
     }
 
     void creditRequiresGuarantorAndFinancingData()

@@ -40,6 +40,7 @@
     <qresource prefix="/templates">
         <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
         <file alias="receipt_maintenance.html">templates/receipt_maintenance.html</file>
+        <file alias="promissory_note.html">templates/promissory_note.html</file>
         <file>request_issuance_cfdi.html</file>
     </qresource>
 </RCC>

@@ -54,6 +54,7 @@ signals:
 private slots:
     void onPaymentTypeChanged();
     void calculatePaymentProjection();
+    void printProjectedPromissoryNotes();
 
 private:
     bool eventFilter(QObject *watched, QEvent *event) override;

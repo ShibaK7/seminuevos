@@ -1,5 +1,7 @@
 #include "application/commercial/sales/services/saleservice.h"
 
+#include "domain/common/rules/cashpaymentlimit.h"
+
 #include <QSet>
 #include <QtMath>
 
@@ -44,9 +46,11 @@ bool hasExistingNationalIdMatch(const QList<application::CounterpartyDto> &match
 
 } // namespace
 
-SaleService::SaleService(SaleRepository &sales, CounterpartyDirectory &counterparties)
+SaleService::SaleService(SaleRepository &sales, CounterpartyDirectory &counterparties,
+                         ReferenceDataReader *referenceData)
     : m_sales(sales)
     , m_counterparties(counterparties)
+    , m_referenceData(referenceData)
 {
 }
 
@@ -105,6 +109,29 @@ SaleRegistrationResultDto SaleService::registerSale(const SaleRegistrationDto &s
 
     if (!validMoney(sale.subtotal) || !validMoney(sale.iva) || !validMoney(sale.totalAmount))
         return rejected(QStringLiteral("cost"), QStringLiteral("Los importes deben ser valores válidos y no negativos."));
+
+    if (sale.paymentType == domain::PaymentType::Contado && sale.paymentMethod
+        && *sale.paymentMethod == domain::PaymentMethod::Efectivo) {
+        std::optional<double> umaDailyValue;
+        QString umaError;
+        if (m_referenceData)
+            umaDailyValue = m_referenceData->umaDailyValue(&umaError);
+        if (!umaError.isEmpty()) {
+            SaleRegistrationResultDto result;
+            result.status = SaleRegistrationResultDto::Status::Failed;
+            result.field = QStringLiteral("paymentMethod");
+            result.message = QStringLiteral("No se pudo leer la UMA: %1").arg(umaError);
+            return result;
+        }
+
+        domain::ValidationResult cashPaymentValidation;
+        domain::CashPaymentLimit(umaDailyValue.value_or(0.0))
+            .check(*sale.paymentMethod, sale.totalAmount, cashPaymentValidation);
+        if (!cashPaymentValidation.isValid()) {
+            return rejected(cashPaymentValidation.errors().first().field,
+                            cashPaymentValidation.firstMessage());
+        }
+    }
 
     const QString buyerNationalId = sale.buyer.nationalId.trimmed();
     if (!buyerNationalId.isEmpty() && sale.buyer.counterpartyId <= 0) {
@@ -223,6 +250,17 @@ domain::ValidationResult SaleService::validateSale(const SaleRegistrationDto &sa
                             QStringLiteral("Captura la información completa del aval."));
         } else {
             const SaleBuyerDto &guarantor = *sale.financing->guarantor;
+            const QString buyerNationalId = sale.buyer.nationalId.trimmed();
+            const QString guarantorNationalId = guarantor.nationalId.trimmed();
+            const bool sameCounterparty = sale.buyer.counterpartyId > 0
+                                          && sale.buyer.counterpartyId == guarantor.counterpartyId;
+            const bool sameNationalId = !buyerNationalId.isEmpty()
+                                        && buyerNationalId.compare(guarantorNationalId,
+                                                                   Qt::CaseInsensitive) == 0;
+            if (sameCounterparty || sameNationalId) {
+                result.addError(QStringLiteral("guarantor.nationalId"),
+                                QStringLiteral("El comprador y el aval deben ser personas distintas."));
+            }
             require(QStringLiteral("guarantor.fullName"), guarantor.fullName,
                     QStringLiteral("Captura el nombre completo del aval."));
             require(QStringLiteral("guarantor.nationalId"), guarantor.nationalId,

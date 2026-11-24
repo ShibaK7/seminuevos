@@ -1,4 +1,5 @@
 #include "saledetailsview.h"
+#include "adapters/contract/promissorynoteprinter.h"
 #include "domain/common/value_objects/enums.h"
 #include "presentation/common/forms/formsupport.h"
 #include "ui_saledetailsview.h"
@@ -9,23 +10,28 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDateEdit>
+#include <QDesktopServices>
 #include <QDoubleSpinBox>
 #include <QEvent>
+#include <QFileDialog>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QLocale>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStandardItemModel>
 #include <QStringListModel>
 #include <QTextEdit>
 #include <QtMath>
+#include <QUrl>
 
 SaleDetailsView::SaleDetailsView(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::SaleDetailsView)
 {
     ui->setupUi(this);
+    ui->dateEdit->setCalendarPopup(true);
 
     const auto setField = [](QWidget *widget, const QString &field) {
         widget->setProperty("field", field);
@@ -68,7 +74,6 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
         spin->setMaximum(9999999999.99);
         spin->setLocale(QLocale(QLocale::Spanish, QLocale::Mexico));
     }
-    ui->subtotalSpin->setReadOnly(true);
     ui->salePriceSpin->setReadOnly(true);
     ui->finalPriceSpin->setReadOnly(true);
     ui->ivaSpin->setReadOnly(true);
@@ -96,6 +101,7 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
     ui->paymentsTable->setTextElideMode(Qt::ElideNone);
     ui->paymentsTable->verticalHeader()->setVisible(false);
     ui->paymentsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->printButton->setEnabled(false);
 
     ui->dateEdit->setMaximumDate(QDate::currentDate());
     ui->dateEdit->setDate(QDate::currentDate());
@@ -169,6 +175,8 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
             &SaleDetailsView::onPaymentTypeChanged);
     connect(ui->calculateProjectionButton, &QPushButton::clicked, this,
             &SaleDetailsView::calculatePaymentProjection);
+        connect(ui->printButton, &QPushButton::clicked, this,
+            &SaleDetailsView::printProjectedPromissoryNotes);
     connect(ui->depositSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
             [this](double deposit) {
                 const QSignalBlocker blocker(ui->financingSpin);
@@ -186,6 +194,8 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
     connect(ui->ivaCheckBox, &QCheckBox::toggled, this, [this] {
         recalculateCostTotals();
     });
+    connect(ui->subtotalSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+            [this] { recalculateCostTotals(); });
     connect(ui->maintenanceCheckBox, &QCheckBox::toggled, this, [this] {
         recalculateCostTotals();
     });
@@ -221,7 +231,7 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
     configureLookup(ui->identificationEdit, false, m_buyerCompleters);
     configureLookup(ui->gNameEdit, true, m_guarantorCompleters);
     configureLookup(ui->gIdentificationEdit, true, m_guarantorCompleters);
-    //emit vehicleSearchRequested(QString());
+    emit vehicleSearchRequested(QString());
 }
 
 SaleDetailsView::~SaleDetailsView()
@@ -268,6 +278,9 @@ void SaleDetailsView::onPaymentTypeChanged()
     ui->guarantorCard->setVisible(isCredit);
     ui->financingCard->setVisible(isCredit);
     ui->paymentsCard->setVisible(isCredit);
+    ui->printButton->setVisible(isCredit);
+    if (!isCredit)
+        ui->printButton->setEnabled(false);
     if (isCredit) {
         ui->rightFormBottomVerticalSpacer->changeSize(20, 0, QSizePolicy::Ignored, QSizePolicy::Minimum);
         if (m_vehicleFolio > 0 && !m_financingInitialized) {
@@ -302,6 +315,7 @@ void SaleDetailsView::initializeFinancingDefaults()
 void SaleDetailsView::invalidatePaymentProjection()
 {
     ui->finalPriceSpin->setValue(0.0);
+    ui->printButton->setEnabled(false);
     if (ui->paymentsTable->model())
         ui->paymentsTable->model()->removeRows(0, ui->paymentsTable->model()->rowCount());
     m_projectionInstallments.clear();
@@ -333,6 +347,7 @@ void SaleDetailsView::calculatePaymentProjection()
 
     if (months <= 0 || principal <= 0.0) {
         ui->finalPriceSpin->setValue(0.0);
+        ui->printButton->setEnabled(false);
         ui->calculateProjectionButton->setToolTip(
             QStringLiteral("Captura un monto financiado y un plazo mayor que cero."));
         return;
@@ -391,6 +406,43 @@ void SaleDetailsView::calculatePaymentProjection()
     }
 
     ui->finalPriceSpin->setValue(ui->depositSpin->value() + installmentTotal);
+    ui->printButton->setEnabled(!m_projectionInstallments.isEmpty());
+}
+
+void SaleDetailsView::printProjectedPromissoryNotes()
+{
+    const application::SaleRegistrationDto sale = registrationForm();
+    const application::SaleVehicleOptionDto vehicle = selectedVehicle();
+    QString vehicleName = QStringLiteral("Vehículo");
+    QStringList vehicleNameParts;
+    if (!vehicle.brandName.trimmed().isEmpty())
+        vehicleNameParts << vehicle.brandName.trimmed();
+    if (!vehicle.model.trimmed().isEmpty())
+        vehicleNameParts << vehicle.model.trimmed();
+    if (vehicle.yearModel > 0)
+        vehicleNameParts << QString::number(vehicle.yearModel);
+    if (!vehicleNameParts.isEmpty())
+        vehicleName = vehicleNameParts.join(QLatin1Char(' '));
+    vehicleName.replace(QRegularExpression(QStringLiteral("[/:*?\"<>|]")), QStringLiteral("-"));
+    const QString defaultFileName = QStringLiteral("%1 - %2 - Pagarés.pdf")
+                                        .arg(vehicleName, sale.saleDate.toString(QStringLiteral("dd-MM-yyyy")));
+    const QString outputPath = QFileDialog::getSaveFileName(
+        this, QStringLiteral("Guardar pagarés"), defaultFileName,
+        QStringLiteral("PDF (*.pdf)"));
+    if (outputPath.isEmpty())
+        return;
+
+    PromissoryNotePrinter printer;
+    const PromissoryNotePrinter::Outcome outcome = printer.generatePdf(sale, outputPath);
+    if (!outcome.ok) {
+        QMessageBox::warning(this, QStringLiteral("Pagarés"), outcome.errorMessage);
+        return;
+    }
+
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath))) {
+        QMessageBox::warning(this, QStringLiteral("Pagarés"),
+                             QStringLiteral("Se generó el PDF, pero no se pudo abrir automáticamente."));
+    }
 }
 
 void SaleDetailsView::setCounterpartyMatches(
@@ -591,6 +643,7 @@ void SaleDetailsView::resetForm()
 
     ui->paymentTypeCombo->setCurrentIndex(0);
     ui->paymentMethodCombo->setCurrentIndex(-1);
+    ui->printButton->setEnabled(false);
     ui->observationsTextEdit->clear();
     ui->dateEdit->setDate(QDate::currentDate());
     ui->subtotalSpin->setValue(0.0);
@@ -673,11 +726,14 @@ void SaleDetailsView::showSavedSale(
         ui->paymentMethodCombo->setCurrentIndex(ui->paymentMethodCombo->count() - 1);
     }
 
+    const QSignalBlocker subtotalBlocker(ui->subtotalSpin);
     ui->subtotalSpin->setValue(details.vehicle.salePrice);
     ui->ivaSpin->setValue(sale.iva);
     ui->totalSpin->setValue(sale.totalAmount);
     ui->salePriceSpin->setValue(sale.totalAmount);
     ui->maintenanceSpin->setValue(details.vehicle.maintenanceCost);
+    const QSignalBlocker ivaCheckBlocker(ui->ivaCheckBox);
+    const QSignalBlocker maintenanceCheckBlocker(ui->maintenanceCheckBox);
     ui->maintenanceCheckBox->setChecked(
         qAbs(sale.subtotal - details.vehicle.salePrice - details.vehicle.maintenanceCost) < 0.01);
     ui->ivaCheckBox->setChecked(sale.iva > 0.0);

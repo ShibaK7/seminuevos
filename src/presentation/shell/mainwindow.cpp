@@ -12,11 +12,8 @@
 #include "presentation/commercial/registration/salewizardview.h"
 
 #include <QCloseEvent>
-#include <QLabel>
 #include <QPushButton>
-#include <QScrollArea>
 #include <QStatusBar>
-#include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -230,26 +227,15 @@ void MainWindow::showFullSaleDetails(
 {
     closeFullSaleDetails();
 
-    auto *page = new QWidget(ui->mainContentStack);
+    auto *page = new SaleWizardView(ui->mainContentStack);
     page->setObjectName(QStringLiteral("fullSaleDetailsPage"));
-    auto *layout = new QVBoxLayout(page);
-    auto *backButton = new QPushButton(page);
-    backButton->setObjectName(QStringLiteral("backToSaleDetailsButton"));
-    backButton->setMinimumSize(44, 40);
-    backButton->setText(QString());
-    backButton->setIcon(QIcon(QStringLiteral(":/icons/back-arrow.svg")));
-    backButton->setProperty("class", QStringLiteral("secondary"));
-    layout->addWidget(backButton, 0, Qt::AlignLeft);
-
-    auto *scrollArea = new QScrollArea(page);
-    scrollArea->setWidgetResizable(true);
-    auto *detailsView = new SaleDetailsView;
+    page->showSavedSaleDetails(details);
+    SaleDetailsView *detailsView = &page->detailsView();
     detailsView->setObjectName(QStringLiteral("fullSaleDetailsView"));
-    detailsView->showSavedSale(details);
-    scrollArea->setWidget(detailsView);
-    layout->addWidget(scrollArea);
-
-    connect(backButton, &QPushButton::clicked, this, &MainWindow::closeFullSaleDetails);
+    connect(page, &SaleWizardView::returnToCommercial, this, [this] {
+        m_fullSaleDetailsReturnsToCommercial = true;
+        closeFullSaleDetails();
+    });
 
     ui->mainContentStack->addWidget(page);
     ui->mainContentStack->setCurrentWidget(page);
