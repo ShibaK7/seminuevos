@@ -5,6 +5,7 @@
 #include "adapters/persistence/auth/sqluserdirectory.h"
 #include "adapters/persistence/commercial/sqlcommercial.h"
 #include "adapters/persistence/commercial/sqlsalerepository.h"
+#include "adapters/persistence/finance/sqloperationalexpenserepository.h"
 #include "adapters/persistence/common/sqlcounterpartydirectory.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
 #include "adapters/persistence/inventory/sqlmaintenancerepository.h"
@@ -16,10 +17,12 @@
 #include "application/commercial/sales/services/saleservice.h"
 #include "application/commercial/services/commercialservice.h"
 #include "application/common/services/counterpartylookupservice.h"
+#include "application/finance/services/operationalexpenseservice.h"
 #include "application/inventory/maintenance/services/maintenanceservice.h"
 #include "application/inventory/registration/services/vehiclerecordservice.h"
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 #include "application/inventory/services/inventoryservice.h"
+#include "domain/finance/rules/financeaccess.h"
 #include "presentation/commercial/commercialmainview.h"
 #include "presentation/commercial/commercialpresenter.h"
 #include "presentation/commercial/registration/saledetailspresenter.h"
@@ -27,6 +30,8 @@
 #include "presentation/commercial/registration/salewizardview.h"
 #include "presentation/commercial/saledetails/SaleDetails.h"
 #include "presentation/commercial/saledetails/saledetailspresenter.h"
+#include "presentation/finance/financepresenter.h"
+#include "presentation/finance/financeview.h"
 #include "presentation/inventory/inventorypresenter.h"
 #include "presentation/inventory/inventoryview.h"
 #include "presentation/inventory/maintenance/maintenancehistorypresenter.h"
@@ -175,6 +180,9 @@ bool CompositionRoot::start()
         *m_maintenanceRepository, *m_referenceData, m_receipts);
     m_commercialReader = std::make_unique<SqlCommercial>(pool);
     m_commercial = std::make_unique<application::CommercialService>(*m_commercialReader, *m_commercialReader);
+    m_expenseRepository = std::make_unique<SqlOperationalExpenseRepository>(pool);
+    m_expenses = std::make_unique<application::OperationalExpenseService>(*m_expenseRepository,
+                                                                       m_expenseReceipts);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -231,6 +239,17 @@ void CompositionRoot::showMain(const application::SessionDto &session)
             mainWindow->commercialView(), *m_commercial, m_runner, mainWindow);
         mainWindow->bindCommercial(*commercial);
         commercial->reload();
+
+        // Finanzas solo existe para el Administrador: sin el menú no se llega
+        // a la página, y el servicio vuelve a exigir el rol en cada operación.
+        const bool financeAvailable = domain::FinanceAccess(session.role).canUseFinance();
+        mainWindow->setFinanceAvailable(financeAvailable);
+        if (financeAvailable) {
+            auto *finance = new presentation::FinancePresenter(
+                mainWindow->financeView(), *m_expenses, m_runner, session.role, mainWindow);
+            mainWindow->financeView().bind(*finance);
+            finance->reload();
+        }
 
         mainWindow->setSaleDetailsFactory([this, role = session.role](QWidget *parent, int folio) {
             auto *view = new SaleDetails(role, parent);

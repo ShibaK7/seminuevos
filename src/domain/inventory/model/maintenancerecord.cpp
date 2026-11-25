@@ -1,46 +1,32 @@
 #include "domain/inventory/model/maintenancerecord.h"
 
-#include <QLatin1Char>
+#include "domain/common/value_objects/moneyamount.h"
 
 namespace domain {
 
 namespace {
 
-// Por qué el texto no cabe en NUMERIC(12, 2), o vacío si cabe. Solo dígitos
-// y un punto decimal: ni signo (un costo negativo restaría del total de
-// mantenimientos de la unidad), ni comas, que en "1,500" serían separador de
-// miles y en "1500,50" punto decimal.
+// Por qué el texto no cabe en NUMERIC(12, 2), o vacío si cabe. Un costo
+// negativo restaría del total de mantenimientos de la unidad.
 QString costProblem(const QString &cost)
 {
-    if (cost.isEmpty())
+    using Problem = MoneyAmount::Problem;
+    switch (MoneyAmount::check(cost)) {
+    case Problem::None:
+        return QString();
+    case Problem::Empty:
         return QStringLiteral("Captura el costo.");
-    if (cost.startsWith(QLatin1Char('-')))
+    case Problem::Negative:
         return QStringLiteral("El costo no puede ser negativo.");
-
-    const qsizetype point = cost.indexOf(QLatin1Char('.'));
-    const QString integerPart = point < 0 ? cost : cost.left(point);
-    const QString decimalPart = point < 0 ? QString() : cost.mid(point + 1);
-    const auto allDigits = [](const QString &text) {
-        for (const QChar c : text) {
-            if (c < QLatin1Char('0') || c > QLatin1Char('9'))
-                return false;
-        }
-        return true;
-    };
-    if (integerPart.isEmpty() || !allDigits(integerPart) || !allDigits(decimalPart)
-        || (point >= 0 && decimalPart.isEmpty()))
+    case Problem::NotANumber:
         return QStringLiteral("El costo debe ser un número, por ejemplo 1500.50.");
-    if (decimalPart.size() > MaintenanceRecord::kCostDecimals)
+    case Problem::TooManyDecimals:
         return QStringLiteral("El costo admite hasta %1 decimales.")
             .arg(MaintenanceRecord::kCostDecimals);
-
-    // Los ceros a la izquierda no cuentan contra el tope: "000123" es 123.
-    qsizetype significant = 0;
-    while (significant < integerPart.size() - 1 && integerPart.at(significant) == QLatin1Char('0'))
-        ++significant;
-    if (integerPart.size() - significant > MaintenanceRecord::kCostIntegerDigits)
+    case Problem::TooManyIntegerDigits:
         return QStringLiteral("El costo admite hasta %1 dígitos antes del punto.")
             .arg(MaintenanceRecord::kCostIntegerDigits);
+    }
     return QString();
 }
 

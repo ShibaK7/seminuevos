@@ -1,58 +1,21 @@
 #include "adapters/contract/pdfmaintenancereceiptgenerator.h"
 
 #include "adapters/contract/numbertowordses.h"
+#include "adapters/contract/receiptpdf.h"
 
-#include <QFile>
-#include <QImage>
-#include <QIODevice>
 #include <QLocale>
-#include <QPageLayout>
-#include <QPrinter>
 #include <QRegularExpression>
-#include <QStringConverter>
-#include <QTextDocument>
-#include <QTextStream>
-#include <QUrl>
 
 namespace {
 
 const QString kTemplatePath = QStringLiteral(":/templates/receipt_maintenance.html");
-
-QString loadTemplate()
-{
-    QFile file(kTemplatePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return QString();
-    QTextStream stream(&file);
-    stream.setEncoding(QStringConverter::Utf8);
-    return stream.readAll();
-}
-
-// La plantilla nombra sus imágenes con la ruta relativa que tienen en disco,
-// para verse igual en un navegador. QTextDocument no resuelve rutas relativas
-// contra qrc:, así que cada una se registra con el nombre exacto que usa la
-// plantilla, apuntando a donde la empaqueta Resources.qrc.
-bool addImages(QTextDocument &document, QString *missing)
-{
-    for (const QString &name : {QStringLiteral("logo-seminuevos.jpeg"),
-                                QStringLiteral("logo-seminuevos-watermark.png")}) {
-        const QImage image(QStringLiteral(":/resources/images/images/") + name);
-        if (image.isNull()) {
-            *missing = name;
-            return false;
-        }
-        document.addResource(QTextDocument::ImageResource,
-                             QUrl(QStringLiteral("../images/") + name), image);
-    }
-    return true;
-}
 
 } // namespace
 
 QString PdfMaintenanceReceiptGenerator::fillTemplate(
     const application::MaintenanceItemDto &maintenance, QString *error)
 {
-    QString html = loadTemplate();
+    QString html = receiptpdf::loadTemplate(kTemplatePath);
     if (html.isEmpty()) {
         *error = QStringLiteral("No se pudo abrir la plantilla del recibo (%1).").arg(kTemplatePath);
         return QString();
@@ -90,39 +53,9 @@ application::MaintenanceReceiptGenerator::Outcome PdfMaintenanceReceiptGenerator
     const application::MaintenanceItemDto &maintenance, const QString &outputPath)
 {
     Outcome result;
-
     const QString html = fillTemplate(maintenance, &result.errorMessage);
     if (html.isEmpty())
         return result;
-
-    QTextDocument document;
-    QString missing;
-    if (!addImages(document, &missing)) {
-        result.errorMessage =
-            QStringLiteral("No se encontró la imagen %1 del recibo.").arg(missing);
-        return result;
-    }
-    document.setHtml(html);
-
-    QPrinter printer(QPrinter::HighResolution);
-    printer.setOutputFormat(QPrinter::PdfFormat);
-    printer.setOutputFileName(outputPath);
-    printer.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
-
-    // El documento se pagina aquí, a la resolución en que está pensada la
-    // plantilla (96 px por pulgada, la de un navegador), en el área imprimible
-    // de la hoja. Sin tamaño de página, print() lo vuelve a acomodar a la
-    // resolución de la impresora (1200 ppp): agrega su propio margen y un
-    // número de página, escala las <img> pero no el fondo de una celda, y la
-    // marca de agua sale como un mosaico de logos diminutos. Paginado, print()
-    // escala la hoja entera por igual y sale como en el navegador.
-    constexpr qreal kTemplateDpi = 96.0;
-    const QSizeF printable = printer.pageRect(QPrinter::Inch).size();
-    document.setDocumentMargin(0);
-    document.setPageSize(printable * kTemplateDpi);
-
-    document.print(&printer);
-
-    result.ok = true;
+    result.ok = receiptpdf::print(html, outputPath, &result.errorMessage);
     return result;
 }

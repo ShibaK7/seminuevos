@@ -291,8 +291,12 @@ CREATE TABLE operational_expenses (
     invoice_number VARCHAR(50),
     subtotal NUMERIC(12, 2) NOT NULL,
     iva NUMERIC(12, 2) DEFAULT 0.00,
-    total_amount NUMERIC(12, 2) NOT NULL
+    total_amount NUMERIC(12, 2) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Efectivo', 'Transferencia'))
 );
+
+-- Los años del filtro de Finanzas y el orden de la tabla salen de esta columna.
+CREATE INDEX idx_operational_expenses_date ON operational_expenses (expense_date);
 
 CREATE TABLE global_configurations (
     key_param VARCHAR(50) PRIMARY KEY,

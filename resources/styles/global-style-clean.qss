@@ -582,6 +582,15 @@ QPushButton[class="cancelButton"]::icon {
     height: 12px;
 }
 
+/* Cambio de egresos contra el mes anterior (Finanzas): subir es malo. */
+QLabel#totalExpensesChange[trend="up"] {
+    color: #D90429;
+}
+
+QLabel#totalExpensesChange[trend="down"] {
+    color: #0F5132;
+}
+
 /* Status badges */
 QLabel[status="available"],
 QLabel[status="reserved"] {
@@ -800,13 +809,15 @@ QFrame#navDivider {
 }
 
 /* Filter bar */
-#filterBar {
+#filterBar,
+#financeFilterBar {
     background-color: transparent;
     border: none;
     padding-bottom: 6px;
 }
 
-#filterBar QLabel {
+#filterBar QLabel,
+#financeFilterBar QLabel {
     font-size: 11pt;
     font-weight: 600;
     color: #374151;

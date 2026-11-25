@@ -8,6 +8,8 @@
 
 #include "application/inventory/registration/ports/contractgenerator.h"
 #include "application/common/ports/filestorage.h"
+#include "application/finance/ports/expensereceiptgenerator.h"
+#include "application/finance/ports/operationalexpenserepository.h"
 #include "application/inventory/maintenance/ports/maintenancereceiptgenerator.h"
 #include "application/inventory/maintenance/ports/maintenancerepository.h"
 #include "application/inventory/ports/inventoryreader.h"
@@ -17,6 +19,7 @@
 #include "application/inventory/registration/ports/vehiclerecordreader.h"
 #include "application/inventory/registration/ports/vehiclerepository.h"
 #include "domain/inventory/model/vehicle.h"
+#include "presentation/finance/ifinanceview.h"
 #include "presentation/inventory/iinventoryview.h"
 #include "presentation/inventory/maintenance/imaintenancehistoryview.h"
 #include "presentation/login/iloginview.h"
@@ -24,6 +27,9 @@
 
 #include <QMap>
 #include <QStringList>
+
+#include <algorithm>
+#include <functional>
 
 namespace fakes {
 
@@ -535,6 +541,231 @@ public:
         formErrors.append(errors);
     }
     void closeMaintenanceForm() override { ++formsClosed; }
+};
+
+// Los gastos "guardados". Cada alta recibe el folio siguiente y la
+// descripción de su tipo, como el INSERT real. failWith hace fallar todas las
+// operaciones con ese error.
+class InMemoryOperationalExpenseRepository final : public application::OperationalExpenseRepository
+{
+public:
+    QList<application::ExpenseTypeOptionDto> types;
+    QList<application::OperationalExpenseItemDto> items;
+    QList<domain::OperationalExpense> added;
+    QString failWith;
+    int nextFolio = 1;
+
+    QList<application::ExpenseTypeOptionDto> expenseTypes(QString *error) override
+    {
+        if (!failWith.isEmpty()) {
+            if (error)
+                *error = failWith;
+            return {};
+        }
+        return types;
+    }
+
+    // El último filtro con que se leyó.
+    application::OperationalExpenseFilterDto lastFilter;
+    QList<application::OperationalExpenseItemDto> list(
+        const application::OperationalExpenseFilterDto &filter, QString *error) override
+    {
+        lastFilter = filter;
+        if (!failWith.isEmpty()) {
+            if (error)
+                *error = failWith;
+            return {};
+        }
+        QList<application::OperationalExpenseItemDto> matching;
+        for (const application::OperationalExpenseItemDto &item : items) {
+            if ((!filter.month || item.date.month() == *filter.month)
+                && (!filter.year || item.date.year() == *filter.year))
+                matching << item;
+        }
+        return matching;
+    }
+
+    double totalBetween(const QDate &from, const QDate &to, QString *error) override
+    {
+        if (!failWith.isEmpty()) {
+            if (error)
+                *error = failWith;
+            return 0.0;
+        }
+        double total = 0.0;
+        for (const application::OperationalExpenseItemDto &item : items) {
+            if (item.date >= from && item.date < to)
+                total += item.total;
+        }
+        return total;
+    }
+
+    // Como el SELECT DISTINCT: los años de los gastos guardados, del más
+    // reciente al más viejo. failYearsWith hace fallar solo esta lectura.
+    QString failYearsWith;
+    QList<int> expenseYears(QString *error) override
+    {
+        const QString failure = failWith.isEmpty() ? failYearsWith : failWith;
+        if (!failure.isEmpty()) {
+            if (error)
+                *error = failure;
+            return {};
+        }
+        QList<int> years;
+        for (const application::OperationalExpenseItemDto &item : items) {
+            if (!years.contains(item.date.year()))
+                years << item.date.year();
+        }
+        std::sort(years.begin(), years.end(), std::greater<int>());
+        return years;
+    }
+
+    AddOutcome add(const domain::OperationalExpense &expense) override
+    {
+        AddOutcome outcome;
+        if (!failWith.isEmpty()) {
+            outcome.errorMessage = failWith;
+            return outcome;
+        }
+        added << expense;
+        application::OperationalExpenseItemDto item;
+        item.folio = nextFolio++;
+        item.date = expense.date();
+        for (const application::ExpenseTypeOptionDto &type : types) {
+            if (type.id == expense.typeId()) {
+                item.typeName = type.name;
+                item.description = type.description;
+            }
+        }
+        item.hasInvoice = expense.hasInvoice();
+        item.invoiceNumber = expense.invoiceNumber();
+        item.subtotal = expense.amounts()->subtotal().toDouble();
+        item.iva = expense.amounts()->iva().toDouble();
+        item.total = expense.amounts()->total().toDouble();
+        item.paymentMethod = expense.paymentMethod();
+        items.prepend(item);
+        outcome.ok = true;
+        outcome.folio = item.folio;
+        return outcome;
+    }
+
+    bool updateInvoice(int folio, bool hasInvoice, const QString &invoiceNumber,
+                       QString *error) override
+    {
+        if (failWith.isEmpty()) {
+            for (application::OperationalExpenseItemDto &item : items) {
+                if (item.folio == folio) {
+                    item.hasInvoice = hasInvoice;
+                    item.invoiceNumber = invoiceNumber;
+                    ++invoiceUpdates;
+                    return true;
+                }
+            }
+        }
+        if (error)
+            *error = failWith.isEmpty() ? QStringLiteral("no existe") : failWith;
+        return false;
+    }
+    int invoiceUpdates = 0;
+};
+
+// Anota cada recibo de gasto que se le pidió; failWith lo hace fallar.
+class FakeExpenseReceiptGenerator final : public application::ExpenseReceiptGenerator
+{
+public:
+    QList<application::OperationalExpenseItemDto> generated;
+    QStringList paths;
+    QString failWith;
+
+    Outcome generate(const application::OperationalExpenseItemDto &expense,
+                     const QString &outputPath) override
+    {
+        Outcome outcome;
+        if (!failWith.isEmpty()) {
+            outcome.errorMessage = failWith;
+            return outcome;
+        }
+        generated << expense;
+        paths << outputPath;
+        outcome.ok = true;
+        return outcome;
+    }
+};
+
+// Anota lo que el presenter le pidió a la página de Finanzas y a su
+// formulario de alta.
+class FakeFinanceView final : public presentation::IFinanceView
+{
+public:
+    QList<bool> busyChanges;
+    QList<QList<application::OperationalExpenseItemDto>> shownExpenses;
+    QStringList warnings;
+    QList<int> editedInvoiceNumbers;
+    QList<QList<application::ExpenseTypeOptionDto>> openedForms;
+    QList<bool> formBusyChanges;
+    QList<QList<domain::ValidationError>> formErrors;
+    int formsClosed = 0;
+
+    void setBusy(bool busy) override { busyChanges.append(busy); }
+    void showExpenses(const QList<application::OperationalExpenseItemDto> &items) override
+    {
+        shownExpenses.append(items);
+    }
+    void showWarning(const QString &title, const QString &) override { warnings.append(title); }
+    QList<QList<int>> shownYears;
+    void showYears(const QList<int> &years) override { shownYears.append(years); }
+    QList<application::MonthlyExpenseSummaryDto> shownSummaries;
+    void showMonthlySummary(const application::MonthlyExpenseSummaryDto &summary) override
+    {
+        shownSummaries.append(summary);
+    }
+    void editInvoiceNumber(int folio) override { editedInvoiceNumbers.append(folio); }
+    // Lo que "contesta" el usuario a cada confirmación de la tabla.
+    bool acceptInvoiceUpdate = true;
+    bool acceptInvoiceNumberUpdate = true;
+    int invoiceConfirmations = 0;
+    int invoiceNumberConfirmations = 0;
+    bool confirmInvoiceUpdate() override
+    {
+        ++invoiceConfirmations;
+        return acceptInvoiceUpdate;
+    }
+    bool confirmInvoiceNumberUpdate() override
+    {
+        ++invoiceNumberConfirmations;
+        return acceptInvoiceNumberUpdate;
+    }
+    // El renglón "seleccionado" y la ruta que "elige" el usuario (vacía es
+    // cancelar).
+    int selectedFolio = -1;
+    QString receiptPath = QStringLiteral("C:/recibos/recibo.pdf");
+    QStringList suggestedReceiptNames;
+    QStringList openedDocuments;
+    int selectedExpenseFolio() override { return selectedFolio; }
+    QString askReceiptPath(const QString &suggestedName) override
+    {
+        suggestedReceiptNames << suggestedName;
+        return receiptPath;
+    }
+    void openDocument(const QString &path) override { openedDocuments << path; }
+    // Lo que contesta a "Falta el No. Factura": true es capturarlo.
+    bool captureMissingInvoiceNumber = true;
+    int missingInvoiceNumberAlerts = 0;
+    bool askForMissingInvoiceNumber() override
+    {
+        ++missingInvoiceNumberAlerts;
+        return captureMissingInvoiceNumber;
+    }
+    void askNewExpense(const QList<application::ExpenseTypeOptionDto> &expenseTypes) override
+    {
+        openedForms.append(expenseTypes);
+    }
+    void setExpenseFormBusy(bool busy) override { formBusyChanges.append(busy); }
+    void showExpenseFormErrors(const QList<domain::ValidationError> &errors) override
+    {
+        formErrors.append(errors);
+    }
+    void closeExpenseForm() override { ++formsClosed; }
 };
 
 } // namespace fakes

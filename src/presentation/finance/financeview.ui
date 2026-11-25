@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FinanceView</class>
+ <widget class="QWidget" name="FinanceView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="financePageLayout" stretch="0,0,1">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="financeNavBar">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <property name="class" stdset="0">
+      <string notr="true">navBar</string>
+     </property>
+     <layout class="QHBoxLayout" name="financeNavBarLayout">
+      <property name="spacing">
+       <number>20</number>
+      </property>
+      <property name="leftMargin">
+       <number>24</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>32</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="NavTabItem" name="generalExpensesTab">
+        <property name="title" stdset="0">
+         <string>Gastos Generales</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="financeNavBarSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="financeFilterBar">
+     <property name="frameShape">
+      <enum>QFrame::Shape::NoFrame</enum>
+     </property>
+     <layout class="QHBoxLayout" name="financeFilterBarLayout">
+      <property name="spacing">
+       <number>7</number>
+      </property>
+      <property name="leftMargin">
+       <number>24</number>
+      </property>
+      <property name="topMargin">
+       <number>14</number>
+      </property>
+      <property name="rightMargin">
+       <number>32</number>
+      </property>
+      <property name="bottomMargin">
+       <number>14</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="periodLabel">
+        <property name="text">
+         <string>Periodo:</string>
+        </property>
+        <property name="buddy">
+         <cstring>periodCombo</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="periodCombo">
+        <property name="class" stdset="0">
+         <string notr="true">filterCombo</string>
+        </property>
+        <item>
+         <property name="text">
+          <string>Todo</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Enero</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Febrero</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Marzo</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Abril</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Mayo</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Junio</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Julio</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Agosto</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Septiembre</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Octubre</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Noviembre</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Diciembre</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <spacer name="periodYearSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Policy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>18</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="yearLabel">
+        <property name="text">
+         <string>Año:</string>
+        </property>
+        <property name="buddy">
+         <cstring>yearCombo</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="yearCombo">
+        <property name="class" stdset="0">
+         <string notr="true">filterCombo</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="financeFilterBarSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="financeContent" native="true">
+     <layout class="QVBoxLayout" name="financeContentLayout" stretch="0,1">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>24</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>32</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="summaryCardsLayout" stretch="2,1,1">
+        <property name="spacing">
+         <number>16</number>
+        </property>
+        <item>
+         <widget class="QFrame" name="totalExpensesCard">
+          <property name="class" stdset="0">
+           <string notr="true">card</string>
+          </property>
+          <layout class="QVBoxLayout" name="totalExpensesCardLayout">
+           <property name="spacing">
+            <number>4</number>
+           </property>
+           <property name="leftMargin">
+            <number>16</number>
+           </property>
+           <property name="topMargin">
+            <number>12</number>
+           </property>
+           <property name="rightMargin">
+            <number>16</number>
+           </property>
+           <property name="bottomMargin">
+            <number>14</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="totalExpensesTitle">
+             <property name="text">
+              <string>Total Egresos (Mes)</string>
+             </property>
+             <property name="class" stdset="0">
+              <string notr="true">h3</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="totalExpensesAmountLayout">
+             <item>
+              <widget class="QLabel" name="totalExpensesAmount">
+               <property name="text">
+                <string>$0.00</string>
+               </property>
+               <property name="class" stdset="0">
+                <string notr="true">h2</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="totalExpensesAmountSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QLabel" name="totalExpensesChange">
+               <property name="text">
+                <string>0.00%</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignBottom</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QProgressBar" name="totalExpensesBar">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>6</height>
+              </size>
+             </property>
+             <property name="value">
+              <number>0</number>
+             </property>
+             <property name="textVisible">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="bankCard">
+          <property name="class" stdset="0">
+           <string notr="true">card</string>
+          </property>
+          <layout class="QVBoxLayout" name="bankCardLayout">
+           <property name="spacing">
+            <number>4</number>
+           </property>
+           <property name="leftMargin">
+            <number>16</number>
+           </property>
+           <property name="topMargin">
+            <number>12</number>
+           </property>
+           <property name="rightMargin">
+            <number>16</number>
+           </property>
+           <property name="bottomMargin">
+            <number>14</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="bankTitle">
+             <property name="text">
+              <string>Banco</string>
+             </property>
+             <property name="class" stdset="0">
+              <string notr="true">h3</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="bankAmountLayout">
+             <item>
+              <widget class="QLabel" name="bankAmount">
+               <property name="text">
+                <string>$0.00</string>
+               </property>
+               <property name="class" stdset="0">
+                <string notr="true">h2</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="bankAmountSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QLabel" name="bankCount">
+               <property name="text">
+                <string>0</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignBottom</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QProgressBar" name="bankBar">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>6</height>
+              </size>
+             </property>
+             <property name="value">
+              <number>0</number>
+             </property>
+             <property name="textVisible">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="pettyCashCard">
+          <property name="class" stdset="0">
+           <string notr="true">card</string>
+          </property>
+          <layout class="QVBoxLayout" name="pettyCashCardLayout">
+           <property name="spacing">
+            <number>4</number>
+           </property>
+           <property name="leftMargin">
+            <number>16</number>
+           </property>
+           <property name="topMargin">
+            <number>12</number>
+           </property>
+           <property name="rightMargin">
+            <number>16</number>
+           </property>
+           <property name="bottomMargin">
+            <number>14</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="pettyCashTitle">
+             <property name="text">
+              <string>Caja Chica</string>
+             </property>
+             <property name="class" stdset="0">
+              <string notr="true">h3</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="pettyCashAmountLayout">
+             <item>
+              <widget class="QLabel" name="pettyCashAmount">
+               <property name="text">
+                <string>$0.00</string>
+               </property>
+               <property name="class" stdset="0">
+                <string notr="true">h2</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="pettyCashAmountSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QLabel" name="pettyCashCount">
+               <property name="text">
+                <string>0</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignBottom</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QProgressBar" name="pettyCashBar">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>6</height>
+              </size>
+             </property>
+             <property name="value">
+              <number>0</number>
+             </property>
+             <property name="textVisible">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QFrame" name="expensesCard">
+        <property name="class" stdset="0">
+         <string notr="true">card</string>
+        </property>
+        <layout class="QVBoxLayout" name="expensesCardLayout">
+         <property name="spacing">
+          <number>12</number>
+         </property>
+         <property name="leftMargin">
+          <number>16</number>
+         </property>
+         <property name="topMargin">
+          <number>16</number>
+         </property>
+         <property name="rightMargin">
+          <number>16</number>
+         </property>
+         <property name="bottomMargin">
+          <number>16</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="expensesHeaderLayout">
+           <item>
+            <widget class="QLabel" name="expensesTitle">
+             <property name="text">
+              <string>Gastos Registrados</string>
+             </property>
+             <property name="class" stdset="0">
+              <string notr="true">h3</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="expensesHeaderSpacer">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="OutlineButton" name="addExpenseButton">
+             <property name="title" stdset="0">
+              <string>Agregar Gasto</string>
+             </property>
+             <property name="leadingIcon" stdset="0">
+              <string notr="true">:/icons/plus.png</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QTableWidget" name="expensesTable">
+           <property name="editTriggers">
+            <set>QAbstractItemView::EditTrigger::DoubleClicked</set>
+           </property>
+           <property name="tabKeyNavigation">
+            <bool>false</bool>
+           </property>
+           <property name="alternatingRowColors">
+            <bool>true</bool>
+           </property>
+           <property name="selectionMode">
+            <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+           </property>
+           <property name="selectionBehavior">
+            <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+           </property>
+           <property name="class" stdset="0">
+            <string notr="true">data-table</string>
+           </property>
+           <attribute name="verticalHeaderVisible">
+            <bool>false</bool>
+           </attribute>
+           <column>
+            <property name="text">
+             <string>Folio</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Fecha</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Tipo de Gasto</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Descripción</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Factura</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>No. Factura</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Sub Total</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>IVA</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Total</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Método de Pago</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="expensesFooterLayout">
+           <item>
+            <spacer name="expensesFooterSpacer">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="OutlineButton" name="printReceiptButton">
+             <property name="title" stdset="0">
+              <string>Imprimir</string>
+             </property>
+             <property name="leadingIcon" stdset="0">
+              <string notr="true">:/icons/printer.png</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>NavTabItem</class>
+   <extends>QPushButton</extends>
+   <header>presentation/common/components/navtabitem.h</header>
+  </customwidget>
+  <customwidget>
+   <class>OutlineButton</class>
+   <extends>QPushButton</extends>
+   <header>presentation/common/components/outlinebutton.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>generalExpensesTab</tabstop>
+  <tabstop>periodCombo</tabstop>
+  <tabstop>yearCombo</tabstop>
+  <tabstop>addExpenseButton</tabstop>
+  <tabstop>expensesTable</tabstop>
+  <tabstop>printReceiptButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

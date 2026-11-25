@@ -2,6 +2,7 @@
 #define DOMAIN_INVENTORY_MODEL_MAINTENANCERECORD_H
 
 #include "domain/common/value_objects/enums.h"
+#include "domain/common/value_objects/moneyamount.h"
 #include "domain/common/value_objects/validationresult.h"
 
 #include <QDate>
@@ -21,8 +22,8 @@ class MaintenanceRecord
 {
 public:
     // cost NUMERIC(12, 2): doce dígitos, dos de ellos decimales.
-    static constexpr int kCostIntegerDigits = 10;
-    static constexpr int kCostDecimals = 2;
+    static constexpr int kCostIntegerDigits = MoneyAmount::kIntegerDigits;
+    static constexpr int kCostDecimals = MoneyAmount::kDecimals;
 
     // typeId es el id de vehicle_maintenance_cat; -1 si no se eligió.
     // paymentMethod es nullopt si no se eligió.

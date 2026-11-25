@@ -25,6 +25,8 @@
         <file>icons/dollar.png</file>
         <file>icons/plus.png</file>
         <file>icons/plus@2x.png</file>
+        <file>icons/download.png</file>
+        <file>icons/download@2x.png</file>
         <file>icons/chevron_down.png</file>
         <file>icons/checkmark.png</file>
         <file>icons/check-badge-green.png</file>
@@ -39,6 +41,7 @@
     <qresource prefix="/templates">
         <file alias="contract_acquisition.html">templates/contract_acquisition.html</file>
         <file alias="receipt_maintenance.html">templates/receipt_maintenance.html</file>
+        <file alias="receipt_expense.html">templates/receipt_expense.html</file>
         <file>request_issuance_cfdi.html</file>
     </qresource>
 </RCC>

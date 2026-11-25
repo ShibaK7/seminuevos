@@ -81,6 +81,11 @@ seminuevos_add_test(tst_maintenancerecord
     LIBS seminuevos_domain
 )
 
+seminuevos_add_test(tst_operationalexpense
+    SOURCES domain/tst_operationalexpense.cpp
+    LIBS seminuevos_domain
+)
+
 # --- Aplicación -----------------------------------------------------------------
 seminuevos_add_test(tst_authenticationservice
     SOURCES application/tst_authenticationservice.cpp support/fakes.h
@@ -107,6 +112,11 @@ seminuevos_add_test(tst_maintenanceservice
     LIBS seminuevos_application
 )
 
+seminuevos_add_test(tst_operationalexpenseservice
+    SOURCES application/tst_operationalexpenseservice.cpp support/fakes.h
+    LIBS seminuevos_application
+)
+
 # --- Adaptadores ---------------------------------------------------------------
 seminuevos_add_test(tst_localfilestorage
     SOURCES adapters/tst_localfilestorage.cpp
@@ -116,6 +126,11 @@ seminuevos_add_test(tst_localfilestorage
 # El recibo usa la plantilla y las imágenes del recurso: se compila con él.
 seminuevos_add_test(tst_maintenancereceipt
     SOURCES adapters/tst_maintenancereceipt.cpp "${PROJECT_SOURCE_DIR}/resources/Resources.qrc"
+    LIBS seminuevos_contract
+)
+
+seminuevos_add_test(tst_expensereceipt
+    SOURCES adapters/tst_expensereceipt.cpp "${PROJECT_SOURCE_DIR}/resources/Resources.qrc"
     LIBS seminuevos_contract
 )
 
@@ -167,6 +182,11 @@ seminuevos_add_test(tst_maintenancehistorypresenter
     LIBS seminuevos_presentation
 )
 
+seminuevos_add_test(tst_financepresenter
+    SOURCES presentation/tst_financepresenter.cpp support/fakes.h
+    LIBS seminuevos_presentation
+)
+
 # Las de vistas enlazan seminuevos_views: widgets reales, sin base ni disco.
 seminuevos_add_test(tst_formsupport
     SOURCES presentation/tst_formsupport.cpp
@@ -198,6 +218,12 @@ seminuevos_add_test(tst_vehiclerecordview
 # El formulario de alta del historial de mantenimientos.
 seminuevos_add_test(tst_addmaintenancedialog
     SOURCES presentation/tst_addmaintenancedialog.cpp support/fakes.h
+    LIBS seminuevos_views
+)
+
+# El formulario de alta de gastos y la tabla de Finanzas.
+seminuevos_add_test(tst_addexpensedialog
+    SOURCES presentation/tst_addexpensedialog.cpp support/fakes.h
     LIBS seminuevos_views
 )
 

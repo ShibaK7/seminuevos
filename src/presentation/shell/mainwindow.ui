@@ -323,6 +323,7 @@
             <widget class="InventoryView" name="inventoryPage"/>
             <widget class="CommercialMainView" name="commercial_main_view"/>
             <widget class="SaleWizardView" name="commercialPage"/>
+            <widget class="FinanceView" name="financePage"/>
            </widget>
           </item>
          </layout>
@@ -371,6 +372,11 @@
    <class>CommercialMainView</class>
    <extends>QWidget</extends>
    <header>presentation/commercial/commercialmainview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>FinanceView</class>
+   <extends>QWidget</extends>
+   <header>presentation/finance/financeview.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AddExpenseDialog</class>
+ <widget class="QDialog" name="AddExpenseDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>480</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Agregar Gasto</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="addExpenseLayout">
+   <property name="spacing">
+    <number>16</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <layout class="QGridLayout" name="expenseFormGrid" columnstretch="0,1">
+     <property name="horizontalSpacing">
+      <number>25</number>
+     </property>
+     <property name="verticalSpacing">
+      <number>12</number>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="dateLabel">
+       <property name="text">
+        <string>Fecha:</string>
+       </property>
+       <property name="buddy">
+        <cstring>expenseDate</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QDateEdit" name="expenseDate">
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+       <property name="field" stdset="0">
+        <string notr="true">expenseDate</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="expenseTypeLabel">
+       <property name="text">
+        <string>Tipo de Gasto:</string>
+       </property>
+       <property name="buddy">
+        <cstring>expenseTypeCombo</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="expenseTypeCombo">
+       <property name="field" stdset="0">
+        <string notr="true">expenseType</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="descriptionLabel">
+       <property name="text">
+        <string>Descripción:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+       </property>
+       <property name="buddy">
+        <cstring>expenseDescription</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QTextEdit" name="expenseDescription">
+       <property name="tabChangesFocus">
+        <bool>true</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="acceptRichText">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="invoiceLabel">
+       <property name="text">
+        <string>Factura:</string>
+       </property>
+       <property name="buddy">
+        <cstring>invoiceCheck</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QCheckBox" name="invoiceCheck">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="invoiceNumberLabel">
+       <property name="text">
+        <string>No. Factura:</string>
+       </property>
+       <property name="buddy">
+        <cstring>invoiceNumber</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="invoiceNumber">
+       <property name="maxLength">
+        <number>50</number>
+       </property>
+       <property name="field" stdset="0">
+        <string notr="true">invoiceNumber</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="subtotalLabel">
+       <property name="text">
+        <string>Sub Total ($ M.N):</string>
+       </property>
+       <property name="buddy">
+        <cstring>subtotal</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLineEdit" name="subtotal">
+       <property name="placeholderText">
+        <string>0.00</string>
+       </property>
+       <property name="field" stdset="0">
+        <string notr="true">subtotal</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="ivaLabel">
+       <property name="text">
+        <string>IVA (16%):</string>
+       </property>
+       <property name="buddy">
+        <cstring>ivaValue</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="ivaValue">
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QLabel" name="totalLabel">
+       <property name="text">
+        <string>Total:</string>
+       </property>
+       <property name="buddy">
+        <cstring>totalValue</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QLineEdit" name="totalValue">
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
+      <widget class="QLabel" name="paymentMethodLabel">
+       <property name="text">
+        <string>Método de Pago:</string>
+       </property>
+       <property name="buddy">
+        <cstring>paymentMethodCombo</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="1">
+      <widget class="QComboBox" name="paymentMethodCombo">
+       <property name="field" stdset="0">
+        <string notr="true">paymentMethod</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="dialogButtonsLayout">
+     <property name="spacing">
+      <number>12</number>
+     </property>
+     <item>
+      <spacer name="dialogButtonsSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="expenseCancelButton">
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="class" stdset="0">
+        <string notr="true">secondary</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="expenseAcceptButton">
+       <property name="text">
+        <string>Aceptar</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+       <property name="class" stdset="0">
+        <string notr="true">primary</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>expenseDate</tabstop>
+  <tabstop>expenseTypeCombo</tabstop>
+  <tabstop>expenseDescription</tabstop>
+  <tabstop>invoiceCheck</tabstop>
+  <tabstop>invoiceNumber</tabstop>
+  <tabstop>subtotal</tabstop>
+  <tabstop>paymentMethodCombo</tabstop>
+  <tabstop>expenseCancelButton</tabstop>
+  <tabstop>expenseAcceptButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

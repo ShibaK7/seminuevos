@@ -21,7 +21,8 @@ seminuevos/
 │
 ├── init-db/                         Scripts que Docker corre al crear la base (en orden por su número)
 │   ├── 00_schema.sql                Tablas, llaves y CHECKs
-│   ├── 10…14_*_cat.sql              Catálogos: marcas, combustibles, tipos/subtipos, checklist, mantenimientos
+│   ├── 10…15_*_cat.sql              Catálogos: marcas, combustibles, tipos/subtipos, checklist, mantenimientos,
+│   │                                tipos de gasto operativo
 │   └── 90_global_configurations.sql Parámetros globales (UMA vigente)
 │
 ├── resources/                       Todo lo que se compila dentro del ejecutable (Resources.qrc)
@@ -42,9 +43,15 @@ seminuevos/
 │   │
 │   ├── domain/                      NÚCLEO: reglas del negocio. Solo QtCore; no conoce a nadie
 │   │   ├── common/                  Lo que usan varios módulos
-│   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts
+│   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts, MoneyAmount (importe que
+│   │   │   │                        cabe en NUMERIC(12, 2), en centavos)
 │   │   │   └── rules/
 │   │   │       └── cashpaymentlimit  Tope LFPIORPI: 3,210 UMA en pagos en efectivo
+│   │   ├── finance/                 Módulo Finanzas
+│   │   │   ├── model/
+│   │   │   │   └── operationalexpense  Un gasto operativo: tipo, factura, subtotal y método de pago
+│   │   │   └── value_objects/
+│   │   │       └── expenseamounts     Subtotal, IVA (16 %) y total: el único lugar que hace la cuenta
 │   │   └── inventory/               Módulo Inventario
 │   │       ├── model/               Entidades con sus invariantes
 │   │       │   ├── vehicle           Vehicle (abstracta): datos comunes, validate() como Template Method, contrato
@@ -73,6 +80,11 @@ seminuevos/
 │   │   │   ├── dto/                 authdtos
 │   │   │   ├── ports/               userdirectory, passwordhasher
 │   │   │   └── services/            authenticationservice
+│   │   ├── finance/                 Módulo Finanzas (Gastos Generales)
+│   │   │   ├── dto/                 financedtos: catálogo de tipos, renglón de la tabla, alta y factura
+│   │   │   ├── ports/               operationalexpenserepository, expensereceiptgenerator (recibo de pago)
+│   │   │   └── services/            operationalexpenseservice: leer, dar de alta, corregir la factura e
+│   │   │                            imprimir el recibo de pago
 │   │   └── inventory/               Módulo Inventario
 │   │       ├── dto/                 inventorydtos: filtro y tarjeta de la rejilla
 │   │       ├── ports/               inventoryreader
@@ -95,12 +107,14 @@ seminuevos/
 │   │   │   ├── connectionpool        Una conexión por hilo; en Debug prohíbe SQL en el hilo de la interfaz
 │   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
 │   │   │   ├── common/              sqlcounterpartydirectory (búsqueda y actualización de personas compartidas)
+│   │   │   ├── finance/             sqloperationalexpenserepository (gastos operativos y su catálogo)
 │   │   │   └── inventory/           sqlvehiclerepository (alta y corrección transaccionales, con versión),
 │   │   │                            sqlcounterpartyrepository (contraparte: buscar, crear, corregir o religar),
 │   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA),
 │   │   │                            sqlvehiclerecordreader (el expediente de un folio, en una sola lectura)
 │   │   ├── storage/                 Disco local (localfilestorage): almacén por VIN, miniaturas, temporales
-│   │   ├── contract/                PDF del contrato: pdfcontractgenerator, datos de la agencia, número a letras
+│   │   ├── contract/                PDF del contrato: pdfcontractgenerator, datos de la agencia, número a letras;
+│   │   │                            recibos de mantenimiento y de gasto (receiptpdf: lo que comparten)
 │   │   └── security/                Hash PBKDF2 de contraseñas
 │   │
 │   ├── presentation/                FRONT. Solo en src/: el .ui, el .h, el .cpp y el presenter de cada
@@ -117,6 +131,11 @@ seminuevos/
 │   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos;
 │   │   │   │                        editsession: consulta o edición (FormMode) y si hay cambios sin guardar
 │   │   │   └── tasks/               taskrunner y pooledtaskrunner: trabajo fuera del hilo de la interfaz
+│   │   ├── finance/                 Menú Finanzas
+│   │   │   ├── financeview (.ui/.h/.cpp), financepresenter, ifinanceview.h
+│   │   │   │                        La página Gastos Generales: tarjetas y tabla de gastos (Factura y
+│   │   │   │                        No. Factura se corrigen en la tabla)
+│   │   │   └── addexpensedialog (.ui/.h/.cpp)   El modal "Agregar Gasto"
 │   │   └── inventory/               Menú Inventario
 │   │       ├── inventoryview (.ui/.h/.cpp), inventorypresenter, iinventoryview.h
 │   │       │                        La página: pestañas, filtros y rejilla

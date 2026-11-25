@@ -61,15 +61,17 @@ MainWindow::MainWindow(QWidget *parent)
     // Vehículo" lo retoma (ver openVehicleWizard).
     connect(ui->inventoryItem, &QPushButton::clicked, this,
             [this] { ui->mainContentStack->setCurrentWidget(ui->inventoryPage); });
-    // Los otros tres módulos no existen todavía. Se avisa y se devuelve el
-    // resaltado a Inventario: con autoExclusive, un manejador vacío dejaría la
-    // barra lateral marcando un módulo en el que el usuario no está.
     connect(ui->commercialItem, &QPushButton::clicked, this, [this] {
         ui->commercialItem->setChecked(true);
         ui->mainContentStack->setCurrentWidget(ui->commercial_main_view);
     });
-    connect(ui->financeItem, &QPushButton::clicked, this,
-            [this] { showModulePending(QStringLiteral("Finanzas")); });
+    connect(ui->financeItem, &QPushButton::clicked, this, [this] {
+        ui->financeItem->setChecked(true);
+        ui->mainContentStack->setCurrentWidget(ui->financePage);
+    });
+    // Reportes no existe todavía. Se avisa y se devuelve el resaltado a
+    // Inventario: con autoExclusive, un manejador vacío dejaría la barra
+    // lateral marcando un módulo en el que el usuario no está.
     connect(ui->reportItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Reportes")); });
 }
@@ -101,6 +103,11 @@ CommercialMainView &MainWindow::commercialView()
     return *ui->commercial_main_view;
 }
 
+FinanceView &MainWindow::financeView()
+{
+    return *ui->financePage;
+}
+
 void MainWindow::bindInventory(presentation::InventoryPresenter &presenter)
 {
     m_inventory = &presenter;
@@ -121,6 +128,11 @@ void MainWindow::setSession(const application::SessionDto &session)
 {
     ui->userRoleLabel->setText(domain::displayLabel(session.role));
     ui->userRoleLabel->setToolTip(session.displayName);
+}
+
+void MainWindow::setFinanceAvailable(bool available)
+{
+    ui->financeItem->setVisible(available);
 }
 
 // ---------------------------------------------------------------------------

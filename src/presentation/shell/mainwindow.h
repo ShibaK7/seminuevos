@@ -23,6 +23,7 @@ class CommercialPresenter;
 
 class InventoryView;
 class CommercialMainView;
+class FinanceView;
 class SaleDetails;
 class SaleDetailsView;
 class VehicleRecordView;
@@ -60,12 +61,17 @@ public:
 
     // Quién entró: la barra superior muestra su rol.
     void setSession(const application::SessionDto &session);
+    // Si "Finanzas" aparece en el menú lateral. Lo decide la raíz de
+    // composición con la regla del dominio (FinanceAccess): la ventana no
+    // compara roles.
+    void setFinanceAvailable(bool available);
 
     // La página del inventario, para que la raíz de composición le arme su
     // presenter.
     InventoryView &inventoryView();
     SaleWizardView &saleWizardView();
     CommercialMainView &commercialView();
+    FinanceView &financeView();
 
     // Conecta la página del inventario con su presenter, y a este con los
     // registros que haga el asistente.
