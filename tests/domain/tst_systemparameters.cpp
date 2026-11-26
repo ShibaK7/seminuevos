@@ -60,6 +60,16 @@ private slots:
         QCOMPARE(errorsFor(SystemParameter::UmaDailyValue, 0), QStringList{QStringLiteral("umaDailyValue")});
     }
 
+    // Un punto decimal fuera de lugar multiplicaría el tope de efectivo.
+    void umaHasAPlausibleCeiling()
+    {
+        QVERIFY(errorsFor(SystemParameter::UmaDailyValue, 100000).isEmpty());
+        QCOMPARE(errorsFor(SystemParameter::UmaDailyValue, 100001),
+                 QStringList{QStringLiteral("umaDailyValue")});
+        QCOMPARE(errorsFor(SystemParameter::UmaDailyValue, 1173100),
+                 QStringList{QStringLiteral("umaDailyValue")});
+    }
+
     // Más estricto que la ley sí; mayor, fraccionario o cero, no.
     void cashLimitIsAWholeNumberUpToTheLegalOne_data()
     {

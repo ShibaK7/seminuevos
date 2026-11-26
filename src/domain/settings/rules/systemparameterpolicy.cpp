@@ -17,8 +17,12 @@ void SystemParameterPolicy::check(SystemParameter parameter, qint64 hundredths,
 
     switch (parameter) {
     case SystemParameter::UmaDailyValue:
-        if (hundredths <= 0)
+        if (hundredths <= 0) {
             result.addError(field, QStringLiteral("La UMA debe ser mayor que cero."));
+        } else if (hundredths > kMaxUmaHundredths) {
+            result.addError(field, QStringLiteral("La UMA diaria no puede pasar de $1,000.00: revisa "
+                                                  "el punto decimal."));
+        }
         break;
     case SystemParameter::CashLimitUmaMultiple: {
         const qint64 legal = qint64(CashLimitTerms::kLegalUmaMultiple) * 100;
