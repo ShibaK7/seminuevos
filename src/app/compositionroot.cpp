@@ -11,6 +11,7 @@
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 #include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
+#include "adapters/persistence/schemaupgrade.h"
 #include "adapters/storage/localfilestorage.h"
 #include "application/auth/services/authenticationservice.h"
 #include "application/commercial/sales/services/saleservice.h"
@@ -138,6 +139,16 @@ bool CompositionRoot::start()
                                "Verifica que el contenedor de PostgreSQL esté corriendo "
                                "(docker compose up -d) y que el archivo .env tenga los "
                                "datos correctos.").arg(db.lastError().text()));
+            return false;
+        }
+
+        // Una base creada antes de la última versión del esquema se pone al
+        // día aquí (hoy, users.active): sin esto el login fallaría.
+        const SchemaUpgrade::Result upgrade = SchemaUpgrade::run(db);
+        if (!upgrade.ok) {
+            QMessageBox::critical(nullptr, QStringLiteral("Error al actualizar la base"),
+                QStringLiteral("No se pudo poner al día el esquema de la base de datos: %1")
+                    .arg(upgrade.errorMessage));
             return false;
         }
 

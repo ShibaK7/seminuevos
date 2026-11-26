@@ -73,6 +73,10 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     role VARCHAR(30) NOT NULL CHECK (role IN ('Administrador', 'Vendedor')),
+    -- Una cuenta no se borra (las ventas la referencian): se desactiva en
+    -- Configuraciones y ya no entra. La app agrega la columna al arrancar en
+    -- una base creada antes de la US-07.1 (SchemaUpgrade).
+    active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP
 );

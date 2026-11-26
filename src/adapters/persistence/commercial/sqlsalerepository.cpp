@@ -228,8 +228,9 @@ QList<application::SaleVendorOptionDto> SqlSaleRepository::searchVendors(
             failure = db.lastError().text();
         } else {
             QSqlQuery query(db);
+            // Una cuenta desactivada en Configuraciones ya no vende.
             QString sql = QStringLiteral(
-                "SELECT id, display_name, username FROM users WHERE 1 = 1");
+                "SELECT id, display_name, username FROM users WHERE active");
             if (!trimmed.isEmpty()) {
                 sql += QStringLiteral(
                     " AND (LOWER(display_name) LIKE :term OR LOWER(username) LIKE :term)");

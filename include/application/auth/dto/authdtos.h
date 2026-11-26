@@ -16,6 +16,11 @@ struct UserRecordDto
     QString displayName;
     QString role;
     int id = -1;
+    // Una cuenta desactivada en Configuraciones no entra (US-07.1).
+    bool active = true;
+    // Como está guardado. El login no distingue mayúsculas, y la sesión
+    // lleva este y no el que se tecleó.
+    QString username;
 };
 
 // La sesión que obtiene quien inició sesión. Es lo único que cruza hacia la

@@ -237,3 +237,14 @@ if(SEMINUEVOS_DB_TESTS)
     target_compile_definitions(tst_settings_db PRIVATE
         SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 endif()
+
+# Cuentas de usuario contra PostgreSQL (opcional, como la de arriba).
+if(SEMINUEVOS_DB_TESTS)
+    seminuevos_add_test(tst_users_db
+        SOURCES adapters/tst_users_db.cpp
+        LIBS seminuevos_application seminuevos_persistence
+    )
+    set_tests_properties(tst_users_db PROPERTIES LABELS "db")
+    target_compile_definitions(tst_users_db PRIVATE
+        SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+endif()

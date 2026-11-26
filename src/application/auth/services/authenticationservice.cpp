@@ -41,6 +41,14 @@ LoginResult AuthenticationService::login(const QString &username, const QString 
         return result;
     }
 
+    // Se revisa después de la contraseña: decirlo antes le diría a cualquiera
+    // qué cuentas existen.
+    if (!record->active) {
+        result.errorMessage = QStringLiteral("Tu cuenta está desactivada. Pide al Administrador "
+                                             "que la vuelva a activar.");
+        return result;
+    }
+
     const std::optional<domain::UserRole> role = domain::userRoleFromDb(record->role);
     if (!role) {
         result.errorMessage =
@@ -55,7 +63,8 @@ LoginResult AuthenticationService::login(const QString &username, const QString 
     }
 
     result.ok = true;
-    result.session = SessionDto{user, record->displayName, *role, record->id};
+    result.session = SessionDto{record->username.isEmpty() ? user : record->username,
+                                record->displayName, *role, record->id};
     return result;
 }
 
