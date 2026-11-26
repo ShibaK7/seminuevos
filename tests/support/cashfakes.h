@@ -78,15 +78,20 @@ public:
             return status(WriteOutcome::Status::AlreadyOpened);
         accounts[domain::CashAccount::PettyCash].opened = true;
         accounts[domain::CashAccount::Bank].opened = true;
+        // Como el adaptador: el saldo queda en lo capturado.
         QList<domain::CashMovement> opening;
-        if (openings.pettyCashHundredths > 0)
-            opening << domain::CashMovement::inflow(domain::CashAccount::PettyCash, openings.pettyCashHundredths,
-                                                    domain::CashMovementKind::Opening, QStringLiteral("Saldo inicial"),
-                                                    now.date());
-        if (openings.bankHundredths > 0)
-            opening << domain::CashMovement::inflow(domain::CashAccount::Bank, openings.bankHundredths,
-                                                    domain::CashMovementKind::Opening, QStringLiteral("Saldo inicial"),
-                                                    now.date());
+        const QList<std::pair<domain::CashAccount, qint64>> captured = {
+            {domain::CashAccount::PettyCash, openings.pettyCashHundredths},
+            {domain::CashAccount::Bank, openings.bankHundredths}};
+        for (const auto &[account, hundredths] : captured) {
+            const qint64 difference = hundredths - accounts[account].hundredths;
+            if (difference > 0)
+                opening << domain::CashMovement::inflow(account, difference, domain::CashMovementKind::Opening,
+                                                        QStringLiteral("Saldo inicial"), now.date());
+            else if (difference < 0)
+                opening << domain::CashMovement::outflow(account, -difference, domain::CashMovementKind::Opening,
+                                                         QStringLiteral("Saldo inicial"), now.date());
+        }
         return apply(opening, actorId);
     }
 

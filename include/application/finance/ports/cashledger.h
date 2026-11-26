@@ -45,7 +45,9 @@ public:
                                                    int limit, QString *error) = 0;
 
     // Abre Caja Chica y Cantidad Banco con su saldo inicial, las dos o
-    // ninguna.
+    // ninguna. El saldo queda en lo capturado (lo que hay hoy, contado): si
+    // una operación ya metió dinero antes de abrirla, el movimiento de
+    // apertura es solo la diferencia.
     virtual WriteOutcome open(const OpeningBalancesDto &openings, int actorId) = 0;
 
     // Traspaso: sale del origen y entra a Caja Fuerte.

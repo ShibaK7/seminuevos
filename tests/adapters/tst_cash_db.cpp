@@ -231,6 +231,34 @@ private slots:
         QCOMPARE(scalar(QStringLiteral("SELECT count(*) FROM cash_movements")), qint64(2));
     }
 
+    // Una venta entró antes de abrir la cuenta: lo capturado ya la incluye
+    // (es lo que hay contado), así que el saldo queda en lo capturado y la
+    // apertura registra solo la diferencia.
+    void openingSetsTheCountedBalance()
+    {
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlDatabase &db = handle.database();
+            QVERIFY(db.transaction());
+            const auto sale = cashledger::applyMovements(
+                db, {domain::CashMovement::inflow(CashAccount::PettyCash, 5000000, domain::CashMovementKind::Sale,
+                                                  QStringLiteral("Venta"), QDate::currentDate()),
+                     domain::CashMovement::inflow(CashAccount::Bank, 100000, domain::CashMovementKind::Sale,
+                                                  QStringLiteral("Venta"), QDate::currentDate())});
+            QCOMPARE(sale.status, cashledger::ApplyOutcome::Status::Applied);
+            QVERIFY(db.commit());
+        }
+        openWith(2000000, 7000000);
+        QCOMPARE(balance(CashAccount::PettyCash), qint64(2000000));
+        QCOMPARE(balance(CashAccount::Bank), qint64(7000000));
+        QCOMPARE(scalar(QStringLiteral("SELECT CAST(SUM(amount) * 100 AS BIGINT) FROM cash_movements "
+                                       "WHERE account = 'Caja Chica' AND kind = 'Apertura'")),
+                 qint64(-3000000));
+        QCOMPARE(scalar(QStringLiteral("SELECT CAST(SUM(amount) * 100 AS BIGINT) FROM cash_movements "
+                                       "WHERE account = 'Banco' AND kind = 'Apertura'")),
+                 qint64(6900000));
+    }
+
     // Un traspaso: sale del origen, entra a Caja Fuerte, las dos patas unidas.
     void depositIsATransfer()
     {

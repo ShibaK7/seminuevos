@@ -74,6 +74,15 @@ private slots:
         QCOMPARE(m_ledger.balance(CashAccount::PettyCash), qint64(2000000));
     }
 
+    // Lo que ya entró antes de abrir está en lo contado: no se suma dos veces.
+    void openingSetsTheCountedBalance()
+    {
+        m_ledger.accounts[CashAccount::PettyCash].hundredths = 5000000; // una venta, sin abrir
+        QCOMPARE(service().openBalances({2000000, 0}, admin()).status, Status::Saved);
+        QCOMPARE(m_ledger.balance(CashAccount::PettyCash), qint64(2000000));
+        QCOMPARE(m_ledger.movements.last().hundredths, qint64(-3000000));
+    }
+
     void negativeOpeningIsRejected()
     {
         const auto result = service().openBalances({-1, 0}, admin());

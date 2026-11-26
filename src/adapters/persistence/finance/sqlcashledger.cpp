@@ -191,20 +191,28 @@ WriteOutcome SqlCashLedger::open(const application::OpeningBalancesDto &openings
         QList<domain::CashMovement> movements;
         for (const auto &[account, hundredths] : accounts) {
             // Solo si sigue cerrada: si otro administrador la abrió mientras
-            // tanto, no se suma dos veces.
+            // tanto, no se captura dos veces. Devuelve lo que ya tiene: lo
+            // que las operaciones metieron antes de abrirla.
             QSqlQuery mark(db);
             mark.prepare(QStringLiteral("UPDATE cash_accounts SET opened = TRUE, updated_at = CURRENT_TIMESTAMP "
-                                        " WHERE account = :account AND NOT opened"));
+                                        " WHERE account = :account AND NOT opened "
+                                        "RETURNING CAST(ROUND(balance * 100) AS BIGINT)"));
             mark.bindValue(QStringLiteral(":account"), domain::toDbString(account));
             if (!mark.exec())
                 return failed(mark.lastError().text());
-            if (mark.numRowsAffected() != 1)
+            if (!mark.next())
                 return withStatus(Status::AlreadyOpened);
-            if (hundredths > 0)
-                movements << domain::CashMovement::inflow(account, hundredths,
-                                                          domain::CashMovementKind::Opening,
-                                                          QStringLiteral("Saldo inicial"),
-                                                          QDate::currentDate());
+            // Lo capturado es lo que hay hoy (ya incluye lo que entró antes):
+            // el saldo queda en eso, y el movimiento es la diferencia.
+            const qint64 difference = hundredths - mark.value(0).toLongLong();
+            if (difference > 0)
+                movements << domain::CashMovement::inflow(account, difference, domain::CashMovementKind::Opening,
+                                                          QStringLiteral("Saldo inicial"), QDate::currentDate());
+            else if (difference < 0)
+                movements << domain::CashMovement::outflow(account, -difference,
+                                                           domain::CashMovementKind::Opening,
+                                                           QStringLiteral("Saldo inicial (ajuste a lo contado)"),
+                                                           QDate::currentDate());
         }
         cashledger::References references;
         return fromApply(cashledger::applyMovements(db, movements, references));
