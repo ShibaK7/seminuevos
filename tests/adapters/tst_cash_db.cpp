@@ -216,6 +216,31 @@ private slots:
         QCOMPARE(scalar(QStringLiteral("SELECT count(*) FROM cash_movements")), qint64(0));
     }
 
+    // Dos apps que arrancan a la vez sobre una base vieja: las dos abren, y
+    // las tablas quedan una sola vez.
+    void simultaneousUpgradesBothSucceed()
+    {
+        for (int round = 0; round < 3; ++round) {
+            QVERIFY(exec(QStringLiteral("DROP TABLE cash_movements; DROP TABLE cash_accounts; "
+                                        "DROP SEQUENCE cash_transfer_seq")));
+            SchemaUpgrade::Result results[2];
+            std::unique_ptr<QThread> workers[2];
+            for (int i = 0; i < 2; ++i) {
+                workers[i].reset(QThread::create([this, &results, i] {
+                    ConnectionPool::Handle handle = m_pool->acquire();
+                    results[i] = SchemaUpgrade::run(handle.database());
+                }));
+            }
+            for (auto &worker : workers)
+                worker->start();
+            for (auto &worker : workers)
+                worker->wait();
+            for (const SchemaUpgrade::Result &result : results)
+                QVERIFY2(result.ok, qPrintable(result.errorMessage));
+            QCOMPARE(scalar(QStringLiteral("SELECT count(*) FROM cash_accounts")), qint64(3));
+        }
+    }
+
     // Una sola vez: la segunda no suma nada.
     void openingHappensOnce()
     {

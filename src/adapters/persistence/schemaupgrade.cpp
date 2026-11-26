@@ -80,6 +80,23 @@ bool createCashLedger(QSqlDatabase &db, QString *error)
         *error = db.lastError().text();
         return false;
     }
+    // Dos apps que arrancan a la vez sobre una base vieja: la segunda espera
+    // a la primera y, si ya las creó, no hace nada. Sin esto, su CREATE TABLE
+    // IF NOT EXISTS choca con el de la otra (pg_type) y la app no abre.
+    QSqlQuery lock(db);
+    if (!lock.exec(QStringLiteral("SELECT pg_advisory_xact_lock(hashtext('seminuevos.schemaupgrade'))"))) {
+        *error = lock.lastError().text();
+        db.rollback();
+        return false;
+    }
+    if (hasTable(db, QStringLiteral("cash_movements"), error)) {
+        db.rollback();
+        return true;
+    }
+    if (!error->isEmpty()) {
+        db.rollback();
+        return false;
+    }
     for (const QString &statement : statements) {
         QSqlQuery query(db);
         if (!query.exec(statement)) {
