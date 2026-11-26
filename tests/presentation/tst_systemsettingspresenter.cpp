@@ -76,8 +76,10 @@ private:
     std::unique_ptr<presentation::SystemSettingsPresenter> make(presentation::TaskRunner &runner,
                                                                domain::UserRole role = domain::UserRole::Admin)
     {
+        const application::SessionDto actor{QStringLiteral("admin"), QStringLiteral("Admin"), role,
+                                            fakes::InMemorySettingsRepository::kAdministratorId};
         auto presenter = std::make_unique<presentation::SystemSettingsPresenter>(m_view, *m_service,
-                                                                                 runner, role);
+                                                                                 runner, actor);
         presenter->start();
         return presenter;
     }
@@ -253,6 +255,22 @@ private slots:
         deferred.finish(0);
         QCOMPARE(m_view.paints, paints);
         QCOMPARE(m_view.fields.value(SystemParameter::UmaDailyValue), std::optional<qint64>(13000));
+    }
+
+    // Le quitaron el rol con la sesión abierta: no se guarda y ya no se
+    // ofrece editar.
+    void administratorDemotedMeanwhileIsDenied()
+    {
+        auto presenter = make(m_runner);
+        m_settings.activeAdministrators.clear();
+        presenter->onEdit();
+        type(*presenter, SystemParameter::BankBalance, 6000000);
+        presenter->onSave();
+        QCOMPARE(m_settings.rows.value(SystemParameter::BankBalance).hundredths,
+                 std::optional<qint64>(5000000));
+        QCOMPARE(m_view.mode, FormMode::View);
+        QVERIFY(!m_view.canEdit);
+        QVERIFY(m_view.message.contains(QStringLiteral("ya no puede")));
     }
 
     void sellerCannotEdit()

@@ -11,13 +11,15 @@ class ConnectionPool;
 // Al guardar, cada parámetro que cambió se escribe con su valor esperado en el
 // WHERE: si otro administrador lo cambió mientras tanto, no se pisa, y la
 // transacción completa se deshace. Solo los que cambian reciben fecha nueva.
+// Antes de escribir, en la misma transacción, comprueba que quien guarda siga
+// siendo Administrador activo.
 class SqlSettingsRepository final : public application::SettingsRepository
 {
 public:
     explicit SqlSettingsRepository(ConnectionPool &pool);
 
     QList<application::SystemParameterDto> getSystemParameters(QString *error) override;
-    UpdateOutcome updateSystemParameters(const QList<Change> &changes) override;
+    UpdateOutcome updateSystemParameters(const QList<Change> &changes, int actorId) override;
 
 private:
     ConnectionPool &m_pool;

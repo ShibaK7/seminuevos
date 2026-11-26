@@ -28,6 +28,7 @@ public:
         enum class Status {
             Updated,  // se guardaron todos
             Conflict, // alguno ya no tenía el valor esperado; no se guardó ninguno
+            ActorNotAllowed, // quien guarda ya no es Administrador activo; no se guardó ninguno
             Failed,   // falló la base; no se guardó ninguno
         };
         Status status = Status::Failed;
@@ -42,8 +43,10 @@ public:
 
     // #84: guarda los cambios en una sola transacción, todo o nada, y solo
     // ellos reciben fecha nueva. Un parámetro que ya no tiene el valor
-    // esperado es un conflicto: otro administrador lo cambió.
-    virtual UpdateOutcome updateSystemParameters(const QList<Change> &changes) = 0;
+    // esperado es un conflicto: otro administrador lo cambió. Dentro de la
+    // misma transacción comprueba que `actorId` siga siendo Administrador
+    // activo: la sesión pudo abrirse antes de que le quitaran el rol.
+    virtual UpdateOutcome updateSystemParameters(const QList<Change> &changes, int actorId) = 0;
 
 protected:
     SettingsRepository() = default;

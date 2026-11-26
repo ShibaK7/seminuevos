@@ -2,6 +2,7 @@
 
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/settings/settingskeys.h"
+#include "domain/common/value_objects/enums.h"
 
 #include <QSqlDatabase>
 #include <QSqlError>
@@ -61,7 +62,7 @@ QList<application::SystemParameterDto> SqlSettingsRepository::getSystemParameter
 }
 
 application::SettingsRepository::UpdateOutcome SqlSettingsRepository::updateSystemParameters(
-    const QList<Change> &changes)
+    const QList<Change> &changes, int actorId)
 {
     using Status = UpdateOutcome::Status;
     UpdateOutcome result;
@@ -79,7 +80,25 @@ application::SettingsRepository::UpdateOutcome SqlSettingsRepository::updateSyst
                                       .arg(db.lastError().text());
         } else {
             result.status = Status::Updated;
+            // Quien guarda sigue siendo Administrador activo. FOR SHARE: si
+            // otro administrador le está quitando el rol, espera a que
+            // confirme y decide con lo vigente.
+            QSqlQuery actor(db);
+            actor.prepare(QStringLiteral("SELECT 1 FROM users WHERE id = :id AND active "
+                                         "AND role = :admin FOR SHARE"));
+            actor.bindValue(QStringLiteral(":id"), actorId);
+            actor.bindValue(QStringLiteral(":admin"), domain::toDbString(domain::UserRole::Admin));
+            if (!actor.exec()) {
+                databaseFailed = true;
+                result.status = Status::Failed;
+                result.errorMessage = actor.lastError().text();
+            } else if (!actor.next()) {
+                result.status = Status::ActorNotAllowed;
+            }
+
             for (const Change &change : changes) {
+                if (result.status != Status::Updated)
+                    break;
                 QSqlQuery query(db);
                 if (change.expected) {
                     // El valor esperado va en el WHERE: si otro administrador

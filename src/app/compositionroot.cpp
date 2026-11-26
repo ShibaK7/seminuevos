@@ -303,7 +303,7 @@ void CompositionRoot::showMain(const application::SessionDto &session)
         if (domain::SettingsAccess(session.role).canOpenSettings()) {
             auto *settingsPage = new SettingsView(mainWindow);
             auto *parameters = new presentation::SystemSettingsPresenter(
-                settingsPage->systemSettings(), *m_systemSettings, m_runner, session.role,
+                settingsPage->systemSettings(), *m_systemSettings, m_runner, session,
                 settingsPage);
             auto *users = new presentation::UserManagementPresenter(
                 settingsPage->userManagement(), *m_userAdministration, m_runner, session,

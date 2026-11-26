@@ -1,6 +1,7 @@
 #ifndef PRESENTATION_SETTINGS_SYSTEMSETTINGSPRESENTER_H
 #define PRESENTATION_SETTINGS_SYSTEMSETTINGSPRESENTER_H
 
+#include "application/auth/dto/authdtos.h"
 #include "application/settings/dto/settingsdtos.h"
 #include "domain/common/value_objects/enums.h"
 #include "presentation/common/navigation/editsession.h"
@@ -30,7 +31,7 @@ class SystemSettingsPresenter final : public QObject
 public:
     SystemSettingsPresenter(ISystemSettingsView &view,
                             const application::SystemSettingsService &service, TaskRunner &runner,
-                            domain::UserRole role, QObject *parent = nullptr);
+                            const application::SessionDto &actor, QObject *parent = nullptr);
 
     // Lee y pinta los parámetros.
     void start();
@@ -57,7 +58,7 @@ private:
     ISystemSettingsView &m_view;
     const application::SystemSettingsService &m_service;
     TaskRunner &m_runner;
-    const domain::UserRole m_role;
+    const application::SessionDto m_actor;
     EditSession m_session;
     // Lo leído, que es lo esperado al guardar.
     QList<application::SystemParameterDto> m_loaded;

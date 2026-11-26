@@ -7,6 +7,7 @@
 #include "application/settings/ports/settingsrepository.h"
 
 #include <QMap>
+#include <QSet>
 
 namespace fakes {
 
@@ -20,6 +21,11 @@ public:
     QString failure;
     int reads = 0;
     QList<QList<Change>> updates;
+    // Quién guardó cada vez, y quiénes siguen siendo Administrador activo
+    // (como lo revisa el adaptador en la base).
+    QList<int> actors;
+    QSet<int> activeAdministrators{kAdministratorId};
+    static constexpr int kAdministratorId = 1;
     QDateTime now = QDateTime(QDate(2026, 11, 25), QTime(10, 0));
 
     void store(domain::SystemParameter parameter, qint64 hundredths,
@@ -41,13 +47,18 @@ public:
         return rows.values();
     }
 
-    UpdateOutcome updateSystemParameters(const QList<Change> &changes) override
+    UpdateOutcome updateSystemParameters(const QList<Change> &changes, int actorId) override
     {
         updates << changes;
+        actors << actorId;
         UpdateOutcome outcome;
         if (!failure.isEmpty()) {
             outcome.status = UpdateOutcome::Status::Failed;
             outcome.errorMessage = failure;
+            return outcome;
+        }
+        if (!activeAdministrators.contains(actorId)) {
+            outcome.status = UpdateOutcome::Status::ActorNotAllowed;
             return outcome;
         }
         for (const Change &change : changes) {

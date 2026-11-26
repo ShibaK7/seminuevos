@@ -73,6 +73,13 @@ private:
     const QString m_adminConnection = QStringLiteral("tst-settings-admin");
     // La desechable.
     std::unique_ptr<ConnectionPool> m_pool;
+    // Quien guarda: un Administrador activo de la desechable.
+    int m_adminId = -1;
+
+    application::SessionDto admin() const
+    {
+        return {QStringLiteral("jefa"), QStringLiteral("Jefa"), domain::UserRole::Admin, m_adminId};
+    }
 
     bool execOnDevelopment(const QString &sql)
     {
@@ -188,6 +195,13 @@ private slots:
             readFile(QStringLiteral(SEMINUEVOS_SOURCE_DIR) + QStringLiteral("/init-db/00_schema.sql"));
         QVERIFY(!schema.isEmpty());
         QVERIFY(execScript(schema));
+        QVERIFY(execScript(QStringLiteral(
+            "INSERT INTO users (username, password_hash, display_name, role) "
+            "VALUES ('jefa', 'x', 'Jefa', 'Administrador')")));
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery query(handle.database());
+        QVERIFY(query.exec(QStringLiteral("SELECT id FROM users WHERE username = 'jefa'")) && query.next());
+        m_adminId = query.value(0).toInt();
     }
 
     void cleanupTestCase()
@@ -232,7 +246,7 @@ private slots:
     {
         SqlSettingsRepository repository(*m_pool);
         const auto outcome = repository.updateSystemParameters(
-            {Change{SystemParameter::UmaDailyValue, 11731, 12000}});
+            {Change{SystemParameter::UmaDailyValue, 11731, 12000}}, m_adminId);
         QCOMPARE(outcome.status, UpdateStatus::Updated);
         QCOMPARE(valueOf(settingskeys::umaDailyValue()), QStringLiteral("120.00"));
         QVERIFY(updatedAtOf(settingskeys::umaDailyValue()) > kSeededAt);
@@ -245,7 +259,7 @@ private slots:
     {
         SqlSettingsRepository repository(*m_pool);
         const auto outcome = repository.updateSystemParameters(
-            {Change{SystemParameter::SafeBalance, std::nullopt, 1000050}});
+            {Change{SystemParameter::SafeBalance, std::nullopt, 1000050}}, m_adminId);
         QCOMPARE(outcome.status, UpdateStatus::Updated);
         QCOMPARE(valueOf(settingskeys::safeBalance()), QStringLiteral("10000.50"));
         QVERIFY(updatedAtOf(settingskeys::safeBalance()).isValid());
@@ -261,7 +275,7 @@ private slots:
         SqlSettingsRepository repository(*m_pool);
         const auto outcome = repository.updateSystemParameters(
             {Change{SystemParameter::BankBalance, 5000000, 6000000},
-             Change{SystemParameter::UmaDailyValue, 11731, 12000}});
+             Change{SystemParameter::UmaDailyValue, 11731, 12000}}, m_adminId);
         QCOMPARE(outcome.status, UpdateStatus::Conflict);
         QCOMPARE(valueOf(settingskeys::bankBalance()), QStringLiteral("50000.00"));
         QCOMPARE(valueOf(settingskeys::umaDailyValue()), QStringLiteral("118.00"));
@@ -274,9 +288,27 @@ private slots:
         seed(settingskeys::pettyCashBalance(), QStringLiteral("700"));
         SqlSettingsRepository repository(*m_pool);
         const auto outcome = repository.updateSystemParameters(
-            {Change{SystemParameter::PettyCashBalance, std::nullopt, 100000}});
+            {Change{SystemParameter::PettyCashBalance, std::nullopt, 100000}}, m_adminId);
         QCOMPARE(outcome.status, UpdateStatus::Conflict);
         QCOMPARE(valueOf(settingskeys::pettyCashBalance()), QStringLiteral("700.00"));
+    }
+
+    // La sesión se abrió como Administrador, pero ya le quitaron el rol (o
+    // la desactivaron): no se guarda nada.
+    void actorWhoIsNoLongerAnAdministratorSavesNothing()
+    {
+        SqlSettingsRepository repository(*m_pool);
+        const QList<Change> change{Change{SystemParameter::BankBalance, 5000000, 6000000}};
+        QVERIFY(exec(QStringLiteral("UPDATE users SET role = 'Vendedor' WHERE id = :id"),
+                     {{QStringLiteral(":id"), m_adminId}}));
+        QCOMPARE(repository.updateSystemParameters(change, m_adminId).status, UpdateStatus::ActorNotAllowed);
+        QVERIFY(exec(QStringLiteral("UPDATE users SET role = 'Administrador', active = FALSE WHERE id = :id"),
+                     {{QStringLiteral(":id"), m_adminId}}));
+        QCOMPARE(repository.updateSystemParameters(change, m_adminId).status, UpdateStatus::ActorNotAllowed);
+        QVERIFY(exec(QStringLiteral("UPDATE users SET active = TRUE WHERE id = :id"),
+                     {{QStringLiteral(":id"), m_adminId}}));
+        QCOMPARE(valueOf(settingskeys::bankBalance()), QStringLiteral("50000.00"));
+        QCOMPARE(updatedAtOf(settingskeys::bankBalance()), kSeededAt);
     }
 
     // De la pantalla a la base y de vuelta, con el servicio.
@@ -284,7 +316,7 @@ private slots:
     {
         SqlSettingsRepository repository(*m_pool);
         const application::SystemSettingsService service(repository);
-        const auto loaded = service.getSystemParameters(domain::UserRole::Admin);
+        const auto loaded = service.getSystemParameters(admin());
         QCOMPARE(loaded.status, application::SystemParametersResult::Status::Loaded);
         QList<application::SystemParameterEditDto> edits;
         for (const application::SystemParameterDto &dto : loaded.parameters) {
@@ -294,7 +326,7 @@ private slots:
                 shown = 200000; // 2,000 UMA
             edits << application::SystemParameterEditDto{dto.parameter, dto.hundredths, shown};
         }
-        const auto saved = service.updateSystemParameters(edits, domain::UserRole::Admin);
+        const auto saved = service.updateSystemParameters(edits, admin());
         QCOMPARE(saved.status, application::SystemParametersUpdateResult::Status::Saved);
         QCOMPARE(saved.updated, QList<SystemParameter>{SystemParameter::CashLimitUmaMultiple});
         QCOMPARE(valueOf(settingskeys::cashLimitUmaMultiple()), QStringLiteral("2000.00"));

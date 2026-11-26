@@ -47,7 +47,10 @@ private:
     {
         m_view = std::make_unique<SettingsView>();
         auto *parameters = new presentation::SystemSettingsPresenter(
-            m_view->systemSettings(), *m_systemSettings, m_runner, UserRole::Admin, m_view.get());
+            m_view->systemSettings(), *m_systemSettings, m_runner,
+            {QStringLiteral("admin"), QStringLiteral("Admin"), UserRole::Admin,
+             fakes::InMemorySettingsRepository::kAdministratorId},
+            m_view.get());
         auto *users = new presentation::UserManagementPresenter(
             m_view->userManagement(), *m_users, m_runner,
             {QStringLiteral("admin"), QStringLiteral("Admin"), UserRole::Admin, m_adminId}, m_view.get());

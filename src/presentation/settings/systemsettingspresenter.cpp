@@ -10,13 +10,14 @@ namespace presentation {
 
 SystemSettingsPresenter::SystemSettingsPresenter(ISystemSettingsView &view,
                                                  const application::SystemSettingsService &service,
-                                                 TaskRunner &runner, domain::UserRole role,
+                                                 TaskRunner &runner,
+                                                 const application::SessionDto &actor,
                                                  QObject *parent)
     : QObject(parent)
     , m_view(view)
     , m_service(service)
     , m_runner(runner)
-    , m_role(role)
+    , m_actor(actor)
 {
 }
 
@@ -38,9 +39,9 @@ void SystemSettingsPresenter::load()
     m_loading = true;
     m_view.setBusy(true);
     const application::SystemSettingsService *service = &m_service;
-    const domain::UserRole role = m_role;
+    const application::SessionDto actor = m_actor;
     m_runner.run(
-        this, [service, role] { return service->getSystemParameters(role); },
+        this, [service, actor] { return service->getSystemParameters(actor); },
         [this, generation](const application::SystemParametersResult &result) {
             using Status = application::SystemParametersResult::Status;
             if (generation != m_loadGeneration)
@@ -143,9 +144,9 @@ void SystemSettingsPresenter::onSave()
     m_saving = true;
     m_view.setBusy(true);
     const application::SystemSettingsService *service = &m_service;
-    const domain::UserRole role = m_role;
+    const application::SessionDto actor = m_actor;
     m_runner.run(
-        this, [service, edits, role] { return service->updateSystemParameters(edits, role); },
+        this, [service, edits, actor] { return service->updateSystemParameters(edits, actor); },
         [this](const application::SystemParametersUpdateResult &result) {
             using Status = application::SystemParametersUpdateResult::Status;
             m_saving = false;
@@ -173,8 +174,12 @@ void SystemSettingsPresenter::onSave()
                 load();
                 break;
             case Status::Denied:
+                // La cuenta pudo perder el rol con la sesión abierta: ya no
+                // se ofrece editar.
+                m_session.allowEditing(false);
                 enterView();
-                m_view.showMessage(QStringLiteral("Tu rol no puede cambiar los parámetros del sistema."));
+                m_view.showMessage(QStringLiteral("Tu cuenta ya no puede cambiar los parámetros del "
+                                                  "sistema."));
                 break;
             case Status::Failed:
                 // Se queda en edición con lo capturado, para reintentar.

@@ -10,11 +10,11 @@ SystemSettingsService::SystemSettingsService(SettingsRepository &settings)
 {
 }
 
-SystemParametersResult SystemSettingsService::getSystemParameters(domain::UserRole role) const
+SystemParametersResult SystemSettingsService::getSystemParameters(const SessionDto &actor) const
 {
     using Status = SystemParametersResult::Status;
     SystemParametersResult result;
-    if (!domain::SettingsAccess(role).canManageSystemParameters()) {
+    if (!domain::SettingsAccess(actor.role).canManageSystemParameters()) {
         result.status = Status::Denied;
         return result;
     }
@@ -43,11 +43,11 @@ SystemParametersResult SystemSettingsService::getSystemParameters(domain::UserRo
 }
 
 SystemParametersUpdateResult SystemSettingsService::updateSystemParameters(
-    const QList<SystemParameterEditDto> &edits, domain::UserRole role) const
+    const QList<SystemParameterEditDto> &edits, const SessionDto &actor) const
 {
     using Status = SystemParametersUpdateResult::Status;
     SystemParametersUpdateResult result;
-    if (!domain::SettingsAccess(role).canManageSystemParameters()) {
+    if (!domain::SettingsAccess(actor.role).canManageSystemParameters()) {
         result.status = Status::Denied;
         return result;
     }
@@ -81,7 +81,8 @@ SystemParametersUpdateResult SystemSettingsService::updateSystemParameters(
         return result;
     }
 
-    const SettingsRepository::UpdateOutcome outcome = m_settings.updateSystemParameters(changes);
+    const SettingsRepository::UpdateOutcome outcome =
+        m_settings.updateSystemParameters(changes, actor.userId);
     switch (outcome.status) {
     case SettingsRepository::UpdateOutcome::Status::Updated:
         result.status = Status::Saved;
@@ -90,6 +91,9 @@ SystemParametersUpdateResult SystemSettingsService::updateSystemParameters(
         return result;
     case SettingsRepository::UpdateOutcome::Status::Conflict:
         result.status = Status::Conflict;
+        return result;
+    case SettingsRepository::UpdateOutcome::Status::ActorNotAllowed:
+        result.status = Status::Denied;
         return result;
     case SettingsRepository::UpdateOutcome::Status::Failed:
         break;

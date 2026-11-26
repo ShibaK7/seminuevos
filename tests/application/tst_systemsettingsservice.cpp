@@ -20,11 +20,22 @@ private:
 
     application::SystemSettingsService service() { return application::SystemSettingsService(m_settings); }
 
+    static application::SessionDto admin()
+    {
+        return {QStringLiteral("admin"), QStringLiteral("Admin"), domain::UserRole::Admin,
+                fakes::InMemorySettingsRepository::kAdministratorId};
+    }
+
+    static application::SessionDto seller()
+    {
+        return {QStringLiteral("vendedor"), QStringLiteral("Vendedor"), domain::UserRole::SalesAgent, 2};
+    }
+
     // Lo que la pantalla manda si nadie toca nada: lo leído, tal cual.
     QList<SystemParameterEditDto> untouched()
     {
         QList<SystemParameterEditDto> edits;
-        const auto loaded = service().getSystemParameters(domain::UserRole::Admin);
+        const auto loaded = service().getSystemParameters(admin());
         for (const application::SystemParameterDto &dto : loaded.parameters) {
             const std::optional<qint64> shown =
                 dto.hundredths ? dto.hundredths : domain::defaultHundredths(dto.parameter);
@@ -54,7 +65,7 @@ private slots:
     // Los cinco, en orden; los que no tienen renglón vienen sin valor ni fecha.
     void loadsAllFiveInOrder()
     {
-        const auto result = service().getSystemParameters(domain::UserRole::Admin);
+        const auto result = service().getSystemParameters(admin());
         QCOMPARE(result.status, application::SystemParametersResult::Status::Loaded);
         QCOMPARE(result.parameters.size(), 5);
         QCOMPARE(result.parameters.at(0).parameter, SystemParameter::UmaDailyValue);
@@ -67,17 +78,30 @@ private slots:
 
     void sellerIsDeniedWithoutReading()
     {
-        QCOMPARE(service().getSystemParameters(domain::UserRole::SalesAgent).status,
+        QCOMPARE(service().getSystemParameters(seller()).status,
                  application::SystemParametersResult::Status::Denied);
-        QCOMPARE(service().updateSystemParameters(untouched(), domain::UserRole::SalesAgent).status,
+        QCOMPARE(service().updateSystemParameters(untouched(), seller()).status,
                  Status::Denied);
         QCOMPARE(m_settings.updates.size(), 0);
+    }
+
+    // La sesión dice Administrador, pero en la base ya no lo es: el
+    // repositorio lo revisa y no se guarda nada.
+    void administratorDemotedMeanwhileIsDenied()
+    {
+        QList<SystemParameterEditDto> edits = untouched();
+        edit(edits, SystemParameter::BankBalance).edited = 6000000;
+        m_settings.activeAdministrators.clear();
+        QCOMPARE(service().updateSystemParameters(edits, admin()).status, Status::Denied);
+        QCOMPARE(m_settings.actors, QList<int>{fakes::InMemorySettingsRepository::kAdministratorId});
+        QCOMPARE(m_settings.rows.value(SystemParameter::BankBalance).hundredths,
+                 std::optional<qint64>(5000000));
     }
 
     void failedReadIsReported()
     {
         m_settings.failure = QStringLiteral("sin conexión");
-        const auto result = service().getSystemParameters(domain::UserRole::Admin);
+        const auto result = service().getSystemParameters(admin());
         QCOMPARE(result.status, application::SystemParametersResult::Status::Failed);
         QCOMPARE(result.errorMessage, QStringLiteral("sin conexión"));
     }
@@ -85,7 +109,7 @@ private slots:
     // Sin cambios no se toca la base, ni por los que nunca se capturaron.
     void unchangedFormDoesNotTouchTheDatabase()
     {
-        const auto result = service().updateSystemParameters(untouched(), domain::UserRole::Admin);
+        const auto result = service().updateSystemParameters(untouched(), admin());
         QCOMPARE(result.status, Status::NoChanges);
         QCOMPARE(m_settings.updates.size(), 0);
     }
@@ -97,7 +121,7 @@ private slots:
         edit(edits, SystemParameter::UmaDailyValue).edited = 12000;
         edit(edits, SystemParameter::SafeBalance).edited = 1000000;
 
-        const auto result = service().updateSystemParameters(edits, domain::UserRole::Admin);
+        const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Saved);
         QCOMPARE(result.updated, (QList<SystemParameter>{SystemParameter::UmaDailyValue,
                                                          SystemParameter::SafeBalance}));
@@ -118,7 +142,7 @@ private slots:
         edit(edits, SystemParameter::PettyCashBalance).edited = -100;
         edit(edits, SystemParameter::BankBalance).edited = 6000000;
 
-        const auto result = service().updateSystemParameters(edits, domain::UserRole::Admin);
+        const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Rejected);
         QCOMPARE(result.validation.fields(),
                  (QStringList{QStringLiteral("cashLimitUmaMultiple"), QStringLiteral("pettyCashBalance")}));
@@ -130,7 +154,7 @@ private slots:
     {
         QList<SystemParameterEditDto> edits = untouched();
         edit(edits, SystemParameter::UmaDailyValue).edited.reset();
-        const auto result = service().updateSystemParameters(edits, domain::UserRole::Admin);
+        const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Rejected);
         QCOMPARE(result.validation.fields(), QStringList{QStringLiteral("umaDailyValue")});
     }
@@ -142,7 +166,7 @@ private slots:
         m_settings.store(SystemParameter::UmaDailyValue, 11800);
         edit(edits, SystemParameter::UmaDailyValue).edited = 12000;
 
-        const auto result = service().updateSystemParameters(edits, domain::UserRole::Admin);
+        const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Conflict);
         QCOMPARE(m_settings.rows.value(SystemParameter::UmaDailyValue).hundredths,
                  std::optional<qint64>(11800));
@@ -153,7 +177,7 @@ private slots:
         QList<SystemParameterEditDto> edits = untouched();
         edit(edits, SystemParameter::BankBalance).edited = 1;
         m_settings.failure = QStringLiteral("se cayó la base");
-        const auto result = service().updateSystemParameters(edits, domain::UserRole::Admin);
+        const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Failed);
         QCOMPARE(result.errorMessage, QStringLiteral("se cayó la base"));
     }
