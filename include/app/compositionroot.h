@@ -23,6 +23,8 @@ class SqlMaintenanceRepository;
 class SqlReferenceDataReader;
 class SqlCounterpartyDirectory;
 class SqlSaleRepository;
+class SqlSettingsRepository;
+class SqlUserAccountRepository;
 class SqlUserDirectory;
 class SqlVehicleRecordReader;
 class SqlVehicleRepository;
@@ -34,6 +36,8 @@ class CounterpartyLookupService;
 class InventoryService;
 class MaintenanceService;
 class SaleService;
+class SystemSettingsService;
+class UserAdministrationService;
 class VehicleRecordService;
 class VehicleRegistrationService;
 }
@@ -88,6 +92,11 @@ private:
     std::unique_ptr<application::MaintenanceService> m_maintenance;
     std::unique_ptr<SqlCommercial> m_commercialReader;
     std::unique_ptr<application::CommercialService> m_commercial;
+    // Configuraciones (US-07.1): los parámetros del negocio y las cuentas.
+    std::unique_ptr<SqlSettingsRepository> m_settingsRepository;
+    std::unique_ptr<application::SystemSettingsService> m_systemSettings;
+    std::unique_ptr<SqlUserAccountRepository> m_userAccounts;
+    std::unique_ptr<application::UserAdministrationService> m_userAdministration;
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

@@ -273,3 +273,11 @@ seminuevos_add_test(tst_useraccountdialog
     SOURCES presentation/tst_useraccountdialog.cpp
     LIBS seminuevos_views
 )
+
+# La página completa con widgets reales y su lugar en el menú. Enlaza los
+# recursos por los íconos del menú.
+seminuevos_add_test(tst_settingsview
+    SOURCES presentation/tst_settingsview.cpp support/settingsfakes.h support/userfakes.h support/fakes.h
+            "${PROJECT_SOURCE_DIR}/resources/Resources.qrc"
+    LIBS seminuevos_views
+)

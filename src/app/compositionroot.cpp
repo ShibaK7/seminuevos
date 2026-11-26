@@ -43,6 +43,18 @@
 #include "presentation/login/loginwindow.h"
 #include "presentation/shell/mainwindow.h"
 
+// Configuraciones (US-07.1).
+#include "adapters/persistence/settings/sqlsettingsrepository.h"
+#include "adapters/persistence/settings/sqluseraccountrepository.h"
+#include "application/settings/services/systemsettingsservice.h"
+#include "application/settings/services/useradministrationservice.h"
+#include "domain/settings/rules/settingsaccess.h"
+#include "presentation/settings/settingsview.h"
+#include "presentation/settings/systemsettingspresenter.h"
+#include "presentation/settings/systemsettingswidget.h"
+#include "presentation/settings/usermanagementpresenter.h"
+#include "presentation/settings/usermanagementwidget.h"
+
 #include <QApplication>
 #include <QFile>
 #include <QGraphicsOpacityEffect>
@@ -187,6 +199,11 @@ bool CompositionRoot::start()
         *m_maintenanceRepository, *m_referenceData, m_receipts);
     m_commercialReader = std::make_unique<SqlCommercial>(pool);
     m_commercial = std::make_unique<application::CommercialService>(*m_commercialReader, *m_commercialReader);
+    m_settingsRepository = std::make_unique<SqlSettingsRepository>(pool);
+    m_systemSettings = std::make_unique<application::SystemSettingsService>(*m_settingsRepository);
+    m_userAccounts = std::make_unique<SqlUserAccountRepository>(pool);
+    m_userAdministration =
+        std::make_unique<application::UserAdministrationService>(*m_userAccounts, m_hasher);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -279,6 +296,23 @@ void CompositionRoot::showMain(const application::SessionDto &session)
             maintenance->start();
             return view;
         });
+
+        // Configuraciones (US-07.1), solo para quien la puede ver: sin la
+        // página, el menú no muestra el módulo. Los presenters son hijos de
+        // la página y mueren antes que sus vistas.
+        if (domain::SettingsAccess(session.role).canOpenSettings()) {
+            auto *settingsPage = new SettingsView(mainWindow);
+            auto *parameters = new presentation::SystemSettingsPresenter(
+                settingsPage->systemSettings(), *m_systemSettings, m_runner, session.role,
+                settingsPage);
+            auto *users = new presentation::UserManagementPresenter(
+                settingsPage->userManagement(), *m_userAdministration, m_runner, session,
+                settingsPage);
+            settingsPage->bind(*parameters, *users);
+            mainWindow->setSettingsPage(settingsPage);
+            parameters->start();
+            users->start();
+        }
         m_main = mainWindow;
 
         mainWindow->showMaximized();

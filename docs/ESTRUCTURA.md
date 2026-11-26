@@ -45,6 +45,10 @@ seminuevos/
 │   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts, CashLimitTerms (UMA y tope)
 │   │   │   └── rules/
 │   │   │       └── cashpaymentlimit  Tope de pago en efectivo: el que fija el Administrador, nunca más de 3,210 UMA (LFPIORPI)
+│   │   ├── settings/                Configuraciones (US-07.1)
+│   │   │   ├── value_objects/       systemparameter: los parámetros del negocio (UMA, tope de efectivo, saldos)
+│   │   │   └── rules/               systemparameterpolicy (qué valor acepta cada uno), settingsaccess (solo el
+│   │   │                            Administrador), useraccountpolicy (usuario, contraseña, propio rol y cuenta)
 │   │   └── inventory/               Módulo Inventario
 │   │       ├── model/               Entidades con sus invariantes
 │   │       │   ├── vehicle           Vehicle (abstracta): datos comunes, validate() como Template Method, contrato
@@ -73,6 +77,12 @@ seminuevos/
 │   │   │   ├── dto/                 authdtos
 │   │   │   ├── ports/               userdirectory, passwordhasher
 │   │   │   └── services/            authenticationservice
+│   │   ├── settings/                Configuraciones (US-07.1): parámetros del negocio y cuentas de usuario
+│   │   │   ├── dto/                 settingsdtos (parámetros, en centésimos), useraccountdtos (cuentas)
+│   │   │   ├── ports/               settingsrepository (#83, #84), useraccountrepository
+│   │   │   └── services/            systemsettingsservice (solo guarda lo que cambió, con conflicto si otro
+│   │   │                            lo cambió), useradministrationservice (alta, nombre y rol, contraseña,
+│   │   │                            activar y desactivar)
 │   │   └── inventory/               Módulo Inventario
 │   │       ├── dto/                 inventorydtos: filtro y tarjeta de la rejilla
 │   │       ├── ports/               inventoryreader
@@ -95,6 +105,10 @@ seminuevos/
 │   │   │   ├── connectionpool        Una conexión por hilo; en Debug prohíbe SQL en el hilo de la interfaz
 │   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
 │   │   │   ├── common/              sqlcounterpartydirectory (búsqueda y actualización de personas compartidas)
+│   │   │   ├── schemaupgrade         Pone al día una base creada con un init-db/ anterior (users.active, last_login)
+│   │   │   ├── settings/            settingskeys (llaves de global_configurations), sqlsettingsrepository
+│   │   │   │                        (parámetros, todo o nada, con el valor esperado en el WHERE),
+│   │   │   │                        sqluseraccountrepository (cuentas: candado, quién actúa y último Administrador)
 │   │   │   └── inventory/           sqlvehiclerepository (alta y corrección transaccionales, con versión),
 │   │   │                            sqlcounterpartyrepository (contraparte: buscar, crear, corregir o religar),
 │   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos, UMA y tope),
@@ -107,7 +121,7 @@ seminuevos/
 │   │   │                            pantalla viven juntos en su carpeta (MVP: el presenter decide, la
 │   │   │                            vista solo pinta y avisa; ninguna vista toca base ni disco)
 │   │   ├── shell/                   mainwindow (.ui/.h/.cpp): la cáscara (menú lateral, barra superior, pila de páginas:
-│   │   │                            inventario, asistente de alta y expediente)
+│   │   │                            inventario, asistente de alta, expediente y Configuraciones)
 │   │   ├── login/                   loginwindow (.ui/.h/.cpp), loginpresenter, iloginview.h
 │   │   ├── common/                  Lo que usan todos los módulos
 │   │   │   ├── components/          Componentes promovibles en Designer: sidebarmenuitem, navtabitem,
@@ -117,6 +131,12 @@ seminuevos/
 │   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos;
 │   │   │   │                        editsession: consulta o edición (FormMode) y si hay cambios sin guardar
 │   │   │   └── tasks/               taskrunner y pooledtaskrunner: trabajo fuera del hilo de la interfaz
+│   │   ├── settings/                Menú Configuraciones (solo Administrador, US-07.1)
+│   │   │   ├── settingsview (.ui/.h/.cpp)   La página: parámetros y, debajo, usuarios
+│   │   │   ├── systemsettingswidget (.ui/.h/.cpp), systemsettingspresenter, isystemsettingsview.h
+│   │   │   │                        Los parámetros (#82): solo lectura hasta Editar, Guardar / Cancelar
+│   │   │   └── usermanagementwidget (.ui/.h/.cpp), useraccountdialog (.ui/.h/.cpp),
+│   │   │                            usermanagementpresenter, iusermanagementview.h   Los usuarios
 │   │   └── inventory/               Menú Inventario
 │   │       ├── inventoryview (.ui/.h/.cpp), inventorypresenter, iinventoryview.h
 │   │       │                        La página: pestañas, filtros y rejilla
