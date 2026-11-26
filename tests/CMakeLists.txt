@@ -248,3 +248,13 @@ if(SEMINUEVOS_DB_TESTS)
     target_compile_definitions(tst_users_db PRIVATE
         SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 endif()
+
+seminuevos_add_test(tst_useraccountpolicy
+    SOURCES domain/tst_useraccountpolicy.cpp
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_useradministrationservice
+    SOURCES application/tst_useradministrationservice.cpp support/userfakes.h support/fakes.h
+    LIBS seminuevos_application
+)
