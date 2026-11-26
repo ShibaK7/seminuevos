@@ -272,6 +272,27 @@ private slots:
                  OutcomeStatus::NotFound);
     }
 
+    // Un login entre leer y guardar no es un cambio de otro administrador.
+    void loginBetweenReadingAndSavingIsNoConflict()
+    {
+        SqlUserAccountRepository accounts(*m_pool);
+        const application::UserAccountDto seller = account(m_sellerId);
+        QVERIFY(exec(*m_pool, QStringLiteral("UPDATE users SET last_login = CURRENT_TIMESTAMP "
+                                             "WHERE id = %1")
+                                  .arg(m_sellerId)));
+        QCOMPARE(accounts.updateUser({m_sellerId, seller.version, QStringLiteral("Tras Login"),
+                                      UserRole::SalesAgent},
+                                     m_adminId)
+                     .status,
+                 OutcomeStatus::Ok);
+        const QString edited = account(m_sellerId).version;
+        QVERIFY(edited != seller.version);
+        QVERIFY(exec(*m_pool, QStringLiteral("UPDATE users SET last_login = CURRENT_TIMESTAMP "
+                                             "WHERE id = %1")
+                                  .arg(m_sellerId)));
+        QCOMPARE(accounts.setActive(m_sellerId, edited, true, m_adminId).status, OutcomeStatus::Ok);
+    }
+
     void deactivateAndResetPassword()
     {
         SqlUserAccountRepository accounts(*m_pool);

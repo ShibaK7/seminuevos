@@ -15,11 +15,11 @@ class QSqlDatabase;
 //      así dos administradores no se cruzan (si A le quita el rol a B
 //      mientras B se lo quita a A, el segundo ya no pasa);
 //   2. vuelve a comprobar que quien actúa siga siendo Administrador activo;
-//   3. escribe, con la versión del renglón (xmin) en el WHERE cuando corrige;
+//   3. escribe, con la versión de la cuenta en el WHERE cuando corrige;
 //   4. si ya no queda ningún Administrador activo, deshace todo.
-// La versión cambia también cuando la cuenta inicia sesión (last_login): un
-// cambio a una cuenta que acaba de entrar sale como conflicto y la pantalla
-// relee.
+// La versión sale de lo que un administrador edita (nombre, rol y si está
+// activa), no de xmin: el login reescribe el renglón (last_login) y no debe
+// hacer chocar a quien está corrigiendo esa cuenta.
 class SqlUserAccountRepository final : public application::UserAccountRepository
 {
 public:

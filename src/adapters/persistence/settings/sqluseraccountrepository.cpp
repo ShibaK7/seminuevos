@@ -40,6 +40,12 @@ Outcome missingOrStale(QSqlDatabase &db, int userId)
     return withStatus(exists.next() ? Status::Conflict : Status::NotFound);
 }
 
+// La versión de una cuenta: lo que un administrador edita (nombre, rol y si
+// está activa). No es xmin porque cada login reescribe el renglón
+// (last_login) y daría un conflicto sin que nadie la haya editado; tampoco
+// incluye la contraseña, que se restablece sin versión.
+const QString kVersion = QStringLiteral("md5(concat_ws('|', display_name, role, active))");
+
 } // namespace
 
 SqlUserAccountRepository::SqlUserAccountRepository(ConnectionPool &pool)
@@ -56,9 +62,9 @@ QList<application::UserAccountDto> SqlUserAccountRepository::listUsers(QString *
         QSqlDatabase &db = handle.database();
         QSqlQuery query(db);
         query.prepare(QStringLiteral(
-            "SELECT id, username, display_name, role, active, created_at, last_login, "
-            "       CAST(xmin AS text) "
-            "  FROM users ORDER BY lower(display_name), id"));
+            "SELECT id, username, display_name, role, active, created_at, last_login, %1 "
+            "  FROM users ORDER BY lower(display_name), id")
+                          .arg(kVersion));
         if (!db.isOpen() || !query.exec()) {
             failure = db.isOpen() ? query.lastError().text() : db.lastError().text();
         } else {
@@ -209,7 +215,8 @@ Outcome SqlUserAccountRepository::updateUser(const application::UserAccountUpdat
         QSqlQuery update(db);
         update.prepare(QStringLiteral(
             "UPDATE users SET display_name = :name, role = :role "
-            " WHERE id = :id AND CAST(xmin AS text) = :version"));
+            " WHERE id = :id AND %1 = :version")
+                          .arg(kVersion));
         update.bindValue(QStringLiteral(":name"), user.displayName);
         update.bindValue(QStringLiteral(":role"), domain::toDbString(user.role));
         update.bindValue(QStringLiteral(":id"), user.id);
@@ -228,7 +235,8 @@ Outcome SqlUserAccountRepository::setActive(int userId, const QString &version, 
     return inAdministratorTransaction(actorId, [=](QSqlDatabase &db) {
         QSqlQuery update(db);
         update.prepare(QStringLiteral(
-            "UPDATE users SET active = :active WHERE id = :id AND CAST(xmin AS text) = :version"));
+            "UPDATE users SET active = :active WHERE id = :id AND %1 = :version")
+                          .arg(kVersion));
         update.bindValue(QStringLiteral(":active"), active);
         update.bindValue(QStringLiteral(":id"), userId);
         update.bindValue(QStringLiteral(":version"), version);
