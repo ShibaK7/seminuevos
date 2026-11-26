@@ -100,8 +100,10 @@ void UserManagementWidget::showUsers(const QList<application::UserAccountDto> &u
         ui->usersTable->setItem(row, StatusColumn,
                                 cell(user.active ? QStringLiteral("Activo") : QStringLiteral("Desactivado")));
         ui->usersTable->setItem(row, LastLoginColumn,
+                                // La base guarda la hora en UTC.
                                 cell(user.lastLogin.isValid()
-                                         ? mexico.toString(user.lastLogin, QStringLiteral("dd/MM/yyyy HH:mm"))
+                                         ? mexico.toString(user.lastLogin.toLocalTime(),
+                                                           QStringLiteral("dd/MM/yyyy HH:mm"))
                                          : QStringLiteral("Nunca")));
         if (user.id == selected)
             ui->usersTable->selectRow(row);

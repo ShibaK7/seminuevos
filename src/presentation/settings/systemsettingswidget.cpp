@@ -98,10 +98,11 @@ void SystemSettingsWidget::showParameters(const QList<application::SystemParamet
         else if (auto *money = qobject_cast<QDoubleSpinBox *>(fieldOf(dto.parameter)))
             formsupport::showValue(money, static_cast<double>(hundredths.value_or(0)) / 100.0);
 
+        // La base guarda la hora en UTC: de noche, ya sería el día siguiente.
         updatedLabelOf(dto.parameter)
             ->setText(dto.updatedAt.isValid()
                           ? QStringLiteral("Actualizado el %1")
-                                .arg(mexico.toString(dto.updatedAt.date(),
+                                .arg(mexico.toString(dto.updatedAt.toLocalTime().date(),
                                                      QStringLiteral("d 'de' MMMM 'de' yyyy")))
                           : QStringLiteral("Sin configurar"));
     }

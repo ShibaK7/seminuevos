@@ -95,6 +95,19 @@ private slots:
         QVERIFY(!find<QPushButton>("saveButton")->isVisible());
     }
 
+    // La fecha llega en UTC (así la guarda la base) y se muestra en la hora
+    // de la computadora: un cambio de noche no sale con la fecha de mañana.
+    void updatedAtIsShownInLocalTime()
+    {
+        const QDateTime utc(QDate(2026, 11, 26), QTime(3, 0), QTimeZone::UTC);
+        m_settings.store(SystemParameter::UmaDailyValue, 11731, utc);
+        open();
+        const QString expected =
+            QLocale(QLocale::Spanish, QLocale::Mexico)
+                .toString(utc.toLocalTime().date(), QStringLiteral("d 'de' MMMM 'de' yyyy"));
+        QCOMPARE(find<QLabel>("umaUpdated")->text(), QStringLiteral("Actualizado el %1").arg(expected));
+    }
+
     // "Editar" desbloquea; guardar escribe solo lo que cambió y vuelve a
     // consulta con la fecha nueva.
     void editAndSave()
