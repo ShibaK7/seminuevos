@@ -263,3 +263,13 @@ seminuevos_add_test(tst_systemsettingspresenter
     SOURCES presentation/tst_systemsettingspresenter.cpp support/settingsfakes.h support/fakes.h
     LIBS seminuevos_presentation
 )
+
+seminuevos_add_test(tst_usermanagementpresenter
+    SOURCES presentation/tst_usermanagementpresenter.cpp support/userfakes.h support/fakes.h
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_useraccountdialog
+    SOURCES presentation/tst_useraccountdialog.cpp
+    LIBS seminuevos_views
+)

@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>UserManagementWidget</class>
+ <widget class="QWidget" name="UserManagementWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>380</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="userManagementLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="usersCard">
+     <property name="class" stdset="0">
+      <string notr="true">card</string>
+     </property>
+     <layout class="QVBoxLayout" name="usersCardLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="usersHeaderLayout">
+        <item>
+         <widget class="QLabel" name="usersTitle">
+          <property name="text">
+           <string>Usuarios</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">h3</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="usersHeaderSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="OutlineButton" name="addUserButton">
+          <property name="title" stdset="0">
+           <string>Nuevo usuario</string>
+          </property>
+          <property name="leadingIcon" stdset="0">
+           <string notr="true">:/icons/plus.png</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QTableWidget" name="usersTable">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>180</height>
+         </size>
+        </property>
+        <property name="editTriggers">
+         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+        </property>
+        <property name="tabKeyNavigation">
+         <bool>false</bool>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">data-table</string>
+        </property>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Usuario</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Nombre</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Rol</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Estado</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Último acceso</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="messageLabel">
+        <property name="textFormat">
+         <enum>Qt::TextFormat::PlainText</enum>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">error-text</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="noticeLabel">
+        <property name="textFormat">
+         <enum>Qt::TextFormat::PlainText</enum>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">form-label</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="usersFooterLayout">
+        <item>
+         <spacer name="usersFooterSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="editUserButton">
+          <property name="text">
+           <string>Editar</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="resetPasswordButton">
+          <property name="text">
+           <string>Restablecer contraseña</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="toggleActiveButton">
+          <property name="text">
+           <string>Desactivar</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>OutlineButton</class>
+   <extends>QPushButton</extends>
+   <header>presentation/common/components/outlinebutton.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>addUserButton</tabstop>
+  <tabstop>usersTable</tabstop>
+  <tabstop>editUserButton</tabstop>
+  <tabstop>resetPasswordButton</tabstop>
+  <tabstop>toggleActiveButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
