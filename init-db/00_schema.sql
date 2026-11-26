@@ -23,6 +23,9 @@ DROP TABLE IF EXISTS vehicle_categories_cat CASCADE;
 DROP TABLE IF EXISTS operational_expense_cat CASCADE;
 DROP TABLE IF EXISTS operational_expenses CASCADE;
 DROP TABLE IF EXISTS global_configurations CASCADE;
+DROP TABLE IF EXISTS cash_movements CASCADE;
+DROP TABLE IF EXISTS cash_accounts CASCADE;
+DROP SEQUENCE IF EXISTS cash_transfer_seq;
 
 -- ===========================================================================
 -- 1. LOOKUP & CATALOG TABLES (Must be created first for FK dependencies)
@@ -303,6 +306,51 @@ CREATE TABLE global_configurations (
     value_param NUMERIC(12, 2) NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Dónde está el dinero (Configuraciones): Caja Chica es el efectivo, Banco
+-- lo que se mueve por transferencia y Caja Fuerte lo que se guarda aparte.
+-- El saldo vigente vive aquí; cash_movements es la bitácora de cómo llegó a
+-- él. Cada movimiento se aplica con
+--   UPDATE cash_accounts SET balance = balance + :monto
+--    WHERE account = :cuenta AND balance + :monto >= 0
+-- en la misma transacción que la operación que lo causa: si no hay saldo,
+-- no se guarda ninguna de las dos. Caja Chica y Banco se abren una vez con
+-- su saldo inicial; Caja Fuerte nace abierta en cero.
+-- (SchemaUpgrade crea lo mismo en las bases que ya existían.)
+CREATE TABLE cash_accounts (
+    account VARCHAR(20) PRIMARY KEY CHECK (account IN ('Caja Chica', 'Banco', 'Caja Fuerte')),
+    balance NUMERIC(14, 2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    opened BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TIMESTAMP
+);
+
+INSERT INTO cash_accounts (account, opened) VALUES
+('Caja Chica', FALSE),
+('Banco', FALSE),
+('Caja Fuerte', TRUE);
+
+-- Une las dos patas de un traspaso (sale de una cuenta, entra a otra).
+CREATE SEQUENCE cash_transfer_seq;
+
+CREATE TABLE cash_movements (
+    id SERIAL PRIMARY KEY,
+    account VARCHAR(20) NOT NULL REFERENCES cash_accounts(account),
+    -- Positivo entra, negativo sale.
+    amount NUMERIC(12, 2) NOT NULL CHECK (amount <> 0),
+    kind VARCHAR(30) NOT NULL CHECK (kind IN ('Apertura', 'Compra', 'Corrección de compra', 'Venta',
+                                              'Enganche', 'Traspaso', 'Retiro', 'Mantenimiento', 'Gasto')),
+    concept TEXT NOT NULL,
+    occurred_on DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER REFERENCES users(id),
+    transfer_id INTEGER,
+    vehicle_folio INTEGER REFERENCES vehicles(folio) ON DELETE SET NULL,
+    sale_folio INTEGER REFERENCES sales(folio) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_cash_movements_account ON cash_movements (account, created_at);
+CREATE INDEX idx_cash_movements_vehicle ON cash_movements (vehicle_folio);
+CREATE INDEX idx_cash_movements_sale ON cash_movements (sale_folio);
 
 -- ===========================================================================
 -- 6. ÍNDICES QUE NO SALEN GRATIS DE UN PK/UNIQUE

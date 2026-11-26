@@ -1,8 +1,8 @@
 #include "adapters/persistence/settings/sqlsettingsrepository.h"
 
 #include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/settings/activeadministrator.h"
 #include "adapters/persistence/settings/settingskeys.h"
-#include "domain/common/value_objects/enums.h"
 
 #include <QSqlDatabase>
 #include <QSqlError>
@@ -80,20 +80,16 @@ application::SettingsRepository::UpdateOutcome SqlSettingsRepository::updateSyst
                                       .arg(db.lastError().text());
         } else {
             result.status = Status::Updated;
-            // Quien guarda sigue siendo Administrador activo. FOR SHARE: si
-            // otro administrador le está quitando el rol, espera a que
-            // confirme y decide con lo vigente.
-            QSqlQuery actor(db);
-            actor.prepare(QStringLiteral("SELECT 1 FROM users WHERE id = :id AND active "
-                                         "AND role = :admin FOR SHARE"));
-            actor.bindValue(QStringLiteral(":id"), actorId);
-            actor.bindValue(QStringLiteral(":admin"), domain::toDbString(domain::UserRole::Admin));
-            if (!actor.exec()) {
-                databaseFailed = true;
-                result.status = Status::Failed;
-                result.errorMessage = actor.lastError().text();
-            } else if (!actor.next()) {
-                result.status = Status::ActorNotAllowed;
+            // Quien guarda sigue siendo Administrador activo.
+            QString actorError;
+            if (!isActiveAdministrator(db, actorId, &actorError)) {
+                if (!actorError.isEmpty()) {
+                    databaseFailed = true;
+                    result.status = Status::Failed;
+                    result.errorMessage = actorError;
+                } else {
+                    result.status = Status::ActorNotAllowed;
+                }
             }
 
             for (const Change &change : changes) {

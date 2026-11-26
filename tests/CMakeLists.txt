@@ -287,3 +287,19 @@ seminuevos_add_test(tst_cashflow
     SOURCES domain/tst_cashflow.cpp
     LIBS seminuevos_domain
 )
+
+seminuevos_add_test(tst_cashledgerservice
+    SOURCES application/tst_cashledgerservice.cpp support/cashfakes.h
+    LIBS seminuevos_application
+)
+
+# Las cuentas de dinero contra PostgreSQL (opcional, como las de arriba).
+if(SEMINUEVOS_DB_TESTS)
+    seminuevos_add_test(tst_cash_db
+        SOURCES adapters/tst_cash_db.cpp
+        LIBS seminuevos_application seminuevos_persistence
+    )
+    set_tests_properties(tst_cash_db PROPERTIES LABELS "db")
+    target_compile_definitions(tst_cash_db PRIVATE
+        SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+endif()
