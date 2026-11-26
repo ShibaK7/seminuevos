@@ -103,6 +103,7 @@ public:
             *error = readError;
         return {umaValue.value_or(0.0), umaMultiple};
     }
+    QMap<domain::CashAccount, qint64> cashAvailable(QString *) override { return {}; }
     QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override
     {
         clearError(error);

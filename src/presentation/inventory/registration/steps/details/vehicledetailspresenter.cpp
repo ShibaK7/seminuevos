@@ -35,6 +35,7 @@ void VehicleDetailsPresenter::start()
 void VehicleDetailsPresenter::setLookups(const application::RegistrationLookupsDto &lookups)
 {
     m_cashLimit = lookups.cashLimit;
+    m_cashAvailable = lookups.cashAvailable;
     m_view.setLookups(lookups);
 }
 
@@ -60,7 +61,7 @@ void VehicleDetailsPresenter::showMaintenanceCost(double cost)
 
 domain::ValidationResult VehicleDetailsPresenter::collectErrors() const
 {
-    return m_service.validateDetails(dto(), m_cashLimit);
+    return m_service.validateDetails(dto(), m_cashLimit, m_cashAvailable);
 }
 
 bool VehicleDetailsPresenter::isAutofacturaSelected() const

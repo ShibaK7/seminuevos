@@ -136,3 +136,33 @@ domain::CashLimitTerms SqlReferenceDataReader::cashLimitTerms(QString *error)
     }
     return terms;
 }
+
+QMap<domain::CashAccount, qint64> SqlReferenceDataReader::cashAvailable(QString *error)
+{
+    QMap<domain::CashAccount, qint64> available;
+    QString failure;
+    {
+        ConnectionPool::Handle handle = m_pool.acquire();
+        QSqlDatabase &db = handle.database();
+        QSqlQuery query(db);
+        if (!db.isOpen()
+            || !query.exec(QStringLiteral(
+                "SELECT account, CAST(ROUND(balance * 100) AS BIGINT) FROM cash_accounts"))) {
+            failure = db.isOpen() ? query.lastError().text() : db.lastError().text();
+        } else {
+            while (query.next()) {
+                if (const auto account = domain::cashAccountFromDb(query.value(0).toString()))
+                    available.insert(*account, query.value(1).toLongLong());
+            }
+        }
+    }
+    if (!failure.isEmpty()) {
+        m_pool.discardThreadConnection();
+        if (error)
+            *error = failure;
+        return {};
+    }
+    if (error)
+        error->clear();
+    return available;
+}

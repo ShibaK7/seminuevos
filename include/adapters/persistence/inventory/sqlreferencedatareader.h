@@ -21,6 +21,7 @@ public:
     QList<application::CatalogOptionDto> fuelTypes(QString *error) override;
     QList<application::ChecklistItemDto> conditionChecklist(QString *error) override;
     domain::CashLimitTerms cashLimitTerms(QString *error) override;
+    QMap<domain::CashAccount, qint64> cashAvailable(QString *error) override;
     QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override;
 
 private:

@@ -1,7 +1,9 @@
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
 
 #include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/finance/cashledgerwriter.h"
 #include "adapters/persistence/inventory/sqlcounterpartyrepository.h"
+#include "domain/finance/rules/cashflowrules.h"
 #include "domain/inventory/model/acquisition/acquiredvehicle.h"
 #include "domain/inventory/model/consignment/consignedvehicle.h"
 #include "domain/inventory/model/vehicle.h"
@@ -132,6 +134,62 @@ private:
     bool m_ok = true;
     QString m_errorMessage;
 };
+
+// Los términos de la compra que deciden si mueve dinero. Una consignación no
+// se paga al recibirla: sus términos no mueven nada.
+class PurchaseTermsReader final : public domain::VehicleVisitor
+{
+public:
+    domain::PurchaseTerms terms;
+
+    void visit(const domain::AcquiredVehicle &vehicle) override
+    {
+        terms.acquisitionType = domain::AcquisitionType::Adquisicion;
+        terms.paymentType = vehicle.paymentType();
+        terms.paymentMethod = vehicle.paymentMethod();
+        terms.priceHundredths = domain::toHundredths(vehicle.purchasePrice());
+    }
+
+    void visit(const domain::ConsignedVehicle &) override
+    {
+        terms.acquisitionType = domain::AcquisitionType::Consignacion;
+    }
+};
+
+domain::PurchaseTerms purchaseTermsOf(const domain::Vehicle &vehicle)
+{
+    PurchaseTermsReader reader;
+    vehicle.accept(reader);
+    return reader.terms;
+}
+
+// Los términos de compra guardados de la unidad, con su renglón apartado (FOR
+// UPDATE) hasta el final de la transacción: nadie más los corrige mientras se
+// calcula el ajuste. Sin renglón en vehicle_acquisitions es una consignación.
+std::optional<domain::PurchaseTerms> storedPurchaseTerms(QSqlDatabase &db, int folio,
+                                                         QString &errorMessage)
+{
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "SELECT CAST(ROUND(purchase_price * 100) AS BIGINT), payment_type, payment_method "
+        "  FROM vehicle_acquisitions WHERE vehicle_folio = :folio FOR UPDATE"));
+    query.bindValue(QStringLiteral(":folio"), folio);
+    if (!query.exec()) {
+        errorMessage = query.lastError().text();
+        return std::nullopt;
+    }
+    domain::PurchaseTerms terms;
+    if (!query.next()) {
+        terms.acquisitionType = domain::AcquisitionType::Consignacion;
+        return terms;
+    }
+    terms.acquisitionType = domain::AcquisitionType::Adquisicion;
+    terms.priceHundredths = query.value(0).toLongLong();
+    terms.paymentType = domain::paymentTypeFromDb(query.value(1).toString()).value_or(domain::PaymentType::Contado);
+    terms.paymentMethod =
+        domain::paymentMethodFromDb(query.value(2).toString()).value_or(domain::PaymentMethod::Transferencia);
+    return terms;
+}
 
 // El gemelo de DealInserter para corregir: reescribe la subtabla de la rama.
 // Nunca toca maintenance_cost, que acumula el historial de mantenimientos
@@ -565,6 +623,28 @@ application::VehicleRepository::SaveOutcome SqlVehicleRepository::save(QSqlDatab
         return result;
     }
 
+    // Una compra de contado se paga desde la cuenta de su método. Sin saldo,
+    // la unidad tampoco se registra.
+    cashledger::References cashReferences;
+    cashReferences.vehicleFolio = folio;
+    const cashledger::ApplyOutcome paid = cashledger::applyMovements(
+        db,
+        domain::CashFlowRules::forPurchase(purchaseTermsOf(vehicle),
+                                           QStringLiteral("Compra de la unidad %1").arg(folio),
+                                           vehicle.dealDate()),
+        cashReferences);
+    if (paid.status != cashledger::ApplyOutcome::Status::Applied) {
+        result.insufficientFunds = paid.status == cashledger::ApplyOutcome::Status::Insufficient;
+        result.fundsAccount = paid.account;
+        result.availableHundredths = paid.available;
+        result.errorMessage = result.insufficientFunds
+                                  ? QStringLiteral("No hay saldo para pagar la compra.")
+                                  : QStringLiteral("Error registrando el pago de la compra: %1")
+                                        .arg(paid.errorMessage);
+        db.rollback();
+        return result;
+    }
+
     if (!insertConditions(db, folio, vehicle.conditions(), errorMessage)
         || !insertInspection(db, folio, vehicle.inspection(), errorMessage)
         || !insertImages(db, folio, vehicle.images(), errorMessage)
@@ -673,11 +753,37 @@ application::VehicleRepository::UpdateOutcome SqlVehicleRepository::rewrite(
     }
     vehicle.assignCounterpartyId(counterpartyId);
 
-    // 3. La operación de su rama (doble despacho, como al registrar).
+    // 3. La operación de su rama (doble despacho, como al registrar). Antes
+    // se leen los términos de compra guardados, para ajustar las cuentas de
+    // dinero si cambian.
+    const std::optional<domain::PurchaseTerms> before = storedPurchaseTerms(db, folio, errorMessage);
+    if (!before)
+        return fail(errorMessage);
     DealUpdater dealUpdater(db, folio, counterpartyId);
     vehicle.accept(dealUpdater);
     if (!dealUpdater.ok())
         return fail(dealUpdater.errorMessage());
+
+    // 3b. Lo que ya salió por los términos de antes vuelve y sale lo de los
+    // nuevos; sin saldo, la corrección no se guarda.
+    cashledger::References cashReferences;
+    cashReferences.vehicleFolio = folio;
+    const cashledger::ApplyOutcome adjusted = cashledger::applyMovements(
+        db,
+        domain::CashFlowRules::forPurchaseCorrection(
+            *before, purchaseTermsOf(vehicle),
+            QStringLiteral("Corrección de la compra de la unidad %1").arg(folio), QDate::currentDate()),
+        cashReferences);
+    if (adjusted.status == cashledger::ApplyOutcome::Status::Insufficient) {
+        result.insufficientFunds = true;
+        result.fundsAccount = adjusted.account;
+        result.availableHundredths = adjusted.available;
+        result.errorMessage = QStringLiteral("No hay saldo para la compra corregida.");
+        db.rollback();
+        return result;
+    }
+    if (adjusted.status == cashledger::ApplyOutcome::Status::Failed)
+        return fail(adjusted.errorMessage);
 
     // 4. Especificaciones, y lo que es una lista se reemplaza completo. De
     // los documentos, solo los que tienen archivo: es el mismo filtro con que

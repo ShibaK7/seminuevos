@@ -358,6 +358,8 @@ private slots:
                              << QStringLiteral("serialNumber");
         QTest::newRow("identificación") << 4 << static_cast<int>(UpdateStatus::Rejected)
                                         << QStringLiteral("counterparty.nationalId");
+        QTest::newRow("sin saldo") << 5 << static_cast<int>(UpdateStatus::Rejected)
+                                   << QStringLiteral("purchasePrice");
     }
 
     void failedSaveRemovesOnlyTheCopies()
@@ -372,6 +374,11 @@ private slots:
         failure.duplicateSerialNumber = outcome == 3;
         if (outcome == 4)
             failure.takenNationalIdOwner = QStringLiteral("Ana Prueba");
+        if (outcome == 5) {
+            failure.insufficientFunds = true;
+            failure.fundsAccount = domain::CashAccount::PettyCash;
+            failure.availableHundredths = 150000;
+        }
         m_vehicles.updateOutcome = failure;
 
         application::VehicleUpdateDto update = editedRecord();
@@ -384,6 +391,9 @@ private slots:
             QVERIFY(result.validation.fields().contains(field));
         if (outcome == 4)
             QVERIFY(result.validation.joinedMessages().contains(QStringLiteral("Ana Prueba")));
+        if (outcome == 5)
+            QCOMPARE(result.validation.firstMessage(),
+                     QStringLiteral("Caja Chica solo tiene $1,500.00 disponibles."));
         QCOMPARE(m_files.stored.size(), 1);
         QCOMPARE(m_files.removed, m_files.stored);
     }

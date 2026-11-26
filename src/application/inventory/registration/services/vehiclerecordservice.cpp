@@ -1,5 +1,6 @@
 #include "application/inventory/registration/services/vehiclerecordservice.h"
 
+#include "domain/finance/rules/cashmovementpolicy.h"
 #include "domain/inventory/model/vehicle.h"
 #include "domain/inventory/model/vehiclebuilder.h"
 #include "domain/inventory/rules/vehiclerecordaccess.h"
@@ -338,6 +339,11 @@ RecordUpdateResult VehicleRecordService::update(const VehicleUpdateDto &update,
             return withStatus(RecordUpdateResult::Status::Conflict);
         if (outcome.duplicateSerialNumber)
             return duplicateSerialNumber();
+        if (outcome.insufficientFunds) {
+            return rejected(QStringLiteral("purchasePrice"),
+                            domain::CashMovementPolicy::insufficientFundsMessage(
+                                outcome.fundsAccount, outcome.availableHundredths));
+        }
         if (!outcome.takenNationalIdOwner.isEmpty()) {
             return rejected(QStringLiteral("counterparty.nationalId"),
                             QStringLiteral("Esa identificación ya es de «%1». Revisa el nombre o "

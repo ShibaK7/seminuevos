@@ -153,8 +153,13 @@ void VehicleRecordPresenter::load()
         this,
         [forms, records, folio, role, withLookups] {
             Loaded loaded;
-            if (withLookups)
+            if (withLookups) {
                 loaded.lookups = forms->loadLookups();
+                // En el expediente la compra ya tomó su parte de la cuenta:
+                // lo que puede gastar la corrección no es el saldo a secas.
+                // Lo decide el guardado, que ajusta solo la diferencia.
+                loaded.lookups->cashAvailable.clear();
+            }
             loaded.record = records->load(folio, role);
             return loaded;
         },

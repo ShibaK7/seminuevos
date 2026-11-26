@@ -15,6 +15,7 @@
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 #include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
+#include "adapters/persistence/schemaupgrade.h"
 #include "adapters/storage/localfilestorage.h"
 #include "application/inventory/maintenance/services/maintenanceservice.h"
 #include "application/inventory/registration/services/vehiclerecordservice.h"
@@ -191,6 +192,36 @@ private:
     // Identificaciones de contrapartes que crean los casos, además de las
     // "ID-<VIN>" de registration().
     QStringList m_createdNationalIds;
+    // Las cuentas de dinero como estaban (cuenta, saldo, abierta, fecha), para
+    // dejarlas igual al terminar.
+    QList<QStringList> m_savedAccounts;
+    // Lo que tienen mientras corre la prueba: alcanza para cualquier compra.
+    static constexpr qint64 kPlenty = Q_INT64_C(100000000000);
+
+    bool setBalance(const QString &account, qint64 hundredths)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery query(handle.database());
+        query.prepare(QStringLiteral("UPDATE cash_accounts SET balance = CAST(:balance AS NUMERIC) / 100, "
+                                     "opened = TRUE WHERE account = :account"));
+        query.bindValue(QStringLiteral(":balance"), hundredths);
+        query.bindValue(QStringLiteral(":account"), account);
+        if (!query.exec() || query.numRowsAffected() != 1) {
+            qWarning("%s", qPrintable(query.lastError().text()));
+            return false;
+        }
+        return true;
+    }
+
+    qint64 balanceOf(const QString &account)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery query(handle.database());
+        query.prepare(QStringLiteral("SELECT CAST(ROUND(balance * 100) AS BIGINT) FROM cash_accounts "
+                                     "WHERE account = :account"));
+        query.bindValue(QStringLiteral(":account"), account);
+        return query.exec() && query.next() ? query.value(0).toLongLong() : -1;
+    }
 
     QString uniqueNationalId(const QString &prefix)
     {
@@ -368,6 +399,21 @@ private slots:
             ConnectionPool::Handle handle = m_pool->acquire();
             if (!handle.database().isOpen())
                 QSKIP("PostgreSQL no está disponible (docker compose up -d).");
+            // Las cuentas de dinero, por si la base es de antes. Una compra de
+            // contado las mueve: se guarda cómo estaban, y mientras corre la
+            // prueba tienen de sobra.
+            const SchemaUpgrade::Result upgrade = SchemaUpgrade::run(handle.database());
+            QVERIFY2(upgrade.ok, qPrintable(upgrade.errorMessage));
+            QSqlQuery saved(handle.database());
+            QVERIFY(saved.exec(QStringLiteral("SELECT account, CAST(balance AS text), opened, "
+                                              "CAST(updated_at AS text) FROM cash_accounts")));
+            while (saved.next())
+                m_savedAccounts << QStringList{saved.value(0).toString(), saved.value(1).toString(),
+                                               saved.value(2).toBool() ? QStringLiteral("t")
+                                                                       : QStringLiteral("f"),
+                                               saved.value(3).toString()};
+            QVERIFY(setBalance(QStringLiteral("Caja Chica"), kPlenty));
+            QVERIFY(setBalance(QStringLiteral("Banco"), kPlenty));
         }
 
         SqlReferenceDataReader reference(*m_pool);
@@ -388,6 +434,27 @@ private slots:
     void cleanupTestCase()
     {
         ConnectionPool::Handle handle = m_pool->acquire();
+        // Los movimientos de dinero de sus compras, y las cuentas como
+        // estaban.
+        for (const QString &vin : std::as_const(m_createdSerials)) {
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral("DELETE FROM cash_movements WHERE vehicle_folio IN "
+                                         "(SELECT folio FROM vehicles WHERE serial_number = :vin)"));
+            query.bindValue(QStringLiteral(":vin"), vin);
+            query.exec();
+        }
+        for (const QStringList &account : std::as_const(m_savedAccounts)) {
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral("UPDATE cash_accounts SET balance = CAST(:balance AS NUMERIC), "
+                                         "opened = :opened, updated_at = CAST(NULLIF(:at, '') AS TIMESTAMP) "
+                                         "WHERE account = :account"));
+            query.bindValue(QStringLiteral(":balance"), account.at(1));
+            query.bindValue(QStringLiteral(":opened"), account.at(2) == QStringLiteral("t"));
+            query.bindValue(QStringLiteral(":at"), account.at(3));
+            query.bindValue(QStringLiteral(":account"), account.at(0));
+            if (!query.exec())
+                qWarning("%s", qPrintable(query.lastError().text()));
+        }
         for (const QString &vin : std::as_const(m_createdSerials)) {
             QSqlQuery query(handle.database());
             query.prepare(QStringLiteral("DELETE FROM vehicles WHERE serial_number = :vin"));
@@ -710,6 +777,87 @@ private slots:
 
     // Una versión vieja no pisa la corrección de otro, y el VIN de otra
     // unidad se rechaza; el propio, aunque cambie, no.
+    // Una compra de contado por transferencia sale de Banco, con su movimiento
+    // ligado a la unidad; una consignación no mueve nada.
+    void cashPurchaseIsPaidFromItsAccount()
+    {
+        const qint64 before = balanceOf(QStringLiteral("Banco"));
+        const int folio = registerUnit(registration(uniqueVin()));
+        QVERIFY(folio > 0);
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), before - 10000000);
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral("SELECT account, CAST(amount * 100 AS BIGINT), kind "
+                                         "FROM cash_movements WHERE vehicle_folio = :folio"));
+            query.bindValue(QStringLiteral(":folio"), folio);
+            QVERIFY(query.exec() && query.next());
+            QCOMPARE(query.value(0).toString(), QStringLiteral("Banco"));
+            QCOMPARE(query.value(1).toLongLong(), qint64(-10000000));
+            QCOMPARE(query.value(2).toString(), QStringLiteral("Compra"));
+            QVERIFY(!query.next());
+        }
+
+        const qint64 afterPurchase = balanceOf(QStringLiteral("Banco"));
+        QVERIFY(registerUnit(registration(uniqueVin(), domain::AcquisitionType::Consignacion)) > 0);
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), afterPurchase);
+    }
+
+    // Sin saldo en la cuenta, ni la unidad ni el movimiento se guardan, y el
+    // rechazo dice cuánto hay.
+    void purchaseWithoutFundsSavesNothing()
+    {
+        QVERIFY(setBalance(QStringLiteral("Banco"), 5000000));
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        PdfContractGenerator contracts;
+        const application::VehicleRegistrationService service(vehicles, files, reference, contracts);
+        const QString vin = uniqueVin();
+        const auto result = service.registerVehicle(registration(vin));
+        QVERIFY(setBalance(QStringLiteral("Banco"), kPlenty));
+
+        QCOMPARE(result.status, application::RegistrationResult::Status::Rejected);
+        QCOMPARE(result.validation.fields(), QStringList{QStringLiteral("purchasePrice")});
+        QCOMPARE(result.validation.firstMessage(),
+                 QStringLiteral("Cantidad Banco solo tiene $50,000.00 disponibles."));
+        QString error;
+        QVERIFY(!vehicles.serialNumberExists(vin, &error));
+    }
+
+    // Corregir la compra ajusta solo la diferencia; cambiar de método la
+    // regresa a una cuenta y la saca de la otra.
+    void correctingThePurchaseAdjustsTheAccounts()
+    {
+        const int folio = registerUnit(registration(uniqueVin()));
+        QVERIFY(folio > 0);
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        using UpdateStatus = application::RecordUpdateResult::Status;
+
+        const qint64 bank = balanceOf(QStringLiteral("Banco"));
+        const qint64 cash = balanceOf(QStringLiteral("Caja Chica"));
+        application::VehicleUpdateDto update = unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.purchasePrice = 90000.0;
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status, UpdateStatus::Saved);
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), bank + 1000000);
+
+        update = unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.paymentMethod = domain::PaymentMethod::Efectivo;
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status, UpdateStatus::Saved);
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), bank + 10000000);
+        QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cash - 9000000);
+
+        // Sin cambiar la compra, nada se mueve.
+        update = unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.model = QStringLiteral("Solo el modelo");
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status, UpdateStatus::Saved);
+        QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cash - 9000000);
+    }
+
     void staleVersionsAndForeignVinsAreRejected()
     {
         const QString firstVin = uniqueVin();

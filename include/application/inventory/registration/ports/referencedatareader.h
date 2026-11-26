@@ -33,6 +33,8 @@ public:
     // La UMA vigente y el tope de pago en efectivo, en UMA, que fijó el
     // Administrador. Sin UMA, umaDailyValue queda en 0; sin tope, el legal.
     virtual domain::CashLimitTerms cashLimitTerms(QString *error) = 0;
+    // El saldo vigente de cada cuenta de dinero, en centésimos.
+    virtual QMap<domain::CashAccount, qint64> cashAvailable(QString *error) = 0;
     // Los tipos del historial de mantenimientos (vehicle_maintenance_cat).
     virtual QList<CatalogOptionDto> maintenanceTypes(QString *error) = 0;
 

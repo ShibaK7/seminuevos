@@ -60,6 +60,9 @@ private:
     // UMA vigente y tope de efectivo, leídos con los catálogos. Sin UMA no se
     // valida el tope y el pago en efectivo se rechaza.
     domain::CashLimitTerms m_cashLimit;
+    // Lo que hay en Caja Chica y Cantidad Banco: una compra de contado no
+    // puede pasar de lo que hay en la cuenta de su método. Vacío: no se revisa.
+    QMap<domain::CashAccount, qint64> m_cashAvailable;
 };
 
 } // namespace presentation

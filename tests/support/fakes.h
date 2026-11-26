@@ -150,6 +150,9 @@ public:
     QStringList existingSerialNumbers;
     bool failNextAdd = false;
     bool duplicateOnAdd = false;
+    // Si tiene valor, add() responde que Cantidad Banco no alcanza y solo
+    // tiene eso (centésimos).
+    std::optional<qint64> insufficientOnAdd;
     int adds = 0;
     int nextFolio = 100;
 
@@ -206,6 +209,12 @@ public:
         }
         if (failNextAdd) {
             outcome.errorMessage = QStringLiteral("server closed the connection");
+            return outcome;
+        }
+        if (insufficientOnAdd) {
+            outcome.insufficientFunds = true;
+            outcome.fundsAccount = domain::CashAccount::Bank;
+            outcome.availableHundredths = *insufficientOnAdd;
             return outcome;
         }
         outcome.ok = true;
@@ -321,6 +330,12 @@ public:
     domain::CashLimitTerms cashLimitTerms(QString *) override
     {
         return {uma.value_or(0.0), umaMultiple};
+    }
+    // Lo que hay en cada cuenta de dinero; vacío por omisión (no se revisa).
+    QMap<domain::CashAccount, qint64> cash;
+    QMap<domain::CashAccount, qint64> cashAvailable(QString *) override
+    {
+        return cash;
     }
     // Si no está vacío, el catálogo de mantenimientos "falla" con este error.
     QString maintenanceTypesError;
