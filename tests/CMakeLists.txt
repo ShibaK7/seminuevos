@@ -214,3 +214,15 @@ if(SEMINUEVOS_DB_TESTS)
     target_compile_definitions(tst_registration_db PRIVATE
         SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 endif()
+
+# --- Configuraciones (US-07.1) ----------------------------------------------------
+# Van en su propia sección, al final, para no chocar con las de otros módulos.
+seminuevos_add_test(tst_systemparameters
+    SOURCES domain/tst_systemparameters.cpp
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_systemsettingsservice
+    SOURCES application/tst_systemsettingsservice.cpp support/settingsfakes.h
+    LIBS seminuevos_application
+)
