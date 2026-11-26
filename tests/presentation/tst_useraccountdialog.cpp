@@ -5,6 +5,7 @@
 #include "presentation/settings/useraccountdialog.h"
 
 #include <QComboBox>
+#include <QLabel>
 #include <QLineEdit>
 #include <QSignalSpy>
 #include <QPushButton>
@@ -109,6 +110,42 @@ private slots:
         dialog.show();
         dialog.showErrors({{QStringLiteral("username"), QStringLiteral("Ya hay una cuenta con ese usuario.")}});
         QCOMPARE(edit(dialog, "usernameEdit")->property("hasError").toBool(), true);
+    }
+
+    // Un mensaje largo se lee completo: el diálogo crece lo que haga falta.
+    void longErrorIsShownWhole()
+    {
+        UserAccountDialog dialog(Mode::Create, {});
+        dialog.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+        dialog.showErrors({{QStringLiteral("username"),
+                            QStringLiteral("El usuario lleva de 3 a 50 caracteres: letras sin acento, "
+                                           "números, punto, guion o guion bajo, y empieza con letra o "
+                                           "número.")}});
+        QCoreApplication::processEvents();
+        auto *label = dialog.findChild<QLabel *>(QStringLiteral("usernameEditError"));
+        QVERIFY(label && label->isVisible());
+        QVERIFY2(label->height() >= label->heightForWidth(label->width()),
+                 qPrintable(QStringLiteral("%1 < %2").arg(label->height())
+                                .arg(label->heightForWidth(label->width()))));
+    }
+
+    // Mientras guarda no se cierra (ni Cancelar ni Esc): el resultado tiene
+    // dónde mostrarse.
+    void cannotBeClosedWhileSaving()
+    {
+        UserAccountDialog dialog(Mode::Create, {});
+        dialog.show();
+        dialog.setBusy(true);
+        auto *cancel = dialog.findChild<QPushButton *>(QStringLiteral("cancelButton"));
+        QVERIFY(!cancel->isEnabled());
+        dialog.reject();
+        QVERIFY(dialog.isVisible());
+        QVERIFY(!dialog.close());
+        QVERIFY(dialog.isVisible());
+        dialog.setBusy(false);
+        dialog.reject();
+        QVERIFY(!dialog.isVisible());
     }
 };
 

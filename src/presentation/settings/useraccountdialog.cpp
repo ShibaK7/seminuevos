@@ -97,12 +97,29 @@ application::PasswordResetDto UserAccountDialog::passwordReset() const
 
 void UserAccountDialog::setBusy(bool busy)
 {
+    m_busy = busy;
     ui->acceptButton->setEnabled(!busy);
+    ui->cancelButton->setEnabled(!busy);
+}
+
+void UserAccountDialog::reject()
+{
+    // Mientras guarda no se cierra (Cancelar, Esc o la X pasan por aquí):
+    // el resultado, sea un error o el aviso de que se guardó, necesita el
+    // formulario abierto para tener sentido.
+    if (m_busy)
+        return;
+    QDialog::reject();
 }
 
 void UserAccountDialog::showErrors(const QList<domain::ValidationError> &errors)
 {
     const QList<domain::ValidationError> unshown = formsupport::showFieldErrors(this, errors);
+    // Un mensaje largo ocupa varias líneas: el diálogo crece para que se lea
+    // completo (el tamaño del .ui solo alcanza para el formulario sin errores).
+    layout()->activate();
+    if (layout()->hasHeightForWidth())
+        resize(width(), qMax(height(), layout()->totalHeightForWidth(width())));
     for (const domain::ValidationError &error : errors) {
         if (formsupport::focusField(this, error.field))
             break;

@@ -190,8 +190,16 @@ void UserManagementWidget::setUserFormBusy(bool busy)
 
 void UserManagementWidget::showUserFormErrors(const QList<domain::ValidationError> &errors)
 {
-    if (m_form)
+    if (m_form) {
         m_form->showErrors(errors);
+        return;
+    }
+    // Sin formulario (no debería pasar: no se cierra mientras guarda), el
+    // rechazo no se pierde.
+    QStringList messages;
+    for (const domain::ValidationError &error : errors)
+        messages << error.message;
+    showMessage(messages.join(QLatin1Char(' ')));
 }
 
 void UserManagementWidget::closeUserForm()

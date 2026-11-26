@@ -166,6 +166,18 @@ private slots:
         QVERIFY(m_view.message.contains(QStringLiteral("Otro administrador")));
     }
 
+    // Un error de lectura se va cuando una lectura posterior sale bien.
+    void successfulReadClearsAnOldError()
+    {
+        m_accounts.failure = QStringLiteral("sin conexión");
+        auto presenter = make(m_runner);
+        QVERIFY(m_view.message.contains(QStringLiteral("sin conexión")));
+        m_accounts.failure.clear();
+        presenter->refresh();
+        QVERIFY(m_view.message.isEmpty());
+        QCOMPARE(m_view.users.size(), 2);
+    }
+
     // Desactivar pregunta antes; sin confirmar, no hace nada.
     void deactivateAsksFirst()
     {

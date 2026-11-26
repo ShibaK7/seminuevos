@@ -51,7 +51,9 @@ public:
     void onSubmitPasswordReset(const application::PasswordResetDto &reset);
 
 private:
-    void load();
+    // Una lectura que sale bien borra el error de una anterior, salvo con
+    // `keepMessage`: la que lanza un conflicto deja visible su aviso.
+    void load(bool keepMessage = false);
     // La cuenta seleccionada, o nullopt (y un aviso) si no hay.
     std::optional<application::UserAccountDto> selectedUser();
     // Corre una escritura y atiende su resultado. `fromForm`: si viene del

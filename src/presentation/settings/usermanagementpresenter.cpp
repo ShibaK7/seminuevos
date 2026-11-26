@@ -28,7 +28,7 @@ void UserManagementPresenter::refresh()
         load();
 }
 
-void UserManagementPresenter::load()
+void UserManagementPresenter::load(bool keepMessage)
 {
     const int generation = ++m_loadGeneration;
     m_view.setBusy(true);
@@ -36,7 +36,7 @@ void UserManagementPresenter::load()
     const application::SessionDto actor = m_actor;
     m_runner.run(
         this, [service, actor] { return service->listUsers(actor); },
-        [this, generation](const application::UserAccountListResult &result) {
+        [this, generation, keepMessage](const application::UserAccountListResult &result) {
             using Status = application::UserAccountListResult::Status;
             if (generation != m_loadGeneration)
                 return;
@@ -45,6 +45,8 @@ void UserManagementPresenter::load()
             case Status::Loaded:
                 m_users = result.users;
                 m_view.showUsers(m_users);
+                if (!keepMessage)
+                    m_view.showMessage(QString());
                 break;
             case Status::Denied:
                 m_view.showMessage(QStringLiteral("Tu rol no puede administrar usuarios."));
@@ -185,13 +187,13 @@ void UserManagementPresenter::write(std::function<application::UserAccountWriteR
                          m_view.showMessage(QStringLiteral("Otro administrador cambió esta cuenta "
                                                            "mientras tanto; se recargó la lista. "
                                                            "Revísala y vuelve a intentarlo."));
-                         load();
+                         load(true);
                          return;
                      case Status::NotFound:
                          if (fromForm)
                              m_view.closeUserForm();
                          m_view.showMessage(QStringLiteral("La cuenta ya no existe."));
-                         load();
+                         load(true);
                          return;
                      case Status::Denied:
                          if (fromForm)

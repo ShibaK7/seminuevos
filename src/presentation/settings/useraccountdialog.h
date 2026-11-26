@@ -21,7 +21,7 @@ QT_END_NAMESPACE
 //
 // Vista pasiva: Aceptar no valida ni cierra, solo avisa (submitted). Quien
 // guarda decide si cierra (accept()) o marca los errores que reportó el
-// dominio (showErrors()). Cancelar sí lo cierra solo.
+// dominio (showErrors()). Cancelar sí lo cierra solo, salvo mientras guarda.
 class UserAccountDialog : public QDialog
 {
     Q_OBJECT
@@ -37,9 +37,13 @@ public:
     application::UserAccountUpdateDto userUpdate() const;
     application::PasswordResetDto passwordReset() const;
 
+    // Mientras guarda, ni Aceptar ni Cancelar, y el diálogo no se cierra.
     void setBusy(bool busy);
     // Marca cada campo con su error y le da el foco al primero.
     void showErrors(const QList<domain::ValidationError> &errors);
+
+public slots:
+    void reject() override;
 
 signals:
     // Aceptar.
@@ -47,6 +51,7 @@ signals:
 
 private:
     Ui::UserAccountDialog *ui;
+    bool m_busy = false;
     Mode m_mode;
     application::UserAccountDto m_account;
 };
