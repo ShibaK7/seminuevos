@@ -303,3 +303,13 @@ if(SEMINUEVOS_DB_TESTS)
     target_compile_definitions(tst_cash_db PRIVATE
         SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 endif()
+
+seminuevos_add_test(tst_cashbalancespresenter
+    SOURCES presentation/tst_cashbalancespresenter.cpp support/cashfakes.h support/fakes.h
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_cashmovementdialog
+    SOURCES presentation/tst_cashmovementdialog.cpp
+    LIBS seminuevos_views
+)

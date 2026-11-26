@@ -17,8 +17,8 @@
 --   estricto, nunca uno mayor: la app rechaza un valor arriba de 3,210 y, si
 --   lo encontrara aquí, usaría el legal.
 --
--- SALDO_BANCO, SALDO_CAJA_CHICA, SALDO_CAJA_FUERTE: saldos en pesos que
---   captura el Administrador y lee Finanzas.
+-- Los saldos de Caja Chica, Cantidad Banco y Caja Fuerte no van aquí: viven
+--   en cash_accounts, con su bitácora en cash_movements (00_schema.sql).
 --
 -- Docker solo corre init-db/ cuando el volumen está vacío. En una base que ya
 -- existe se puede correr a mano para agregar las llaves que falten (usuario y
@@ -38,8 +38,5 @@
 
 INSERT INTO global_configurations (key_param, value_param)
 VALUES ('UMA_DIARIA', 117.31),
-       ('TOPE_EFECTIVO_UMA', 3210),
-       ('SALDO_BANCO', 0),
-       ('SALDO_CAJA_CHICA', 0),
-       ('SALDO_CAJA_FUERTE', 0)
+       ('TOPE_EFECTIVO_UMA', 3210)
 ON CONFLICT (key_param) DO NOTHING;

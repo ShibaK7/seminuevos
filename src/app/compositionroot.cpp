@@ -44,11 +44,15 @@
 #include "presentation/shell/mainwindow.h"
 
 // Configuraciones (US-07.1).
+#include "adapters/persistence/finance/sqlcashledger.h"
 #include "adapters/persistence/settings/sqlsettingsrepository.h"
 #include "adapters/persistence/settings/sqluseraccountrepository.h"
+#include "application/finance/services/cashledgerservice.h"
 #include "application/settings/services/systemsettingsservice.h"
 #include "application/settings/services/useradministrationservice.h"
 #include "domain/settings/rules/settingsaccess.h"
+#include "presentation/settings/cashbalancespresenter.h"
+#include "presentation/settings/cashbalanceswidget.h"
 #include "presentation/settings/settingsview.h"
 #include "presentation/settings/systemsettingspresenter.h"
 #include "presentation/settings/systemsettingswidget.h"
@@ -204,6 +208,8 @@ bool CompositionRoot::start()
     m_userAccounts = std::make_unique<SqlUserAccountRepository>(pool);
     m_userAdministration =
         std::make_unique<application::UserAdministrationService>(*m_userAccounts, m_hasher);
+    m_cashLedger = std::make_unique<SqlCashLedger>(pool);
+    m_cashLedgerService = std::make_unique<application::CashLedgerService>(*m_cashLedger);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -305,12 +311,15 @@ void CompositionRoot::showMain(const application::SessionDto &session)
             auto *parameters = new presentation::SystemSettingsPresenter(
                 settingsPage->systemSettings(), *m_systemSettings, m_runner, session,
                 settingsPage);
+            auto *balances = new presentation::CashBalancesPresenter(
+                settingsPage->cashBalances(), *m_cashLedgerService, m_runner, session, settingsPage);
             auto *users = new presentation::UserManagementPresenter(
                 settingsPage->userManagement(), *m_userAdministration, m_runner, session,
                 settingsPage);
-            settingsPage->bind(*parameters, *users);
+            settingsPage->bind(*parameters, *balances, *users);
             mainWindow->setSettingsPage(settingsPage);
             parameters->start();
+            balances->start();
             users->start();
         }
         m_main = mainWindow;

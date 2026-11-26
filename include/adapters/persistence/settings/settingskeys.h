@@ -14,9 +14,6 @@ namespace settingskeys {
 
 inline QString umaDailyValue() { return QStringLiteral("UMA_DIARIA"); }
 inline QString cashLimitUmaMultiple() { return QStringLiteral("TOPE_EFECTIVO_UMA"); }
-inline QString bankBalance() { return QStringLiteral("SALDO_BANCO"); }
-inline QString pettyCashBalance() { return QStringLiteral("SALDO_CAJA_CHICA"); }
-inline QString safeBalance() { return QStringLiteral("SALDO_CAJA_FUERTE"); }
 
 inline QString keyOf(domain::SystemParameter parameter)
 {
@@ -25,12 +22,6 @@ inline QString keyOf(domain::SystemParameter parameter)
         return umaDailyValue();
     case domain::SystemParameter::CashLimitUmaMultiple:
         return cashLimitUmaMultiple();
-    case domain::SystemParameter::BankBalance:
-        return bankBalance();
-    case domain::SystemParameter::PettyCashBalance:
-        return pettyCashBalance();
-    case domain::SystemParameter::SafeBalance:
-        return safeBalance();
     }
     return QString();
 }

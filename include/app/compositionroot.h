@@ -18,6 +18,7 @@ class LoginWindow;
 class MainWindow;
 class LocalFileStorage;
 class SqlInventoryReader;
+class SqlCashLedger;
 class SqlCommercial;
 class SqlMaintenanceRepository;
 class SqlReferenceDataReader;
@@ -31,6 +32,7 @@ class SqlVehicleRepository;
 
 namespace application {
 class AuthenticationService;
+class CashLedgerService;
 class CommercialService;
 class CounterpartyLookupService;
 class InventoryService;
@@ -97,6 +99,9 @@ private:
     std::unique_ptr<application::SystemSettingsService> m_systemSettings;
     std::unique_ptr<SqlUserAccountRepository> m_userAccounts;
     std::unique_ptr<application::UserAdministrationService> m_userAdministration;
+    // Los saldos de Caja Chica, Cantidad Banco y Caja Fuerte.
+    std::unique_ptr<SqlCashLedger> m_cashLedger;
+    std::unique_ptr<application::CashLedgerService> m_cashLedgerService;
     std::unique_ptr<LoginWindow> m_login;
     presentation::LoginPresenter *m_loginPresenter = nullptr;
     QPointer<MainWindow> m_main;

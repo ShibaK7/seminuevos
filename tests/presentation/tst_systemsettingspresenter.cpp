@@ -96,18 +96,18 @@ private slots:
     {
         m_settings = fakes::InMemorySettingsRepository();
         m_settings.store(SystemParameter::UmaDailyValue, 11731);
-        m_settings.store(SystemParameter::BankBalance, 5000000);
+        m_settings.store(SystemParameter::CashLimitUmaMultiple, 321000);
         m_service = std::make_unique<application::SystemSettingsService>(m_settings);
         m_view = FakeSystemSettingsView();
     }
 
-    // Abre de solo lectura, con los cinco pintados y "Editar" disponible.
-    void opensReadOnlyWithTheFiveParameters()
+    // Abre de solo lectura, con los dos pintados y "Editar" disponible.
+    void opensReadOnlyWithTheParameters()
     {
         auto presenter = make(m_runner);
         QCOMPARE(m_view.mode, FormMode::View);
         QVERIFY(m_view.canEdit);
-        QCOMPARE(m_view.shown.size(), 5);
+        QCOMPARE(m_view.shown.size(), 2);
         QVERIFY(!m_view.busy);
     }
 
@@ -160,13 +160,13 @@ private slots:
     {
         auto presenter = make(m_runner);
         presenter->onEdit();
-        type(*presenter, SystemParameter::BankBalance, 1);
+        type(*presenter, SystemParameter::CashLimitUmaMultiple, 100);
         const int reads = m_settings.reads;
         const int paints = m_view.paints;
         presenter->refresh();
         QCOMPARE(m_settings.reads, reads);
         QCOMPARE(m_view.paints, paints);
-        QCOMPARE(m_view.fields.value(SystemParameter::BankBalance), std::optional<qint64>(1));
+        QCOMPARE(m_view.fields.value(SystemParameter::CashLimitUmaMultiple), std::optional<qint64>(100));
     }
 
     void invalidValueStaysInEditWithItsError()
@@ -186,7 +186,7 @@ private slots:
     {
         auto presenter = make(m_runner);
         presenter->onEdit();
-        type(*presenter, SystemParameter::BankBalance, 1);
+        type(*presenter, SystemParameter::CashLimitUmaMultiple, 100);
         m_view.discard = false;
         presenter->onCancel();
         QCOMPARE(m_view.mode, FormMode::Edit);
@@ -194,7 +194,7 @@ private slots:
         presenter->onCancel();
         QCOMPARE(m_view.mode, FormMode::View);
         // Se repinta lo leído.
-        QCOMPARE(m_view.fields.value(SystemParameter::BankBalance), std::optional<qint64>(5000000));
+        QCOMPARE(m_view.fields.value(SystemParameter::CashLimitUmaMultiple), std::optional<qint64>(321000));
     }
 
     // Otro administrador lo cambió: no se pisa, se avisa y se carga lo vigente.
@@ -219,23 +219,23 @@ private slots:
         auto presenter = make(deferred);
         deferred.finish(0);
         presenter->onEdit();
-        type(*presenter, SystemParameter::BankBalance, 6000000);
+        type(*presenter, SystemParameter::CashLimitUmaMultiple, 200000);
         presenter->onSave();
         deferred.finish(1);
         QCOMPARE(m_view.notice, QStringLiteral("Cambios guardados."));
-        QCOMPARE(m_view.fields.value(SystemParameter::BankBalance), std::optional<qint64>(6000000));
+        QCOMPARE(m_view.fields.value(SystemParameter::CashLimitUmaMultiple), std::optional<qint64>(200000));
 
         m_settings.failure = QStringLiteral("se cayó la base");
         deferred.finish(2); // la relectura falla
-        QCOMPARE(m_view.fields.value(SystemParameter::BankBalance), std::optional<qint64>(6000000));
+        QCOMPARE(m_view.fields.value(SystemParameter::CashLimitUmaMultiple), std::optional<qint64>(200000));
 
         m_settings.failure.clear();
         presenter->onEdit();
-        type(*presenter, SystemParameter::BankBalance, 7000000);
+        type(*presenter, SystemParameter::CashLimitUmaMultiple, 150000);
         presenter->onSave();
         deferred.finish(3);
-        QCOMPARE(m_settings.rows.value(SystemParameter::BankBalance).hundredths,
-                 std::optional<qint64>(7000000));
+        QCOMPARE(m_settings.rows.value(SystemParameter::CashLimitUmaMultiple).hundredths,
+                 std::optional<qint64>(150000));
         QVERIFY(!m_view.message.contains(QStringLiteral("Otro administrador")));
     }
 
@@ -255,12 +255,12 @@ private slots:
     {
         auto presenter = make(m_runner);
         presenter->onEdit();
-        type(*presenter, SystemParameter::SafeBalance, 777);
+        type(*presenter, SystemParameter::CashLimitUmaMultiple, 100000);
         m_settings.failure = QStringLiteral("se cayó la base");
         presenter->onSave();
         QCOMPARE(m_view.mode, FormMode::Edit);
         QVERIFY(m_view.message.contains(QStringLiteral("se cayó la base")));
-        QCOMPARE(m_view.fields.value(SystemParameter::SafeBalance), std::optional<qint64>(777));
+        QCOMPARE(m_view.fields.value(SystemParameter::CashLimitUmaMultiple), std::optional<qint64>(100000));
     }
 
     // Salir con cambios pregunta; sin cambios, no. Mientras guarda, espera.
@@ -273,7 +273,7 @@ private slots:
         QCOMPARE(m_view.discardQuestions, 0);
 
         presenter->onEdit();
-        type(*presenter, SystemParameter::BankBalance, 1);
+        type(*presenter, SystemParameter::CashLimitUmaMultiple, 100);
         m_view.discard = false;
         QVERIFY(!presenter->confirmLeave());
         presenter->onSave();
@@ -304,10 +304,10 @@ private slots:
         auto presenter = make(m_runner);
         m_settings.activeAdministrators.clear();
         presenter->onEdit();
-        type(*presenter, SystemParameter::BankBalance, 6000000);
+        type(*presenter, SystemParameter::CashLimitUmaMultiple, 200000);
         presenter->onSave();
-        QCOMPARE(m_settings.rows.value(SystemParameter::BankBalance).hundredths,
-                 std::optional<qint64>(5000000));
+        QCOMPARE(m_settings.rows.value(SystemParameter::CashLimitUmaMultiple).hundredths,
+                 std::optional<qint64>(321000));
         QCOMPARE(m_view.mode, FormMode::View);
         QVERIFY(!m_view.canEdit);
         QVERIFY(m_view.message.contains(QStringLiteral("ya no puede")));

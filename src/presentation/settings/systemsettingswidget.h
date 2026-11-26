@@ -22,8 +22,8 @@ class SystemSettingsPresenter;
 }
 
 // La tarjeta de los parámetros de Configuraciones (US-07.1, #82): Valor 1
-// UMA, Máximo valor pagos en efectivo, Cantidad Banco, Caja Chica y Caja
-// Fuerte, cada uno con su "Actualizado el ...". Su formulario es
+// UMA y Máximo valor pagos en efectivo, cada uno con su "Actualizado el ...".
+// Los saldos tienen su propia tarjeta (CashBalancesWidget). Su formulario es
 // systemsettingswidget.ui, en esta misma carpeta.
 //
 // Vista pasiva de SystemSettingsPresenter: de solo lectura hasta "Editar",

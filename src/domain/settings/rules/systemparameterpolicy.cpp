@@ -35,12 +35,6 @@ void SystemParameterPolicy::check(SystemParameter parameter, qint64 hundredths,
         }
         break;
     }
-    case SystemParameter::BankBalance:
-    case SystemParameter::PettyCashBalance:
-    case SystemParameter::SafeBalance:
-        if (hundredths < 0)
-            result.addError(field, QStringLiteral("El saldo no puede ser negativo."));
-        break;
     }
 }
 

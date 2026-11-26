@@ -15,12 +15,12 @@ namespace domain {
 // Sus valores se manejan en centésimos (qint64): así cabe igual un monto en
 // pesos, en centavos, que un número de UMA, y comparar si algo cambió es
 // exacto, sin los redondeos de un double.
+//
+// Los saldos de Caja Chica, Cantidad Banco y Caja Fuerte no son parámetros: se
+// mueven con cada operación (domain/finance, CashAccount).
 enum class SystemParameter {
     UmaDailyValue,        // Valor 1 UMA, en pesos
     CashLimitUmaMultiple, // Máximo valor de pagos en efectivo, en UMA
-    BankBalance,          // Cantidad Banco, en pesos
-    PettyCashBalance,     // Caja Chica, en pesos
-    SafeBalance,          // Caja Fuerte, en pesos
 };
 
 enum class ParameterUnit { Pesos, Uma };

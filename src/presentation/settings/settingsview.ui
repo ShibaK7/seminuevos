@@ -38,7 +38,7 @@
         <height>740</height>
        </rect>
       </property>
-      <layout class="QVBoxLayout" name="settingsContentLayout" stretch="0,0,1">
+      <layout class="QVBoxLayout" name="settingsContentLayout" stretch="0,0,0,1">
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -53,6 +53,9 @@
        </property>
        <item>
         <widget class="SystemSettingsWidget" name="systemSettings" native="true"/>
+       </item>
+       <item>
+        <widget class="CashBalancesWidget" name="cashBalances" native="true"/>
        </item>
        <item>
         <widget class="UserManagementWidget" name="userManagement" native="true"/>
@@ -81,6 +84,12 @@
    <class>SystemSettingsWidget</class>
    <extends>QWidget</extends>
    <header>presentation/settings/systemsettingswidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CashBalancesWidget</class>
+   <extends>QWidget</extends>
+   <header>presentation/settings/cashbalanceswidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

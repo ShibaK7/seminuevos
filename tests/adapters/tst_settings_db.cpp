@@ -214,14 +214,12 @@ private slots:
         }
     }
 
-    // Cada caso parte de la UMA, el tope y el banco capturados; Caja Chica y
-    // Caja Fuerte, nunca.
+    // Cada caso parte de la UMA y el tope capturados.
     void init()
     {
         clearKeys();
         seed(settingskeys::umaDailyValue(), QStringLiteral("117.31"));
         seed(settingskeys::cashLimitUmaMultiple(), QStringLiteral("3210"));
-        seed(settingskeys::bankBalance(), QStringLiteral("50000"));
     }
 
     // #83: los que tienen renglón, en centésimos y con su fecha.
@@ -231,7 +229,7 @@ private slots:
         QString error;
         const QList<application::SystemParameterDto> rows = repository.getSystemParameters(&error);
         QVERIFY2(error.isEmpty(), qPrintable(error));
-        QCOMPARE(rows.size(), 3);
+        QCOMPARE(rows.size(), 2);
         for (const application::SystemParameterDto &row : rows) {
             QCOMPARE(row.updatedAt, kSeededAt);
             if (row.parameter == SystemParameter::UmaDailyValue)
@@ -251,18 +249,19 @@ private slots:
         QCOMPARE(valueOf(settingskeys::umaDailyValue()), QStringLiteral("120.00"));
         QVERIFY(updatedAtOf(settingskeys::umaDailyValue()) > kSeededAt);
         QCOMPARE(updatedAtOf(settingskeys::cashLimitUmaMultiple()), kSeededAt);
-        QCOMPARE(updatedAtOf(settingskeys::bankBalance()), kSeededAt);
     }
 
     // Un parámetro que nunca se capturó se crea al guardarlo.
     void missingParameterIsCreated()
     {
+        QVERIFY(exec(QStringLiteral("DELETE FROM global_configurations WHERE key_param = :key"),
+                     {{QStringLiteral(":key"), settingskeys::cashLimitUmaMultiple()}}));
         SqlSettingsRepository repository(*m_pool);
         const auto outcome = repository.updateSystemParameters(
-            {Change{SystemParameter::SafeBalance, std::nullopt, 1000050}}, m_adminId);
+            {Change{SystemParameter::CashLimitUmaMultiple, std::nullopt, 200000}}, m_adminId);
         QCOMPARE(outcome.status, UpdateStatus::Updated);
-        QCOMPARE(valueOf(settingskeys::safeBalance()), QStringLiteral("10000.50"));
-        QVERIFY(updatedAtOf(settingskeys::safeBalance()).isValid());
+        QCOMPARE(valueOf(settingskeys::cashLimitUmaMultiple()), QStringLiteral("2000.00"));
+        QVERIFY(updatedAtOf(settingskeys::cashLimitUmaMultiple()).isValid());
     }
 
     // Otro administrador cambió la UMA desde que se leyó: no se pisa, y
@@ -274,23 +273,25 @@ private slots:
                      {{QStringLiteral(":key"), settingskeys::umaDailyValue()}}));
         SqlSettingsRepository repository(*m_pool);
         const auto outcome = repository.updateSystemParameters(
-            {Change{SystemParameter::BankBalance, 5000000, 6000000},
+            {Change{SystemParameter::CashLimitUmaMultiple, 321000, 200000},
              Change{SystemParameter::UmaDailyValue, 11731, 12000}}, m_adminId);
         QCOMPARE(outcome.status, UpdateStatus::Conflict);
-        QCOMPARE(valueOf(settingskeys::bankBalance()), QStringLiteral("50000.00"));
+        QCOMPARE(valueOf(settingskeys::cashLimitUmaMultiple()), QStringLiteral("3210.00"));
         QCOMPARE(valueOf(settingskeys::umaDailyValue()), QStringLiteral("118.00"));
-        QCOMPARE(updatedAtOf(settingskeys::bankBalance()), kSeededAt);
+        QCOMPARE(updatedAtOf(settingskeys::cashLimitUmaMultiple()), kSeededAt);
     }
 
     // Otro administrador lo creó mientras tanto: tampoco se pisa.
     void createdMeanwhileIsAConflict()
     {
-        seed(settingskeys::pettyCashBalance(), QStringLiteral("700"));
+        QVERIFY(exec(QStringLiteral("DELETE FROM global_configurations WHERE key_param = :key"),
+                     {{QStringLiteral(":key"), settingskeys::cashLimitUmaMultiple()}}));
+        seed(settingskeys::cashLimitUmaMultiple(), QStringLiteral("1000"));
         SqlSettingsRepository repository(*m_pool);
         const auto outcome = repository.updateSystemParameters(
-            {Change{SystemParameter::PettyCashBalance, std::nullopt, 100000}}, m_adminId);
+            {Change{SystemParameter::CashLimitUmaMultiple, std::nullopt, 200000}}, m_adminId);
         QCOMPARE(outcome.status, UpdateStatus::Conflict);
-        QCOMPARE(valueOf(settingskeys::pettyCashBalance()), QStringLiteral("700.00"));
+        QCOMPARE(valueOf(settingskeys::cashLimitUmaMultiple()), QStringLiteral("1000.00"));
     }
 
     // La sesión se abrió como Administrador, pero ya le quitaron el rol (o
@@ -298,7 +299,7 @@ private slots:
     void actorWhoIsNoLongerAnAdministratorSavesNothing()
     {
         SqlSettingsRepository repository(*m_pool);
-        const QList<Change> change{Change{SystemParameter::BankBalance, 5000000, 6000000}};
+        const QList<Change> change{Change{SystemParameter::CashLimitUmaMultiple, 321000, 200000}};
         QVERIFY(exec(QStringLiteral("UPDATE users SET role = 'Vendedor' WHERE id = :id"),
                      {{QStringLiteral(":id"), m_adminId}}));
         QCOMPARE(repository.updateSystemParameters(change, m_adminId).status, UpdateStatus::ActorNotAllowed);
@@ -307,8 +308,8 @@ private slots:
         QCOMPARE(repository.updateSystemParameters(change, m_adminId).status, UpdateStatus::ActorNotAllowed);
         QVERIFY(exec(QStringLiteral("UPDATE users SET active = TRUE WHERE id = :id"),
                      {{QStringLiteral(":id"), m_adminId}}));
-        QCOMPARE(valueOf(settingskeys::bankBalance()), QStringLiteral("50000.00"));
-        QCOMPARE(updatedAtOf(settingskeys::bankBalance()), kSeededAt);
+        QCOMPARE(valueOf(settingskeys::cashLimitUmaMultiple()), QStringLiteral("3210.00"));
+        QCOMPARE(updatedAtOf(settingskeys::cashLimitUmaMultiple()), kSeededAt);
     }
 
     // De la pantalla a la base y de vuelta, con el servicio.

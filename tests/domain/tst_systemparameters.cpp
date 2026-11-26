@@ -29,29 +29,25 @@ class TstSystemParameters : public QObject
     Q_OBJECT
 
 private slots:
-    // Los cinco del mockup, en su orden, cada uno con su propio campo.
-    void fiveParametersInScreenOrder()
+    // La UMA y el tope, en su orden, cada uno con su propio campo. Los saldos
+    // ya no son parámetros: son cuentas (domain/finance).
+    void parametersInScreenOrder()
     {
         const QList<SystemParameter> all = domain::allSystemParameters();
-        QCOMPARE(all.size(), 5);
+        QCOMPARE(all.size(), 2);
         QCOMPARE(domain::displayLabel(all.first()), QStringLiteral("Valor 1 UMA"));
-        QCOMPARE(domain::displayLabel(all.last()), QStringLiteral("Caja Fuerte"));
-        QSet<QString> fields;
-        for (const SystemParameter parameter : all)
-            fields.insert(domain::fieldName(parameter));
-        QCOMPARE(fields.size(), all.size());
+        QCOMPARE(domain::displayLabel(all.last()), QStringLiteral("Máximo valor pagos en efectivo"));
+        QVERIFY(domain::fieldName(all.first()) != domain::fieldName(all.last()));
         QCOMPARE(domain::unitOf(SystemParameter::CashLimitUmaMultiple), domain::ParameterUnit::Uma);
-        QCOMPARE(domain::unitOf(SystemParameter::BankBalance), domain::ParameterUnit::Pesos);
+        QCOMPARE(domain::unitOf(SystemParameter::UmaDailyValue), domain::ParameterUnit::Pesos);
     }
 
-    // La UMA no tiene valor por omisión (cambia cada año); el tope es el legal
-    // y los saldos empiezan en cero.
+    // La UMA no tiene valor por omisión (cambia cada año); el tope es el legal.
     void defaults()
     {
         QCOMPARE(domain::defaultHundredths(SystemParameter::UmaDailyValue), std::nullopt);
         QCOMPARE(domain::defaultHundredths(SystemParameter::CashLimitUmaMultiple),
                  std::optional<qint64>(321000));
-        QCOMPARE(domain::defaultHundredths(SystemParameter::SafeBalance), std::optional<qint64>(0));
     }
 
     void umaMustBePositive()
@@ -90,19 +86,12 @@ private slots:
         QCOMPARE(errorsFor(SystemParameter::CashLimitUmaMultiple, hundredths).isEmpty(), valid);
     }
 
-    void balancesAreNotNegative()
-    {
-        QVERIFY(errorsFor(SystemParameter::PettyCashBalance, 0).isEmpty());
-        QVERIFY(errorsFor(SystemParameter::BankBalance, 5000000).isEmpty());
-        QCOMPARE(errorsFor(SystemParameter::SafeBalance, -1), QStringList{QStringLiteral("safeBalance")});
-    }
-
-    // Lo que cabe en NUMERIC(12, 2), y ni un centavo más.
+    // Lo que no cabe en NUMERIC(12, 2) se rechaza antes que cualquier otra
+    // regla.
     void valuesFitTheColumn()
     {
-        QVERIFY(errorsFor(SystemParameter::BankBalance, SystemParameterPolicy::kMaxHundredths).isEmpty());
-        QCOMPARE(errorsFor(SystemParameter::BankBalance, SystemParameterPolicy::kMaxHundredths + 1),
-                 QStringList{QStringLiteral("bankBalance")});
+        QCOMPARE(errorsFor(SystemParameter::CashLimitUmaMultiple, SystemParameterPolicy::kMaxHundredths + 1),
+                 QStringList{QStringLiteral("cashLimitUmaMultiple")});
     }
 
     void onlyTheAdministratorEntersSettings()

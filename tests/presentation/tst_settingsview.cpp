@@ -3,9 +3,13 @@
 // bind() conecte, que los campos de verdad queden de solo lectura, el "Sin
 // capturar" de la UMA) y su lugar en el menú.
 
+#include "application/finance/services/cashledgerservice.h"
 #include "application/settings/services/systemsettingsservice.h"
 #include "application/settings/services/useradministrationservice.h"
+#include "cashfakes.h"
 #include "fakes.h"
+#include "presentation/settings/cashbalancespresenter.h"
+#include "presentation/settings/cashbalanceswidget.h"
 #include "presentation/settings/settingsview.h"
 #include "presentation/settings/systemsettingspresenter.h"
 #include "presentation/settings/systemsettingswidget.h"
@@ -36,9 +40,11 @@ private:
     fakes::InMemorySettingsRepository m_settings;
     fakes::InMemoryUserAccountRepository m_accounts;
     fakes::FakePasswordHasher m_hasher;
+    fakes::InMemoryCashLedger m_cash;
     fakes::InlineTaskRunner m_runner;
     std::unique_ptr<application::SystemSettingsService> m_systemSettings;
     std::unique_ptr<application::UserAdministrationService> m_users;
+    std::unique_ptr<application::CashLedgerService> m_cashService;
     std::unique_ptr<SettingsView> m_view;
     int m_adminId = -1;
 
@@ -54,8 +60,14 @@ private:
         auto *users = new presentation::UserManagementPresenter(
             m_view->userManagement(), *m_users, m_runner,
             {QStringLiteral("admin"), QStringLiteral("Admin"), UserRole::Admin, m_adminId}, m_view.get());
-        m_view->bind(*parameters, *users);
+        auto *balances = new presentation::CashBalancesPresenter(
+            m_view->cashBalances(), *m_cashService, m_runner,
+            {QStringLiteral("admin"), QStringLiteral("Admin"), UserRole::Admin,
+             fakes::InMemoryCashLedger::kAdministratorId},
+            m_view.get());
+        m_view->bind(*parameters, *balances, *users);
         parameters->start();
+        balances->start();
         users->start();
         m_view->show();
     }
@@ -71,12 +83,13 @@ private slots:
     {
         m_settings = fakes::InMemorySettingsRepository();
         m_settings.store(SystemParameter::UmaDailyValue, 11731);
-        m_settings.store(SystemParameter::BankBalance, 5000000);
         m_accounts = fakes::InMemoryUserAccountRepository();
         m_adminId = m_accounts.add(QStringLiteral("admin"), UserRole::Admin);
         m_accounts.add(QStringLiteral("vendedor"), UserRole::SalesAgent);
         m_systemSettings = std::make_unique<application::SystemSettingsService>(m_settings);
         m_users = std::make_unique<application::UserAdministrationService>(m_accounts, m_hasher);
+        m_cash = fakes::InMemoryCashLedger();
+        m_cashService = std::make_unique<application::CashLedgerService>(m_cash);
     }
 
     void cleanup() { m_view.reset(); }
@@ -90,7 +103,7 @@ private slots:
         QCOMPARE(uma->value(), 117.31);
         QCOMPARE(find<QSpinBox>("cashLimitSpin")->value(), 3210);
         QVERIFY(find<QLabel>("umaUpdated")->text().startsWith(QStringLiteral("Actualizado el ")));
-        QCOMPARE(find<QLabel>("safeUpdated")->text(), QStringLiteral("Sin configurar"));
+        QCOMPARE(find<QLabel>("cashLimitUpdated")->text(), QStringLiteral("Sin configurar"));
         QVERIFY(find<QPushButton>("editButton")->isVisible());
         QVERIFY(!find<QPushButton>("saveButton")->isVisible());
     }
@@ -114,16 +127,16 @@ private slots:
     {
         open();
         find<QPushButton>("editButton")->click();
-        auto *bank = find<QDoubleSpinBox>("bankSpin");
-        QVERIFY(!bank->isReadOnly());
+        auto *uma = find<QDoubleSpinBox>("umaSpin");
+        QVERIFY(!uma->isReadOnly());
         QVERIFY(find<QPushButton>("saveButton")->isVisible());
-        bank->setValue(60000.50);
+        uma->setValue(120.50);
         find<QPushButton>("saveButton")->click();
         QCOMPARE(m_settings.updates.size(), 1);
         QCOMPARE(m_settings.updates.first().size(), 1);
-        QCOMPARE(m_settings.updates.first().first().value, qint64(6000050));
-        QVERIFY(bank->isReadOnly());
-        QVERIFY(find<QLabel>("bankUpdated")->text().contains(QStringLiteral("2026")));
+        QCOMPARE(m_settings.updates.first().first().value, qint64(12050));
+        QVERIFY(uma->isReadOnly());
+        QVERIFY(find<QLabel>("umaUpdated")->text().contains(QStringLiteral("2026")));
     }
 
     // Un tope con decimales (capturado a mano en la base) se ve entero en el
@@ -134,11 +147,11 @@ private slots:
         open();
         QCOMPARE(find<QSpinBox>("cashLimitSpin")->value(), 3200);
         find<QPushButton>("editButton")->click();
-        find<QDoubleSpinBox>("bankSpin")->setValue(60000.0);
+        find<QDoubleSpinBox>("umaSpin")->setValue(120.0);
         find<QPushButton>("saveButton")->click();
         QCOMPARE(m_settings.updates.size(), 1);
         QCOMPARE(m_settings.updates.first().size(), 1);
-        QCOMPARE(m_settings.updates.first().first().parameter, SystemParameter::BankBalance);
+        QCOMPARE(m_settings.updates.first().first().parameter, SystemParameter::UmaDailyValue);
         QCOMPARE(m_settings.rows.value(SystemParameter::CashLimitUmaMultiple).hundredths,
                  std::optional<qint64>(320050));
     }
@@ -151,9 +164,9 @@ private slots:
         find<QPushButton>("editButton")->click();
         auto *widget = m_view->findChild<SystemSettingsWidget *>();
         widget->setBusy(true);
-        QVERIFY(find<QDoubleSpinBox>("safeSpin")->isReadOnly());
+        QVERIFY(find<QDoubleSpinBox>("umaSpin")->isReadOnly());
         widget->setBusy(false);
-        QVERIFY(!find<QDoubleSpinBox>("safeSpin")->isReadOnly());
+        QVERIFY(!find<QDoubleSpinBox>("umaSpin")->isReadOnly());
     }
 
     // En la UMA, el cero es "Sin capturar": no se guarda como cero.
@@ -167,6 +180,27 @@ private slots:
         QCOMPARE(m_settings.updates.size(), 0);
         QVERIFY(!find<QDoubleSpinBox>("umaSpin")->isReadOnly());
         QCOMPARE(find<QDoubleSpinBox>("umaSpin")->property("hasError").toBool(), true);
+    }
+
+    // La tarjeta de saldos: "Capturar saldos iniciales" solo mientras falten,
+    // y no se ofrece mover dinero que no hay.
+    void cashCardOffersOnlyWhatMakesSense()
+    {
+        open();
+        QCOMPARE(find<QLabel>("pettyCashAmount")->text(), QStringLiteral("$0.00"));
+        QCOMPARE(find<QLabel>("pettyCashUpdated")->text(), QStringLiteral("Sin saldo inicial"));
+        QVERIFY(find<QPushButton>("openingButton")->isVisible());
+        QVERIFY(!find<QPushButton>("depositButton")->isEnabled());
+        QVERIFY(!find<QPushButton>("withdrawButton")->isEnabled());
+
+        m_view.reset();
+        m_cash.setBalance(domain::CashAccount::PettyCash, 2000000);
+        m_cash.setBalance(domain::CashAccount::Bank, 0);
+        open();
+        QCOMPARE(find<QLabel>("pettyCashAmount")->text(), QStringLiteral("$20,000.00"));
+        QVERIFY(!find<QPushButton>("openingButton")->isVisible());
+        QVERIFY(find<QPushButton>("depositButton")->isEnabled());
+        QVERIFY(!find<QPushButton>("withdrawButton")->isEnabled());
     }
 
     // La tabla de usuarios marca tu cuenta y no te deja desactivarla.

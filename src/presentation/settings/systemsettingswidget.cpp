@@ -52,12 +52,6 @@ QAbstractSpinBox *SystemSettingsWidget::fieldOf(SystemParameter parameter) const
         return ui->umaSpin;
     case SystemParameter::CashLimitUmaMultiple:
         return ui->cashLimitSpin;
-    case SystemParameter::BankBalance:
-        return ui->bankSpin;
-    case SystemParameter::PettyCashBalance:
-        return ui->pettyCashSpin;
-    case SystemParameter::SafeBalance:
-        return ui->safeSpin;
     }
     return nullptr;
 }
@@ -69,12 +63,6 @@ QLabel *SystemSettingsWidget::updatedLabelOf(SystemParameter parameter) const
         return ui->umaUpdated;
     case SystemParameter::CashLimitUmaMultiple:
         return ui->cashLimitUpdated;
-    case SystemParameter::BankBalance:
-        return ui->bankUpdated;
-    case SystemParameter::PettyCashBalance:
-        return ui->pettyCashUpdated;
-    case SystemParameter::SafeBalance:
-        return ui->safeUpdated;
     }
     return nullptr;
 }

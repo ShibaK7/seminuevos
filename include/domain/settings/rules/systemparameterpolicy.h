@@ -13,8 +13,7 @@ namespace domain {
 //     fuera de lugar (11731 por 117.31) dejaría pasar cualquier pago en
 //     efectivo. La de 2026 es de $117.31;
 //   - el tope de efectivo es un número entero de UMA, de 1 a 3,210: se puede
-//     fijar uno más estricto que la ley, nunca uno mayor;
-//   - los saldos no son negativos.
+//     fijar uno más estricto que la ley, nunca uno mayor.
 class SystemParameterPolicy
 {
 public:

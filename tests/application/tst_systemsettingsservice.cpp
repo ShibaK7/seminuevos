@@ -57,23 +57,22 @@ private slots:
     void init()
     {
         m_settings = fakes::InMemorySettingsRepository();
+        // El tope nunca se capturó: vale el legal y no tiene renglón.
         m_settings.store(SystemParameter::UmaDailyValue, 11731);
-        m_settings.store(SystemParameter::CashLimitUmaMultiple, 321000);
-        m_settings.store(SystemParameter::BankBalance, 5000000);
     }
 
-    // Los cinco, en orden; los que no tienen renglón vienen sin valor ni fecha.
-    void loadsAllFiveInOrder()
+    // Los dos, en orden; el que no tiene renglón viene sin valor ni fecha.
+    void loadsBothInOrder()
     {
         const auto result = service().getSystemParameters(admin());
         QCOMPARE(result.status, application::SystemParametersResult::Status::Loaded);
-        QCOMPARE(result.parameters.size(), 5);
+        QCOMPARE(result.parameters.size(), 2);
         QCOMPARE(result.parameters.at(0).parameter, SystemParameter::UmaDailyValue);
         QCOMPARE(result.parameters.at(0).hundredths, std::optional<qint64>(11731));
         QVERIFY(result.parameters.at(0).updatedAt.isValid());
-        QCOMPARE(result.parameters.at(4).parameter, SystemParameter::SafeBalance);
-        QCOMPARE(result.parameters.at(4).hundredths, std::nullopt);
-        QVERIFY(!result.parameters.at(4).updatedAt.isValid());
+        QCOMPARE(result.parameters.at(1).parameter, SystemParameter::CashLimitUmaMultiple);
+        QCOMPARE(result.parameters.at(1).hundredths, std::nullopt);
+        QVERIFY(!result.parameters.at(1).updatedAt.isValid());
     }
 
     void sellerIsDeniedWithoutReading()
@@ -90,12 +89,12 @@ private slots:
     void administratorDemotedMeanwhileIsDenied()
     {
         QList<SystemParameterEditDto> edits = untouched();
-        edit(edits, SystemParameter::BankBalance).edited = 6000000;
+        edit(edits, SystemParameter::UmaDailyValue).edited = 12000;
         m_settings.activeAdministrators.clear();
         QCOMPARE(service().updateSystemParameters(edits, admin()).status, Status::Denied);
         QCOMPARE(m_settings.actors, QList<int>{fakes::InMemorySettingsRepository::kAdministratorId});
-        QCOMPARE(m_settings.rows.value(SystemParameter::BankBalance).hundredths,
-                 std::optional<qint64>(5000000));
+        QCOMPARE(m_settings.rows.value(SystemParameter::UmaDailyValue).hundredths,
+                 std::optional<qint64>(11731));
     }
 
     void failedReadIsReported()
@@ -119,18 +118,18 @@ private slots:
     {
         QList<SystemParameterEditDto> edits = untouched();
         edit(edits, SystemParameter::UmaDailyValue).edited = 12000;
-        edit(edits, SystemParameter::SafeBalance).edited = 1000000;
+        edit(edits, SystemParameter::CashLimitUmaMultiple).edited = 200000; // 2,000 UMA
 
         const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Saved);
         QCOMPARE(result.updated, (QList<SystemParameter>{SystemParameter::UmaDailyValue,
-                                                         SystemParameter::SafeBalance}));
+                                                         SystemParameter::CashLimitUmaMultiple}));
         QCOMPARE(m_settings.updates.size(), 1);
         const auto &changes = m_settings.updates.first();
         QCOMPARE(changes.size(), 2);
         QCOMPARE(changes.at(0).expected, std::optional<qint64>(11731));
         QCOMPARE(changes.at(0).value, qint64(12000));
-        // Caja Fuerte no tenía renglón: se espera que siga sin tenerlo.
+        // El tope no tenía renglón: se espera que siga sin tenerlo.
         QCOMPARE(changes.at(1).expected, std::nullopt);
     }
 
@@ -138,14 +137,13 @@ private slots:
     void invalidValuesAreRejectedWithoutSaving()
     {
         QList<SystemParameterEditDto> edits = untouched();
+        edit(edits, SystemParameter::UmaDailyValue).edited = 100001;         // más de $1,000
         edit(edits, SystemParameter::CashLimitUmaMultiple).edited = 500000; // 5,000 UMA
-        edit(edits, SystemParameter::PettyCashBalance).edited = -100;
-        edit(edits, SystemParameter::BankBalance).edited = 6000000;
 
         const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Rejected);
         QCOMPARE(result.validation.fields(),
-                 (QStringList{QStringLiteral("cashLimitUmaMultiple"), QStringLiteral("pettyCashBalance")}));
+                 (QStringList{QStringLiteral("umaDailyValue"), QStringLiteral("cashLimitUmaMultiple")}));
         QCOMPARE(m_settings.updates.size(), 0);
     }
 
@@ -153,12 +151,12 @@ private slots:
     // ella, o a mano en la base) no impide guardar los demás si nadie lo toca.
     void untouchedInvalidValueDoesNotBlockTheRest()
     {
-        m_settings.store(SystemParameter::SafeBalance, -100);
+        m_settings.store(SystemParameter::CashLimitUmaMultiple, 500000);
         QList<SystemParameterEditDto> edits = untouched();
-        edit(edits, SystemParameter::BankBalance).edited = 6000000;
+        edit(edits, SystemParameter::UmaDailyValue).edited = 12000;
         const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Saved);
-        QCOMPARE(result.updated, QList<SystemParameter>{SystemParameter::BankBalance});
+        QCOMPARE(result.updated, QList<SystemParameter>{SystemParameter::UmaDailyValue});
     }
 
     // Una UMA que ya estaba no se puede dejar vacía.
@@ -187,7 +185,7 @@ private slots:
     void failedSaveIsReported()
     {
         QList<SystemParameterEditDto> edits = untouched();
-        edit(edits, SystemParameter::BankBalance).edited = 1;
+        edit(edits, SystemParameter::UmaDailyValue).edited = 12000;
         m_settings.failure = QStringLiteral("se cayó la base");
         const auto result = service().updateSystemParameters(edits, admin());
         QCOMPARE(result.status, Status::Failed);
