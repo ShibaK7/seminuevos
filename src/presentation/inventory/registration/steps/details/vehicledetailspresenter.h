@@ -34,6 +34,8 @@ public:
     // Pinta el estado inicial de la factura. Se llama una vez, ya conectado.
     void start();
     void setLookups(const application::RegistrationLookupsDto &lookups);
+    // Lo que hay en cada cuenta de dinero, releído (otra sesión pudo moverlo).
+    void setCashAvailable(const QMap<domain::CashAccount, qint64> &available);
 
     // Lo capturado más la factura que cuenta como adjunta.
     application::VehicleDetailsDto dto() const;

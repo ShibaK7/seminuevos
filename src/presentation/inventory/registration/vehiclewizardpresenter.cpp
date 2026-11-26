@@ -66,6 +66,32 @@ void VehicleWizardPresenter::onLookupsLoaded(const application::RegistrationLook
     refreshStepper();
 }
 
+void VehicleWizardPresenter::refreshCash()
+{
+    // Antes de los catálogos no hay qué refrescar (llegan con ellos), y ya
+    // registrada la unidad no importa.
+    if (!m_loaded || m_registered)
+        return;
+    const int generation = ++m_cashGeneration;
+    const application::VehicleRegistrationService *service = &m_service;
+    m_runner.run(
+        this,
+        [service] {
+            QString error;
+            QMap<domain::CashAccount, qint64> available = service->loadCashAvailable(&error);
+            return error.isEmpty() ? std::optional<QMap<domain::CashAccount, qint64>>(available)
+                                   : std::nullopt;
+        },
+        [this, generation](const std::optional<QMap<domain::CashAccount, qint64>> &available) {
+            // Si no se pudo leer, se queda lo que había: el guardado decide.
+            if (generation != m_cashGeneration || !available || m_registered)
+                return;
+            m_details->setCashAvailable(*available);
+            onStepEdited(0);
+            revalidateEditedSteps();
+        });
+}
+
 void VehicleWizardPresenter::onStepClicked(int step)
 {
     const int current = m_nav.current();
@@ -141,6 +167,10 @@ void VehicleWizardPresenter::onRegistrationFinished(const application::Registrat
         m_nav.setValid(step, false);
         markStepFields(step, result.validation);
         showInvalidStep(step, result.validation);
+        // Si fue por falta de saldo, lo que se sabía de las cuentas ya es
+        // viejo: se relee para que la validación en vivo diga lo vigente.
+        if (result.validation.fields().contains(QStringLiteral("purchasePrice")))
+            refreshCash();
         return;
     }
     case application::RegistrationResult::Status::Failed:

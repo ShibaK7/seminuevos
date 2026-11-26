@@ -110,6 +110,11 @@ RegistrationLookupsDto VehicleRegistrationService::loadLookups() const
     return lookups;
 }
 
+QMap<domain::CashAccount, qint64> VehicleRegistrationService::loadCashAvailable(QString *error) const
+{
+    return m_referenceData.cashAvailable(error);
+}
+
 domain::ValidationResult VehicleRegistrationService::validateDetails(
     const VehicleDetailsDto &details, const domain::CashLimitTerms &cashLimit,
     const QMap<domain::CashAccount, qint64> &cashAvailable) const

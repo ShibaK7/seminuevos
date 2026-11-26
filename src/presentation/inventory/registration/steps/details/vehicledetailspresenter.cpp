@@ -39,6 +39,11 @@ void VehicleDetailsPresenter::setLookups(const application::RegistrationLookupsD
     m_view.setLookups(lookups);
 }
 
+void VehicleDetailsPresenter::setCashAvailable(const QMap<domain::CashAccount, qint64> &available)
+{
+    m_cashAvailable = available;
+}
+
 application::VehicleDetailsDto VehicleDetailsPresenter::dto() const
 {
     application::VehicleDetailsDto details = m_view.details();

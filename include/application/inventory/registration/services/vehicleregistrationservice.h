@@ -28,6 +28,10 @@ public:
     // la interfaz.
     RegistrationLookupsDto loadLookups() const;
 
+    // Solo lo que hay en cada cuenta de dinero, para refrescarlo sin releer
+    // los catálogos (otra sesión pudo mover las cuentas).
+    QMap<domain::CashAccount, qint64> loadCashAvailable(QString *error) const;
+
     // `cashAvailable`: lo que hay en cada cuenta de dinero (de los catálogos).
     // Una compra de contado que pide más de lo que hay en la cuenta de su
     // método se marca en el precio. Vacío: no se revisa (lo decide el
