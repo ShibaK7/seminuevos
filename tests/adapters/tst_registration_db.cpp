@@ -4,7 +4,10 @@
 // SqlMaintenanceRepository y LocalFileStorage sobre una carpeta temporal). Es opcional: solo se compila con -DSEMINUEVOS_DB_TESTS=ON
 // y necesita `docker compose up -d`.
 //
-// Cada caso registra una unidad con un VIN único y la borra al terminar.
+// Trabaja en una base desechable (seminuevos_tst_registration) creada con
+// todos los scripts de init-db/ y borrada al terminar: las compras mueven las
+// cuentas de dinero, y la base de desarrollo no debe ver nada de eso. Cada
+// caso usa un VIN único.
 
 #include "adapters/contract/pdfcontractgenerator.h"
 #include "adapters/contract/pdfmaintenancereceiptgenerator.h"
@@ -16,7 +19,6 @@
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 #include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
-#include "adapters/persistence/schemaupgrade.h"
 #include "adapters/storage/localfilestorage.h"
 #include "application/inventory/maintenance/services/maintenanceservice.h"
 #include "application/inventory/registration/services/vehiclerecordservice.h"
@@ -40,6 +42,8 @@
 #include <memory>
 
 namespace {
+
+const QString kScratchDatabase = QStringLiteral("seminuevos_tst_registration");
 
 QMap<QString, QString> readEnv()
 {
@@ -193,10 +197,22 @@ private:
     // Identificaciones de contrapartes que crean los casos, además de las
     // "ID-<VIN>" de registration().
     QStringList m_createdNationalIds;
-    // Las cuentas de dinero como estaban (cuenta, saldo, abierta, fecha), para
-    // dejarlas igual al terminar.
-    QList<QStringList> m_savedAccounts;
-    // Lo que tienen mientras corre la prueba: alcanza para cualquier compra.
+    // La conexión a la base de desarrollo, solo para crear y borrar la
+    // desechable (con su propio nombre: dos pools en un hilo chocarían).
+    const QString m_adminConnection = QStringLiteral("tst-registration-admin");
+
+    bool execOnDevelopment(const QString &sql)
+    {
+        QSqlQuery query(QSqlDatabase::database(m_adminConnection));
+        if (!query.exec(sql)) {
+            qWarning("%s", qPrintable(query.lastError().text()));
+            return false;
+        }
+        return true;
+    }
+
+    // Lo que tienen las cuentas mientras corre la prueba: alcanza para
+    // cualquier compra.
     static constexpr qint64 kPlenty = Q_INT64_C(100000000000);
 
     bool setBalance(const QString &account, qint64 hundredths)
@@ -392,30 +408,49 @@ private slots:
         config.databaseName = env.value(QStringLiteral("POSTGRES_DB"), QStringLiteral("seminuevos"));
         config.userName = env.value(QStringLiteral("POSTGRES_USER"), QStringLiteral("seminuevos_app"));
         config.password = env.value(QStringLiteral("POSTGRES_PASSWORD"));
+
+        // La base desechable, creada con TODOS los scripts de init-db/ (el
+        // esquema y los catálogos), como la crearía Docker.
+        {
+            QSqlDatabase development = QSqlDatabase::addDatabase(config.driverName, m_adminConnection);
+            development.setHostName(config.hostName);
+            development.setPort(config.port);
+            development.setDatabaseName(config.databaseName);
+            development.setUserName(config.userName);
+            development.setPassword(config.password);
+            if (!development.open())
+                QSKIP("PostgreSQL no está disponible (docker compose up -d).");
+        }
+        execOnDevelopment(QStringLiteral("DROP DATABASE IF EXISTS %1 WITH (FORCE)").arg(kScratchDatabase));
+        if (!execOnDevelopment(QStringLiteral("CREATE DATABASE %1").arg(kScratchDatabase)))
+            QSKIP("El usuario de la base no puede crear una base desechable.");
+        config.databaseName = kScratchDatabase;
         m_pool = std::make_unique<ConnectionPool>(config);
         // Las pruebas corren en el hilo principal.
         m_pool->setGuiThreadAllowed(true);
 
         {
             ConnectionPool::Handle handle = m_pool->acquire();
-            if (!handle.database().isOpen())
-                QSKIP("PostgreSQL no está disponible (docker compose up -d).");
-            // Las cuentas de dinero, por si la base es de antes. Una compra de
-            // contado las mueve: se guarda cómo estaban, y mientras corre la
-            // prueba tienen de sobra.
-            const SchemaUpgrade::Result upgrade = SchemaUpgrade::run(handle.database());
-            QVERIFY2(upgrade.ok, qPrintable(upgrade.errorMessage));
-            QSqlQuery saved(handle.database());
-            QVERIFY(saved.exec(QStringLiteral("SELECT account, CAST(balance AS text), opened, "
-                                              "CAST(updated_at AS text) FROM cash_accounts")));
-            while (saved.next())
-                m_savedAccounts << QStringList{saved.value(0).toString(), saved.value(1).toString(),
-                                               saved.value(2).toBool() ? QStringLiteral("t")
-                                                                       : QStringLiteral("f"),
-                                               saved.value(3).toString()};
-            QVERIFY(setBalance(QStringLiteral("Caja Chica"), kPlenty));
-            QVERIFY(setBalance(QStringLiteral("Banco"), kPlenty));
+            const QDir scripts(QStringLiteral(SEMINUEVOS_SOURCE_DIR) + QStringLiteral("/init-db"));
+            const QStringList files = scripts.entryList({QStringLiteral("*.sql")}, QDir::Files, QDir::Name);
+            QVERIFY(files.contains(QStringLiteral("00_schema.sql")));
+            for (const QString &file : files) {
+                QFile script(scripts.filePath(file));
+                QVERIFY(script.open(QIODevice::ReadOnly | QIODevice::Text));
+                QTextStream stream(&script);
+                stream.setEncoding(QStringConverter::Utf8);
+                QSqlQuery query(handle.database());
+                QVERIFY2(query.exec(stream.readAll()), qPrintable(file + QStringLiteral(": ")
+                                                                  + query.lastError().text()));
+            }
+            // Un vendedor para las ventas, y dinero de sobra en las cuentas:
+            // las compras de contado las mueven.
+            QSqlQuery vendor(handle.database());
+            QVERIFY(vendor.exec(QStringLiteral("INSERT INTO users (username, password_hash, display_name, role) "
+                                               "VALUES ('vendedor', 'x', 'Vendedor', 'Vendedor')")));
         }
+        QVERIFY(setBalance(QStringLiteral("Caja Chica"), kPlenty));
+        QVERIFY(setBalance(QStringLiteral("Banco"), kPlenty));
 
         SqlReferenceDataReader reference(*m_pool);
         QString error;
@@ -432,55 +467,14 @@ private slots:
                  qPrintable(error));
     }
 
+    // Toda la base desechable se va: unidades, ventas, personas, cuentas.
     void cleanupTestCase()
     {
-        ConnectionPool::Handle handle = m_pool->acquire();
-        // Los movimientos de dinero de sus compras, y las cuentas como
-        // estaban.
-        for (const QString &vin : std::as_const(m_createdSerials)) {
-            QSqlQuery query(handle.database());
-            query.prepare(QStringLiteral("DELETE FROM cash_movements WHERE vehicle_folio IN "
-                                         "(SELECT folio FROM vehicles WHERE serial_number = :vin)"));
-            query.bindValue(QStringLiteral(":vin"), vin);
-            query.exec();
-        }
-        // Las ventas de sus unidades (sale_financing y sale_payments se van en
-        // cascada); sin ellas, la unidad ya se puede borrar.
-        for (const QString &vin : std::as_const(m_createdSerials)) {
-            QSqlQuery query(handle.database());
-            query.prepare(QStringLiteral("DELETE FROM sales WHERE vehicle_folio IN "
-                                         "(SELECT folio FROM vehicles WHERE serial_number = :vin)"));
-            query.bindValue(QStringLiteral(":vin"), vin);
-            query.exec();
-        }
-        for (const QStringList &account : std::as_const(m_savedAccounts)) {
-            QSqlQuery query(handle.database());
-            query.prepare(QStringLiteral("UPDATE cash_accounts SET balance = CAST(:balance AS NUMERIC), "
-                                         "opened = :opened, updated_at = CAST(NULLIF(:at, '') AS TIMESTAMP) "
-                                         "WHERE account = :account"));
-            query.bindValue(QStringLiteral(":balance"), account.at(1));
-            query.bindValue(QStringLiteral(":opened"), account.at(2) == QStringLiteral("t"));
-            query.bindValue(QStringLiteral(":at"), account.at(3));
-            query.bindValue(QStringLiteral(":account"), account.at(0));
-            if (!query.exec())
-                qWarning("%s", qPrintable(query.lastError().text()));
-        }
-        for (const QString &vin : std::as_const(m_createdSerials)) {
-            QSqlQuery query(handle.database());
-            query.prepare(QStringLiteral("DELETE FROM vehicles WHERE serial_number = :vin"));
-            query.bindValue(QStringLiteral(":vin"), vin);
-            query.exec();
-        }
-        // Las contrapartes no se borran en cascada (la operación las
-        // referencia, no al revés). Sin sus unidades ya nadie las usa.
-        QStringList nationalIds = m_createdNationalIds;
-        for (const QString &vin : std::as_const(m_createdSerials))
-            nationalIds << QStringLiteral("ID-") + vin;
-        for (const QString &nationalId : std::as_const(nationalIds)) {
-            QSqlQuery query(handle.database());
-            query.prepare(QStringLiteral("DELETE FROM counterparties WHERE national_id = :id"));
-            query.bindValue(QStringLiteral(":id"), nationalId);
-            query.exec();
+        m_pool.reset();
+        if (QSqlDatabase::contains(m_adminConnection)) {
+            execOnDevelopment(QStringLiteral("DROP DATABASE IF EXISTS %1 WITH (FORCE)").arg(kScratchDatabase));
+            QSqlDatabase::database(m_adminConnection).close();
+            QSqlDatabase::removeDatabase(m_adminConnection);
         }
     }
 
@@ -913,19 +907,6 @@ private slots:
         QVERIFY2(cashResult.status == application::SaleRegistrationResultDto::Status::Registered,
                  qPrintable(cashResult.message));
         QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cashBefore + 5000000);
-
-        // Una base creada antes de que Comercial dejara installment_number
-        // opcional rechaza toda venta a crédito: se recrea con
-        // `docker compose down -v`.
-        {
-            ConnectionPool::Handle handle = m_pool->acquire();
-            QSqlQuery nullable(handle.database());
-            QVERIFY(nullable.exec(QStringLiteral(
-                "SELECT is_nullable FROM information_schema.columns WHERE table_name = 'sale_payments' "
-                "AND column_name = 'installment_number'")) && nullable.next());
-            if (nullable.value(0).toString() != QStringLiteral("YES"))
-                QSKIP("La base es anterior al esquema de ventas a crédito (installment_number NOT NULL).");
-        }
 
         application::SaleRegistrationDto creditSale = cashSale;
         creditSale.vehicleFolio = creditUnit;
