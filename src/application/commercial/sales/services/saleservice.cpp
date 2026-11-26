@@ -112,10 +112,10 @@ SaleRegistrationResultDto SaleService::registerSale(const SaleRegistrationDto &s
 
     if (sale.paymentType == domain::PaymentType::Contado && sale.paymentMethod
         && *sale.paymentMethod == domain::PaymentMethod::Efectivo) {
-        std::optional<double> umaDailyValue;
+        domain::CashLimitTerms cashLimit;
         QString umaError;
         if (m_referenceData)
-            umaDailyValue = m_referenceData->umaDailyValue(&umaError);
+            cashLimit = m_referenceData->cashLimitTerms(&umaError);
         if (!umaError.isEmpty()) {
             SaleRegistrationResultDto result;
             result.status = SaleRegistrationResultDto::Status::Failed;
@@ -125,7 +125,7 @@ SaleRegistrationResultDto SaleService::registerSale(const SaleRegistrationDto &s
         }
 
         domain::ValidationResult cashPaymentValidation;
-        domain::CashPaymentLimit(umaDailyValue.value_or(0.0))
+        domain::CashPaymentLimit(cashLimit)
             .check(*sale.paymentMethod, sale.totalAmount, cashPaymentValidation);
         if (!cashPaymentValidation.isValid()) {
             return rejected(cashPaymentValidation.errors().first().field,

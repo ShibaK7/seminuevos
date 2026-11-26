@@ -19,7 +19,7 @@ void reject(domain::ValidationResult &result, bool accepted, const QString &fiel
 
 domain::ValidationResult applyDetails(domain::VehicleBuilder &builder,
                                       const VehicleDetailsDto &details,
-                                      std::optional<double> umaDailyValue)
+                                      const domain::CashLimitTerms &cashLimit)
 {
     domain::ValidationResult rejected;
 
@@ -72,7 +72,7 @@ domain::ValidationResult applyDetails(domain::VehicleBuilder &builder,
         .setSalePrice(details.salePrice)
         .setPaymentType(details.paymentType)
         .setPaymentMethod(details.paymentMethod)
-        .setUmaDailyValue(umaDailyValue.value_or(0.0))
+        .setCashLimit(cashLimit)
         .setCommissionRate(details.commissionRate);
 
     // Los precios de compra y base en cero no se mandan: cero solo significa

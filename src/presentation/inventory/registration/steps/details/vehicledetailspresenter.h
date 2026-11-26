@@ -57,9 +57,9 @@ private:
     IVehicleDetailsView &m_view;
     const application::VehicleRegistrationService &m_service;
     AcquisitionTermsPresenter m_acquisitionTerms;
-    // UMA vigente, leída con los catálogos. Sin ella no se valida el tope de
-    // efectivo y el pago en efectivo se rechaza.
-    std::optional<double> m_umaDailyValue;
+    // UMA vigente y tope de efectivo, leídos con los catálogos. Sin UMA no se
+    // valida el tope y el pago en efectivo se rechaza.
+    domain::CashLimitTerms m_cashLimit;
 };
 
 } // namespace presentation

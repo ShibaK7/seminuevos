@@ -96,6 +96,27 @@ private slots:
         const domain::ValidationResult result = builder.validateVehicleData();
         QVERIFY2(result.isValid(), qPrintable(result.joinedMessages()));
     }
+
+    // El tope en UMA que fijó el Administrador manda: 1,000 UMA de 117.31 son
+    // 117,310, así que 300,000 en efectivo ya no pasa.
+    void configuredMultipleSetsTheLimit()
+    {
+        auto builder = fixtures::validAcquisition();
+        builder.setCashLimit(domain::CashLimitTerms{fixtures::kUma2026, 1000})
+            .setPaymentMethod(PaymentMethod::Efectivo)
+            .setPurchasePrice(300000.0);
+        QVERIFY(errorFields(builder).contains(QStringLiteral("paymentMethod")));
+    }
+
+    void negativeUmaOrMultipleIsRejected()
+    {
+        auto builder = fixtures::validAcquisition();
+        builder.setCashLimit(domain::CashLimitTerms{-1.0});
+        QVERIFY(errorFields(builder).contains(QStringLiteral("umaDailyValue")));
+        auto other = fixtures::validAcquisition();
+        other.setCashLimit(domain::CashLimitTerms{fixtures::kUma2026, 0});
+        QVERIFY(errorFields(other).contains(QStringLiteral("umaDailyValue")));
+    }
 };
 
 QTEST_APPLESS_MAIN(TstAcquiredVehicle)

@@ -118,13 +118,28 @@ private slots:
         QVERIFY(result.validation.fields().contains(QStringLiteral("paymentMethod")));
     }
 
+    // El tope que fijó el Administrador manda al guardar: con 1,000 UMA, una
+    // compra de 150,000 en efectivo ya no pasa (el tope es 117,310).
+    void configuredCashLimitIsUsedOnSave()
+    {
+        m_reference.umaMultiple = 1000;
+        auto dto = validRegistration(domain::AcquisitionType::Adquisicion);
+        dto.details.paymentMethod = domain::PaymentMethod::Efectivo;
+        dto.details.purchasePrice = 150000.0;
+        const auto result = service().registerVehicle(dto);
+        QCOMPARE(result.status, application::RegistrationResult::Status::Rejected);
+        QVERIFY2(result.validation.joinedMessages().contains(QStringLiteral("1,000 UMA")),
+                 qPrintable(result.validation.joinedMessages()));
+    }
+
     void lookupsSplitTypesAndSubtypes()
     {
         const auto lookups = service().loadLookups();
         QCOMPARE(lookups.vehicleTypes.size(), 1);
         QCOMPARE(lookups.vehicleSubtypes.size(), 1);
         QCOMPARE(lookups.vehicleSubtypes.first().parentId, 1);
-        QVERIFY(lookups.umaDailyValue.has_value());
+        QVERIFY(lookups.cashLimit.hasUma());
+        QCOMPARE(lookups.cashLimit.umaMultiple, 3210);
         QVERIFY(lookups.errorMessage.isEmpty());
     }
 };

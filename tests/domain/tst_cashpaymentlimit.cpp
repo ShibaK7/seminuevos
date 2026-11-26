@@ -1,12 +1,14 @@
 // Pruebas de la regla del tope de pago en efectivo (LFPIORPI, 3,210 UMA).
 // Fijan las dos decisiones que no se deducen del código: la regla es sobre el
 // MÉTODO de pago (efectivo) y no sobre el tipo (contado), y sin UMA
-// configurada el efectivo se rechaza en vez de dejarse pasar.
+// configurada el efectivo se rechaza en vez de dejarse pasar. Y la del
+// Administrador: puede fijar un tope más estricto, nunca uno mayor.
 
 #include "domain/common/rules/cashpaymentlimit.h"
 
 #include <QtTest>
 
+using domain::CashLimitTerms;
 using domain::CashPaymentLimit;
 using domain::PaymentMethod;
 
@@ -103,6 +105,57 @@ private slots:
         CashPaymentLimit(kUma).check(PaymentMethod::Efectivo, kLimit, result,
                                      QStringLiteral("salePayment"));
         QCOMPARE(result.fields(), QStringList{QStringLiteral("salePayment")});
+    }
+
+    // El tope que fija el Administrador: 1,000 UMA de 100 son 100,000.
+    void configuredMultipleSetsTheLimit()
+    {
+        const CashPaymentLimit rule(CashLimitTerms{kUma, 1000});
+        QCOMPARE(rule.umaMultiple(), 1000);
+        QCOMPARE(rule.limit(), 100000.0);
+        QVERIFY(rule.allows(PaymentMethod::Efectivo, 99999.99));
+        QVERIFY(!rule.allows(PaymentMethod::Efectivo, 100000.0));
+    }
+
+    // Más estricto sí, más permisivo que la ley no: un múltiplo arriba de
+    // 3,210, o que no sea positivo, se toma como el legal.
+    void multipleNeverExceedsTheLegalOne_data()
+    {
+        QTest::addColumn<int>("multiple");
+        QTest::newRow("arriba de la ley") << 5000;
+        QTest::newRow("cero") << 0;
+        QTest::newRow("negativo") << -10;
+    }
+
+    void multipleNeverExceedsTheLegalOne()
+    {
+        QFETCH(int, multiple);
+        const CashPaymentLimit rule(CashLimitTerms{kUma, multiple});
+        QCOMPARE(rule.umaMultiple(), CashLimitTerms::kLegalUmaMultiple);
+        QCOMPARE(rule.limit(), kLimit);
+    }
+
+    // El mensaje dice cuántas UMA son el tope, con el formato de México.
+    void messageShowsTheMultiple()
+    {
+        domain::ValidationResult legal;
+        CashPaymentLimit(kUma).check(PaymentMethod::Efectivo, kLimit, legal);
+        QVERIFY2(legal.firstMessage().contains(QStringLiteral("3,210 UMA")),
+                 qPrintable(legal.firstMessage()));
+        domain::ValidationResult stricter;
+        CashPaymentLimit(CashLimitTerms{kUma, 1000})
+            .check(PaymentMethod::Efectivo, 100000.0, stricter);
+        QVERIFY2(stricter.firstMessage().contains(QStringLiteral("1,000 UMA ($100,000.00)")),
+                 qPrintable(stricter.firstMessage()));
+    }
+
+    // La UMA real con centavos: el tope en el centavo exacto no pasa.
+    void realUmaLimitIsExactToTheCent()
+    {
+        const CashPaymentLimit rule(CashLimitTerms{117.31, 3210});
+        QCOMPARE(rule.limit(), 376565.10);
+        QVERIFY(rule.allows(PaymentMethod::Efectivo, 376565.09));
+        QVERIFY(!rule.allows(PaymentMethod::Efectivo, 376565.10));
     }
 };
 

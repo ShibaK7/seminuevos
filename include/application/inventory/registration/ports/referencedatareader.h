@@ -2,6 +2,7 @@
 #define APPLICATION_INVENTORY_REGISTRATION_PORTS_REFERENCEDATAREADER_H
 
 #include "application/inventory/registration/dto/catalogdtos.h"
+#include "domain/common/value_objects/cashlimitterms.h"
 
 #include <QList>
 #include <QString>
@@ -29,8 +30,9 @@ public:
     virtual QList<CatalogOptionDto> fuelTypes(QString *error) = 0;
     // Ordenado y con las categorías contiguas.
     virtual QList<ChecklistItemDto> conditionChecklist(QString *error) = 0;
-    // nullopt si no está configurada.
-    virtual std::optional<double> umaDailyValue(QString *error) = 0;
+    // La UMA vigente y el tope de pago en efectivo, en UMA, que fijó el
+    // Administrador. Sin UMA, umaDailyValue queda en 0; sin tope, el legal.
+    virtual domain::CashLimitTerms cashLimitTerms(QString *error) = 0;
     // Los tipos del historial de mantenimientos (vehicle_maintenance_cat).
     virtual QList<CatalogOptionDto> maintenanceTypes(QString *error) = 0;
 

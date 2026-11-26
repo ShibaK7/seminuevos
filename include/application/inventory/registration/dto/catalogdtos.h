@@ -2,6 +2,7 @@
 #define APPLICATION_INVENTORY_REGISTRATION_DTO_CATALOGDTOS_H
 
 #include "application/common/dto/catalogoptiondto.h"
+#include "domain/common/value_objects/cashlimitterms.h"
 
 #include <QList>
 #include <QString>
@@ -27,7 +28,8 @@ struct RegistrationLookupsDto
     QList<CatalogOptionDto> brands;
     QList<CatalogOptionDto> fuelTypes;
     QList<ChecklistItemDto> checklist;
-    std::optional<double> umaDailyValue;
+    // La UMA y el tope de efectivo. Sin UMA, umaDailyValue queda en 0.
+    domain::CashLimitTerms cashLimit;
     QString errorMessage; // si algo no se pudo leer
 };
 

@@ -96,12 +96,12 @@ public:
         clearError(error);
         return {};
     }
-    std::optional<double> umaDailyValue(QString *error) override
+    domain::CashLimitTerms cashLimitTerms(QString *error) override
     {
         ++umaReads;
         if (error)
             *error = readError;
-        return umaValue;
+        return {umaValue.value_or(0.0), umaMultiple};
     }
     QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override
     {
@@ -110,6 +110,7 @@ public:
     }
 
     std::optional<double> umaValue = 117.31;
+    int umaMultiple = domain::CashLimitTerms::kLegalUmaMultiple;
     QString readError;
     int umaReads = 0;
 
@@ -249,6 +250,28 @@ private slots:
         QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
         QCOMPARE(result.field, QStringLiteral("paymentMethod"));
         QVERIFY(result.message.contains(QStringLiteral("3,210 UMA")));
+        QCOMPARE(repository.registerCalls, 0);
+    }
+
+    // El tope que fijó el Administrador en Configuraciones manda: con 1,000
+    // UMA, una venta en efectivo por ese monto ya no pasa.
+    void cashSaleUsesTheConfiguredMultiple()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        referenceData.umaMultiple = 1000;
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.buyer.nationalId = QStringLiteral("BUYER-UMA");
+        sale.paymentMethod = domain::PaymentMethod::Efectivo;
+        sale.totalAmount = 1000.0 * *referenceData.umaValue;
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
+        QCOMPARE(result.field, QStringLiteral("paymentMethod"));
+        QVERIFY2(result.message.contains(QStringLiteral("1,000 UMA")), qPrintable(result.message));
         QCOMPARE(repository.registerCalls, 0);
     }
 

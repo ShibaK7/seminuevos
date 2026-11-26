@@ -454,7 +454,7 @@ private slots:
         QVERIFY(!lookups.vehicleSubtypes.isEmpty());
         QVERIFY(!lookups.brands.isEmpty());
         QVERIFY(!lookups.checklist.isEmpty());
-        QVERIFY(lookups.umaDailyValue.has_value());
+        QVERIFY(lookups.cashLimit.hasUma());
     }
 
     // #30: el expediente se relee completo, con los nombres de sus catálogos y

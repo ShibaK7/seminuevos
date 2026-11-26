@@ -34,7 +34,7 @@ void VehicleDetailsPresenter::start()
 
 void VehicleDetailsPresenter::setLookups(const application::RegistrationLookupsDto &lookups)
 {
-    m_umaDailyValue = lookups.umaDailyValue;
+    m_cashLimit = lookups.cashLimit;
     m_view.setLookups(lookups);
 }
 
@@ -60,7 +60,7 @@ void VehicleDetailsPresenter::showMaintenanceCost(double cost)
 
 domain::ValidationResult VehicleDetailsPresenter::collectErrors() const
 {
-    return m_service.validateDetails(dto(), m_umaDailyValue);
+    return m_service.validateDetails(dto(), m_cashLimit);
 }
 
 bool VehicleDetailsPresenter::isAutofacturaSelected() const

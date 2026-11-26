@@ -50,7 +50,7 @@ void VehicleWizardPresenter::onLookupsLoaded(const application::RegistrationLook
     if (!lookups.errorMessage.isEmpty()) {
         m_wizard.showMessage(QStringLiteral("No se pudieron leer todos los catálogos:\n")
                              + lookups.errorMessage);
-    } else if (!lookups.umaDailyValue) {
+    } else if (!lookups.cashLimit.hasUma()) {
         m_wizard.showMessage(QStringLiteral(
             "No hay UMA configurada: no se podrá registrar una compra pagada en efectivo."));
     }

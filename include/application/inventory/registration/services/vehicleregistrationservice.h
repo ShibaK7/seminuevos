@@ -29,7 +29,7 @@ public:
     RegistrationLookupsDto loadLookups() const;
 
     domain::ValidationResult validateDetails(const VehicleDetailsDto &details,
-                                             std::optional<double> umaDailyValue) const;
+                                             const domain::CashLimitTerms &cashLimit) const;
     domain::ValidationResult validateConditions(const VehicleConditionsDto &conditions) const;
 
     // Valida todo, revisa que el VIN no exista, copia los archivos al almacén

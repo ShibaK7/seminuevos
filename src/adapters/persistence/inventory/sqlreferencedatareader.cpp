@@ -1,12 +1,15 @@
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 
 #include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/settings/settingskeys.h"
 
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QSqlRecord>
 #include <QVariant>
+
+#include <cmath>
 
 SqlReferenceDataReader::SqlReferenceDataReader(ConnectionPool &pool)
     : m_pool(pool)
@@ -97,26 +100,39 @@ QList<application::ChecklistItemDto> SqlReferenceDataReader::conditionChecklist(
     return items;
 }
 
-std::optional<double> SqlReferenceDataReader::umaDailyValue(QString *error)
+domain::CashLimitTerms SqlReferenceDataReader::cashLimitTerms(QString *error)
 {
-    std::optional<double> value;
+    // Sin renglón de UMA queda en 0 ("no configurada"). Sin tope, o con uno
+    // que no sea un entero entre 1 y el legal, queda el legal: la regla
+    // tampoco acepta uno mayor.
+    domain::CashLimitTerms terms;
     QString failure;
     {
         ConnectionPool::Handle handle = m_pool.acquire();
         QSqlDatabase &db = handle.database();
         QSqlQuery query(db);
-        query.prepare(QStringLiteral(
-            "SELECT value_param FROM global_configurations WHERE key_param = :key"));
-        query.bindValue(QStringLiteral(":key"), QStringLiteral("UMA_DIARIA"));
-        if (!db.isOpen() || !query.exec())
+        query.prepare(QStringLiteral("SELECT key_param, value_param FROM global_configurations "
+                                     "WHERE key_param IN (:uma, :multiple)"));
+        query.bindValue(QStringLiteral(":uma"), settingskeys::umaDailyValue());
+        query.bindValue(QStringLiteral(":multiple"), settingskeys::cashLimitUmaMultiple());
+        if (!db.isOpen() || !query.exec()) {
             failure = db.isOpen() ? query.lastError().text() : db.lastError().text();
-        else if (query.next())
-            value = query.value(0).toDouble();
+        } else {
+            while (query.next()) {
+                const double value = query.value(1).toDouble();
+                if (query.value(0).toString() == settingskeys::umaDailyValue()) {
+                    terms.umaDailyValue = value;
+                } else if (value >= 1.0 && value == std::floor(value)
+                           && value <= domain::CashLimitTerms::kLegalUmaMultiple) {
+                    terms.umaMultiple = static_cast<int>(value);
+                }
+            }
+        }
     }
     if (!failure.isEmpty()) {
         m_pool.discardThreadConnection();
         if (error)
             *error = failure;
     }
-    return value;
+    return terms;
 }

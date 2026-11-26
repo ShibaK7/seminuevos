@@ -1,6 +1,7 @@
 #ifndef DOMAIN_INVENTORY_MODEL_ACQUISITION_ACQUIREDVEHICLE_H
 #define DOMAIN_INVENTORY_MODEL_ACQUISITION_ACQUIREDVEHICLE_H
 
+#include "domain/common/value_objects/cashlimitterms.h"
 #include "domain/inventory/model/vehicle.h"
 
 namespace domain {
@@ -53,10 +54,12 @@ public:
     // desde global_configurations. Así esta clase nunca toca la base de datos
     // y la regla se puede comprobar sin levantar PostgreSQL.
     //
-    // La regla en sí vive en domain/common/rules/cashpaymentlimit.h. Sin UMA
-    // (valor 0) el pago en efectivo se rechaza al validar, no se deja pasar.
-    double umaDailyValue() const;
-    [[nodiscard]] bool setUmaDailyValue(double value);
+    // La regla en sí vive en domain/common/rules/cashpaymentlimit.h, junto
+    // con el tope en UMA que fijó el Administrador. Sin UMA (valor 0) el pago
+    // en efectivo se rechaza al validar, no se deja pasar.
+    const CashLimitTerms &cashLimit() const;
+    // false con una UMA negativa o un tope que no sea positivo.
+    [[nodiscard]] bool setCashLimit(const CashLimitTerms &terms);
 
     // La agencia PUEDE rematar a pérdida a propósito, así que esto es una
     // consulta para avisar, no un error que impida guardar. Convertirlo en
@@ -72,7 +75,7 @@ private:
     PaymentType m_paymentType = PaymentType::Contado;
     PaymentMethod m_paymentMethod = PaymentMethod::Efectivo;
     QString m_invoiceFilePath;
-    double m_umaDailyValue = 0.0;
+    CashLimitTerms m_cashLimit;
 };
 
 } // namespace domain

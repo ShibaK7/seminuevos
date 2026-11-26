@@ -292,6 +292,8 @@ class FakeReferenceDataReader final : public application::ReferenceDataReader
 {
 public:
     std::optional<double> uma = 117.31;
+    // El tope de efectivo en UMA que fijó el Administrador.
+    int umaMultiple = domain::CashLimitTerms::kLegalUmaMultiple;
     // Si no está vacío, el checklist "falla" con este error.
     QString checklistError;
 
@@ -316,7 +318,10 @@ public:
         }
         return {{7, QStringLiteral("Exterior"), QStringLiteral("Llantas")}};
     }
-    std::optional<double> umaDailyValue(QString *) override { return uma; }
+    domain::CashLimitTerms cashLimitTerms(QString *) override
+    {
+        return {uma.value_or(0.0), umaMultiple};
+    }
     // Si no está vacío, el catálogo de mantenimientos "falla" con este error.
     QString maintenanceTypesError;
     QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override

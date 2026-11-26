@@ -182,6 +182,21 @@ private slots:
         QCOMPARE(m_vehicles.updates, 0);
     }
 
+    // El tope de efectivo que fijó el Administrador también manda al corregir.
+    void configuredCashLimitIsUsedOnUpdate()
+    {
+        m_reference.umaMultiple = 1000;
+        application::VehicleUpdateDto update = editedRecord();
+        update.details.paymentMethod = domain::PaymentMethod::Efectivo;
+        update.details.purchasePrice = 150000.0;
+
+        const auto result = service().update(update, UserRole::Admin);
+        QCOMPARE(result.status, UpdateStatus::Rejected);
+        QVERIFY2(result.validation.joinedMessages().contains(QStringLiteral("1,000 UMA")),
+                 qPrintable(result.validation.joinedMessages()));
+        QCOMPARE(m_vehicles.updates, 0);
+    }
+
     // Si otro usuario la cambió desde que se leyó, no se copia nada.
     void staleVersionConflictsBeforeCopying()
     {

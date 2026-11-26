@@ -22,7 +22,7 @@ seminuevos/
 ├── init-db/                         Scripts que Docker corre al crear la base (en orden por su número)
 │   ├── 00_schema.sql                Tablas, llaves y CHECKs
 │   ├── 10…14_*_cat.sql              Catálogos: marcas, combustibles, tipos/subtipos, checklist, mantenimientos
-│   └── 90_global_configurations.sql Parámetros globales (UMA vigente)
+│   └── 90_global_configurations.sql Parámetros globales: UMA, tope de efectivo y saldos (valores iniciales)
 │
 ├── resources/                       Todo lo que se compila dentro del ejecutable (Resources.qrc)
 │   ├── Resources.qrc                Índice de recursos (:/icons, :/styles, :/templates, :/resources/images)
@@ -42,9 +42,9 @@ seminuevos/
 │   │
 │   ├── domain/                      NÚCLEO: reglas del negocio. Solo QtCore; no conoce a nadie
 │   │   ├── common/                  Lo que usan varios módulos
-│   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts
+│   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts, CashLimitTerms (UMA y tope)
 │   │   │   └── rules/
-│   │   │       └── cashpaymentlimit  Tope LFPIORPI: 3,210 UMA en pagos en efectivo
+│   │   │       └── cashpaymentlimit  Tope de pago en efectivo: el que fija el Administrador, nunca más de 3,210 UMA (LFPIORPI)
 │   │   └── inventory/               Módulo Inventario
 │   │       ├── model/               Entidades con sus invariantes
 │   │       │   ├── vehicle           Vehicle (abstracta): datos comunes, validate() como Template Method, contrato
@@ -97,7 +97,7 @@ seminuevos/
 │   │   │   ├── common/              sqlcounterpartydirectory (búsqueda y actualización de personas compartidas)
 │   │   │   └── inventory/           sqlvehiclerepository (alta y corrección transaccionales, con versión),
 │   │   │                            sqlcounterpartyrepository (contraparte: buscar, crear, corregir o religar),
-│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA),
+│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos, UMA y tope),
 │   │   │                            sqlvehiclerecordreader (el expediente de un folio, en una sola lectura)
 │   │   ├── storage/                 Disco local (localfilestorage): almacén por VIN, miniaturas, temporales
 │   │   ├── contract/                PDF del contrato: pdfcontractgenerator, datos de la agencia, número a letras

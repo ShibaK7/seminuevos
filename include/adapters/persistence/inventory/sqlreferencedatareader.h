@@ -20,7 +20,7 @@ public:
     QList<application::CatalogOptionDto> brands(QString *error) override;
     QList<application::CatalogOptionDto> fuelTypes(QString *error) override;
     QList<application::ChecklistItemDto> conditionChecklist(QString *error) override;
-    std::optional<double> umaDailyValue(QString *error) override;
+    domain::CashLimitTerms cashLimitTerms(QString *error) override;
     QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override;
 
 private:
