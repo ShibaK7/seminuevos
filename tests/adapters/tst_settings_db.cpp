@@ -3,9 +3,10 @@
 // SqlReferenceDataReader. Es opcional: solo se compila con
 // -DSEMINUEVOS_DB_TESTS=ON y necesita `docker compose up -d`.
 //
-// Escribe en global_configurations de la base de desarrollo: al empezar
-// guarda las cinco llaves (valor y fecha) y al terminar las deja como
-// estaban.
+// Trabaja en una base desechable (seminuevos_tst_settings) que crea con el
+// 00_schema.sql del repositorio y borra al terminar: la app abierta contra la
+// base de desarrollo nunca ve los valores de prueba, y si la prueba se
+// interrumpe no se pierde la UMA capturada.
 
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
@@ -43,6 +44,18 @@ QMap<QString, QString> readEnv()
     return values;
 }
 
+QString readFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+    QTextStream stream(&file);
+    stream.setEncoding(QStringConverter::Utf8);
+    return stream.readAll();
+}
+
+const QString kScratchDatabase = QStringLiteral("seminuevos_tst_settings");
+
 // La fecha con que se siembran los renglones de cada caso: una que el
 // guardado no puede dejar igual.
 const QDateTime kSeededAt(QDate(2026, 1, 9), QTime(9, 0));
@@ -54,15 +67,22 @@ class TstSettingsDb : public QObject
     Q_OBJECT
 
 private:
+    // La conexión a la base de desarrollo, solo para crear y borrar la
+    // desechable. Va con su propio nombre y no con otro ConnectionPool: dos
+    // pools en el mismo hilo usarían el mismo nombre de conexión.
+    const QString m_adminConnection = QStringLiteral("tst-settings-admin");
+    // La desechable.
     std::unique_ptr<ConnectionPool> m_pool;
-    // Lo que había antes en cada llave: valor y fecha, como texto.
-    struct SavedRow
+
+    bool execOnDevelopment(const QString &sql)
     {
-        QString key;
-        QString value;
-        QString updatedAt;
-    };
-    QList<SavedRow> m_saved;
+        QSqlQuery query(QSqlDatabase::database(m_adminConnection));
+        if (!query.exec(sql)) {
+            qWarning("%s", qPrintable(query.lastError().text()));
+            return false;
+        }
+        return true;
+    }
 
     static QStringList allKeys()
     {
@@ -70,6 +90,18 @@ private:
         for (const SystemParameter parameter : domain::allSystemParameters())
             keys << settingskeys::keyOf(parameter);
         return keys;
+    }
+
+    // Varias sentencias de una vez (sin prepare, que admite solo una).
+    bool execScript(const QString &sql)
+    {
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery query(handle.database());
+        if (!query.exec(sql)) {
+            qWarning("%s", qPrintable(query.lastError().text()));
+            return false;
+        }
+        return true;
     }
 
     bool exec(const QString &sql, const QVariantMap &values = {})
@@ -134,38 +166,37 @@ private slots:
         config.databaseName = env.value(QStringLiteral("POSTGRES_DB"), QStringLiteral("seminuevos"));
         config.userName = env.value(QStringLiteral("POSTGRES_USER"), QStringLiteral("seminuevos_app"));
         config.password = env.value(QStringLiteral("POSTGRES_PASSWORD"));
-        m_pool = std::make_unique<ConnectionPool>(config);
-        m_pool->setGuiThreadAllowed(true);
         {
-            ConnectionPool::Handle handle = m_pool->acquire();
-            if (!handle.database().isOpen())
+            QSqlDatabase development = QSqlDatabase::addDatabase(config.driverName, m_adminConnection);
+            development.setHostName(config.hostName);
+            development.setPort(config.port);
+            development.setDatabaseName(config.databaseName);
+            development.setUserName(config.userName);
+            development.setPassword(config.password);
+            if (!development.open())
                 QSKIP("PostgreSQL no está disponible (docker compose up -d).");
         }
+        execOnDevelopment(QStringLiteral("DROP DATABASE IF EXISTS %1 WITH (FORCE)").arg(kScratchDatabase));
+        if (!execOnDevelopment(QStringLiteral("CREATE DATABASE %1").arg(kScratchDatabase)))
+            QSKIP("El usuario de la base no puede crear una base desechable.");
 
-        ConnectionPool::Handle handle = m_pool->acquire();
-        for (const QString &key : allKeys()) {
-            QSqlQuery query(handle.database());
-            query.prepare(QStringLiteral("SELECT CAST(value_param AS text), CAST(updated_at AS text) "
-                                         "FROM global_configurations WHERE key_param = :key"));
-            query.bindValue(QStringLiteral(":key"), key);
-            QVERIFY2(query.exec(), qPrintable(query.lastError().text()));
-            if (query.next())
-                m_saved << SavedRow{key, query.value(0).toString(), query.value(1).toString()};
-        }
+        DatabaseConfig scratch = config;
+        scratch.databaseName = kScratchDatabase;
+        m_pool = std::make_unique<ConnectionPool>(scratch);
+        m_pool->setGuiThreadAllowed(true);
+        const QString schema =
+            readFile(QStringLiteral(SEMINUEVOS_SOURCE_DIR) + QStringLiteral("/init-db/00_schema.sql"));
+        QVERIFY(!schema.isEmpty());
+        QVERIFY(execScript(schema));
     }
 
-    // Las cinco llaves vuelven a como estaban, con su fecha.
     void cleanupTestCase()
     {
-        if (!m_pool)
-            return;
-        clearKeys();
-        for (const SavedRow &row : std::as_const(m_saved)) {
-            exec(QStringLiteral("INSERT INTO global_configurations (key_param, value_param, updated_at) "
-                                "VALUES (:key, CAST(:value AS NUMERIC), CAST(:at AS TIMESTAMP))"),
-                 {{QStringLiteral(":key"), row.key},
-                  {QStringLiteral(":value"), row.value},
-                  {QStringLiteral(":at"), row.updatedAt}});
+        m_pool.reset();
+        if (QSqlDatabase::contains(m_adminConnection)) {
+            execOnDevelopment(QStringLiteral("DROP DATABASE IF EXISTS %1 WITH (FORCE)").arg(kScratchDatabase));
+            QSqlDatabase::database(m_adminConnection).close();
+            QSqlDatabase::removeDatabase(m_adminConnection);
         }
     }
 
