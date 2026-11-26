@@ -226,3 +226,14 @@ seminuevos_add_test(tst_systemsettingsservice
     SOURCES application/tst_systemsettingsservice.cpp support/settingsfakes.h
     LIBS seminuevos_application
 )
+
+# Parámetros de Configuraciones contra PostgreSQL (opcional, como la de arriba).
+if(SEMINUEVOS_DB_TESTS)
+    seminuevos_add_test(tst_settings_db
+        SOURCES adapters/tst_settings_db.cpp
+        LIBS seminuevos_application seminuevos_persistence
+    )
+    set_tests_properties(tst_settings_db PROPERTIES LABELS "db")
+    target_compile_definitions(tst_settings_db PRIVATE
+        SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+endif()
