@@ -170,6 +170,39 @@ private slots:
         QVERIFY(!m_view.formBusy);
     }
 
+    // Otra sesión gastó el dinero mientras el formulario estaba abierto: se
+    // rechaza y se relee, así la tarjeta (y el máximo del formulario) dicen
+    // lo vigente.
+    void rejectionRereadsTheBalances()
+    {
+        m_ledger.setBalance(CashAccount::PettyCash, 100000);
+        auto presenter = make(m_runner);
+        presenter->onDepositRequested();
+        m_ledger.spentMeanwhile[CashAccount::PettyCash] = 60000;
+        presenter->onSubmitDeposit({CashAccount::PettyCash, 50000});
+        QCOMPARE(m_view.form, QStringLiteral("ingreso"));
+        QCOMPARE(m_view.formErrors.size(), 1);
+        QCOMPARE(m_view.balance(CashAccount::PettyCash), qint64(40000));
+    }
+
+    // Una lectura vieja (de otro filtro) que llega después de la última no
+    // pinta encima.
+    void staleReadIsDiscarded()
+    {
+        m_ledger.setBalance(CashAccount::PettyCash, 100000);
+        (void)m_service->depositToSafe({CashAccount::PettyCash, 40000},
+                                       {QStringLiteral("admin"), {}, domain::UserRole::Admin,
+                                        fakes::InMemoryCashLedger::kAdministratorId});
+        fakes::DeferredTaskRunner deferred;
+        auto presenter = make(deferred);
+        m_view.filter = CashAccount::Safe;
+        presenter->onFilterChanged();
+        deferred.finish(1);
+        QCOMPARE(m_view.movements.size(), 1);
+        deferred.finish(0); // la de todas las cuentas, ya vieja
+        QCOMPARE(m_view.movements.size(), 1);
+    }
+
     void depositMovesMoneyIntoTheSafe()
     {
         m_ledger.setBalance(CashAccount::PettyCash, 100000);

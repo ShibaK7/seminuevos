@@ -113,6 +113,9 @@ void CashBalancesWidget::setBusy(bool busy)
 void CashBalancesWidget::showBalances(const QList<application::CashBalanceDto> &balances)
 {
     m_balances = balances;
+    // Un formulario abierto no puede ofrecer más de lo que hay ahora.
+    if (m_form)
+        m_form->setBalances(balances);
     const QLocale mexico(QLocale::Spanish, QLocale::Mexico);
     for (const domain::CashAccount account : domain::allCashAccounts()) {
         application::CashBalanceDto balance;

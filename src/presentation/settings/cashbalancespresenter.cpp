@@ -165,8 +165,10 @@ void CashBalancesPresenter::write(std::function<application::CashWriteResult()> 
             return;
         case Status::Rejected:
             // El formulario sigue abierto con su error (también la falta de
-            // saldo: dice cuánto hay ahora).
+            // saldo: dice cuánto hay ahora). Se relee: si otra sesión movió
+            // las cuentas, la tarjeta y el máximo del formulario lo reflejan.
             m_view.showFormErrors(result.validation.errors());
+            load(true);
             return;
         case Status::Conflict:
             m_view.closeForm();

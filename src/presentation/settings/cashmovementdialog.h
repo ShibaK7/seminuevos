@@ -43,6 +43,9 @@ public:
     application::SafeWithdrawalDto withdrawal() const;
 
     void setBusy(bool busy);
+    // Lo que hay ahora en cada cuenta (se releyó): ajusta el máximo y el
+    // aviso de lo disponible.
+    void setBalances(const QList<application::CashBalanceDto> &balances);
     // Marca cada campo con su error y le da el foco al primero.
     void showErrors(const QList<domain::ValidationError> &errors);
 

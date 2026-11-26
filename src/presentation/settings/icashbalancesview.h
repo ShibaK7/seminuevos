@@ -21,7 +21,8 @@ public:
     // Mientras se lee o se guarda algo: los botones no responden.
     virtual void setBusy(bool busy) = 0;
     // Los tres saldos, en el orden de pantalla. Con ellos decide qué botones
-    // ofrece: los saldos iniciales solo mientras falte capturarlos.
+    // ofrece (los saldos iniciales solo mientras falte capturarlos) y, si hay
+    // un formulario abierto, su máximo y su "Disponible".
     virtual void showBalances(const QList<application::CashBalanceDto> &balances) = 0;
     virtual void showMovements(const QList<application::CashMovementDto> &movements) = 0;
     // La cuenta elegida en el filtro de movimientos; nullopt: todas.

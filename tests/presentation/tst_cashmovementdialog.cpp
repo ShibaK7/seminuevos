@@ -116,6 +116,20 @@ private slots:
         QCOMPARE(find<QLineEdit>(dialog, "conceptEdit")->property("hasError").toBool(), true);
     }
 
+    // Se releyeron las cuentas con el formulario abierto: el máximo y el aviso
+    // siguen a lo que hay ahora.
+    void balancesCanBeRefreshedWhileOpen()
+    {
+        CashMovementDialog dialog(Mode::Deposit, balances());
+        dialog.show();
+        QList<application::CashBalanceDto> fresh = balances();
+        fresh[0].hundredths = 40000;
+        dialog.setBalances(fresh);
+        QCOMPARE(find<QDoubleSpinBox>(dialog, "amountSpin")->maximum(), 400.0);
+        QCOMPARE(find<QLabel>(dialog, "availableLabel")->text(),
+                 QStringLiteral("Disponible en Caja Chica: $400.00"));
+    }
+
     void cannotBeClosedWhileSaving()
     {
         CashMovementDialog dialog(Mode::Deposit, balances());

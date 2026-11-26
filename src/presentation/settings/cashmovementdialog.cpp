@@ -139,6 +139,12 @@ application::SafeWithdrawalDto CashMovementDialog::withdrawal() const
     return withdrawal;
 }
 
+void CashMovementDialog::setBalances(const QList<application::CashBalanceDto> &balances)
+{
+    m_balances = balances;
+    applyAvailable();
+}
+
 void CashMovementDialog::setBusy(bool busy)
 {
     m_busy = busy;
