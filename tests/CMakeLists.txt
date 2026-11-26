@@ -281,3 +281,9 @@ seminuevos_add_test(tst_settingsview
             "${PROJECT_SOURCE_DIR}/resources/Resources.qrc"
     LIBS seminuevos_views
 )
+
+# --- Saldos: Caja Chica, Cantidad Banco y Caja Fuerte ---------------------------
+seminuevos_add_test(tst_cashflow
+    SOURCES domain/tst_cashflow.cpp
+    LIBS seminuevos_domain
+)
