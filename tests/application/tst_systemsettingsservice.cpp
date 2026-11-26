@@ -149,6 +149,18 @@ private slots:
         QCOMPARE(m_settings.updates.size(), 0);
     }
 
+    // Un parámetro guardado que hoy no pasaría una regla (capturado antes de
+    // ella, o a mano en la base) no impide guardar los demás si nadie lo toca.
+    void untouchedInvalidValueDoesNotBlockTheRest()
+    {
+        m_settings.store(SystemParameter::SafeBalance, -100);
+        QList<SystemParameterEditDto> edits = untouched();
+        edit(edits, SystemParameter::BankBalance).edited = 6000000;
+        const auto result = service().updateSystemParameters(edits, admin());
+        QCOMPARE(result.status, Status::Saved);
+        QCOMPARE(result.updated, QList<SystemParameter>{SystemParameter::BankBalance});
+    }
+
     // Una UMA que ya estaba no se puede dejar vacía.
     void storedUmaCannotBeCleared()
     {

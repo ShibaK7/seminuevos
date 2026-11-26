@@ -67,6 +67,17 @@ private slots:
         QCOMPARE(service().createUser(newUser(), seller()).status, Status::Denied);
         QCOMPARE(service().setActive(m_adminId, QStringLiteral("v1"), false, seller()).status,
                  Status::Denied);
+        QCOMPARE(service()
+                     .updateUser({m_adminId, QStringLiteral("v1"), QStringLiteral("Otro"), UserRole::SalesAgent},
+                                 seller())
+                     .status,
+                 Status::Denied);
+        QCOMPARE(service()
+                     .resetPassword({m_adminId, QStringLiteral("clave segura"), QStringLiteral("clave segura")},
+                                    seller())
+                     .status,
+                 Status::Denied);
+        // Ni siquiera llega al repositorio: el servicio lo detiene antes.
         QCOMPARE(m_accounts.writes, 0);
     }
 

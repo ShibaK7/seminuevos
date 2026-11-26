@@ -132,6 +132,23 @@ private slots:
                  qPrintable(result.validation.joinedMessages()));
     }
 
+    // El paso del asistente valida con el tope que le dieron (el de los
+    // catálogos), no con el legal.
+    void detailsStepUsesTheGivenCashLimit()
+    {
+        auto details = validRegistration(domain::AcquisitionType::Adquisicion).details;
+        details.paymentMethod = domain::PaymentMethod::Efectivo;
+        details.purchasePrice = 150000.0;
+        QVERIFY(!service()
+                     .validateDetails(details, domain::CashLimitTerms{117.31, 3210})
+                     .fields()
+                     .contains(QStringLiteral("paymentMethod")));
+        const domain::ValidationResult strict =
+            service().validateDetails(details, domain::CashLimitTerms{117.31, 1000});
+        QVERIFY2(strict.fields().contains(QStringLiteral("paymentMethod")),
+                 qPrintable(strict.joinedMessages()));
+    }
+
     void lookupsSplitTypesAndSubtypes()
     {
         const auto lookups = service().loadLookups();
