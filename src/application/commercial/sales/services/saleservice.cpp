@@ -110,8 +110,21 @@ SaleRegistrationResultDto SaleService::registerSale(const SaleRegistrationDto &s
     if (!validMoney(sale.subtotal) || !validMoney(sale.iva) || !validMoney(sale.totalAmount))
         return rejected(QStringLiteral("cost"), QStringLiteral("Los importes deben ser valores válidos y no negativos."));
 
+    // Lo que se paga en efectivo al registrar la venta: el total de contado o
+    // el enganche de un crédito. Los dos pasan por el tope de la LFPIORPI.
+    std::optional<double> cashAmount;
+    QString cashField;
     if (sale.paymentType == domain::PaymentType::Contado && sale.paymentMethod
         && *sale.paymentMethod == domain::PaymentMethod::Efectivo) {
+        cashAmount = sale.totalAmount;
+        cashField = QStringLiteral("paymentMethod");
+    } else if (sale.paymentType == domain::PaymentType::Credito && sale.financing
+               && sale.financing->downPaymentMethod
+               && *sale.financing->downPaymentMethod == domain::PaymentMethod::Efectivo) {
+        cashAmount = sale.financing->downPayment;
+        cashField = QStringLiteral("downPaymentMethod");
+    }
+    if (cashAmount) {
         domain::CashLimitTerms cashLimit;
         QString umaError;
         if (m_referenceData)
@@ -119,14 +132,14 @@ SaleRegistrationResultDto SaleService::registerSale(const SaleRegistrationDto &s
         if (!umaError.isEmpty()) {
             SaleRegistrationResultDto result;
             result.status = SaleRegistrationResultDto::Status::Failed;
-            result.field = QStringLiteral("paymentMethod");
+            result.field = cashField;
             result.message = QStringLiteral("No se pudo leer la UMA: %1").arg(umaError);
             return result;
         }
 
         domain::ValidationResult cashPaymentValidation;
         domain::CashPaymentLimit(cashLimit)
-            .check(*sale.paymentMethod, sale.totalAmount, cashPaymentValidation);
+            .check(domain::PaymentMethod::Efectivo, *cashAmount, cashPaymentValidation, cashField);
         if (!cashPaymentValidation.isValid()) {
             return rejected(cashPaymentValidation.errors().first().field,
                             cashPaymentValidation.firstMessage());
@@ -173,6 +186,10 @@ SaleRegistrationResultDto SaleService::registerSale(const SaleRegistrationDto &s
             || !validMoney(financing.finalPrice) || financing.monthsTerm <= 0) {
             return rejected(QStringLiteral("financing"), QStringLiteral("Revisa los datos capturados de financiamiento."));
         }
+        // El enganche entra a Caja Chica o a Banco según cómo se pagó.
+        if (financing.downPayment > 0.0 && !financing.downPaymentMethod)
+            return rejected(QStringLiteral("downPaymentMethod"),
+                            QStringLiteral("Selecciona cómo se pagó el enganche."));
         if (financing.downPayment > sale.totalAmount
             || qAbs(financing.downPayment + financing.amountToFinance - sale.totalAmount) > 0.01) {
             return rejected(QStringLiteral("financing"),

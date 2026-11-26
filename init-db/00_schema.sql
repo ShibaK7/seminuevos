@@ -252,7 +252,10 @@ CREATE TABLE sales (
 -- Credit Financing Details (1:1 Extension of sales)
 CREATE TABLE sale_financing (
     sale_folio INTEGER PRIMARY KEY REFERENCES sales(folio) ON DELETE CASCADE,
-    down_payment NUMERIC(12, 2) NOT NULL, 
+    down_payment NUMERIC(12, 2) NOT NULL,
+    -- Cómo se pagó el enganche: en efectivo entra a Caja Chica y por
+    -- transferencia a Banco. NULL en ventas anteriores a las cuentas.
+    down_payment_method VARCHAR(30) CHECK (down_payment_method IN ('Efectivo', 'Transferencia')),
     amount_to_finance NUMERIC(12, 2) NOT NULL,
     interest_rate NUMERIC(5, 2) NOT NULL,
     months_term INTEGER NOT NULL CHECK (months_term > 0),

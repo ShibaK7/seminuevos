@@ -8,6 +8,7 @@
 
 #include "adapters/contract/pdfcontractgenerator.h"
 #include "adapters/contract/pdfmaintenancereceiptgenerator.h"
+#include "adapters/persistence/commercial/sqlsalerepository.h"
 #include "adapters/persistence/connectionpool.h"
 #include "adapters/persistence/inventory/sqlcounterpartyrepository.h"
 #include "adapters/persistence/inventory/sqlinventoryreader.h"
@@ -443,6 +444,15 @@ private slots:
             query.bindValue(QStringLiteral(":vin"), vin);
             query.exec();
         }
+        // Las ventas de sus unidades (sale_financing y sale_payments se van en
+        // cascada); sin ellas, la unidad ya se puede borrar.
+        for (const QString &vin : std::as_const(m_createdSerials)) {
+            QSqlQuery query(handle.database());
+            query.prepare(QStringLiteral("DELETE FROM sales WHERE vehicle_folio IN "
+                                         "(SELECT folio FROM vehicles WHERE serial_number = :vin)"));
+            query.bindValue(QStringLiteral(":vin"), vin);
+            query.exec();
+        }
         for (const QStringList &account : std::as_const(m_savedAccounts)) {
             QSqlQuery query(handle.database());
             query.prepare(QStringLiteral("UPDATE cash_accounts SET balance = CAST(:balance AS NUMERIC), "
@@ -856,6 +866,103 @@ private slots:
         update.details.model = QStringLiteral("Solo el modelo");
         QCOMPARE(records.update(update, domain::UserRole::Admin).status, UpdateStatus::Saved);
         QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cash - 9000000);
+    }
+
+    // Una venta de contado en efectivo entra a Caja Chica; el enganche de un
+    // crédito por transferencia, a Banco, y queda dicho cómo se pagó.
+    void salesBringMoneyIntoTheirAccount()
+    {
+        const int cashUnit = registerUnit(registration(uniqueVin(), domain::AcquisitionType::Consignacion));
+        const int creditUnit = registerUnit(registration(uniqueVin(), domain::AcquisitionType::Consignacion));
+        QVERIFY(cashUnit > 0 && creditUnit > 0);
+        int vendorId = -1;
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery query(handle.database());
+            QVERIFY(query.exec(QStringLiteral("SELECT id FROM users ORDER BY id LIMIT 1")) && query.next());
+            vendorId = query.value(0).toInt();
+        }
+        const auto buyer = [this](const QString &prefix) {
+            application::SaleBuyerDto person;
+            person.fullName = prefix + QStringLiteral(" Prueba");
+            person.nationalId = uniqueNationalId(prefix);
+            person.streetAddress = QStringLiteral("Calle 1");
+            person.suburb = QStringLiteral("Centro");
+            person.locality = QStringLiteral("Morelia");
+            person.state = QStringLiteral("Michoacán");
+            person.postalCode = QStringLiteral("58000");
+            person.phone = QStringLiteral("4430000000");
+            person.email = QStringLiteral("prueba@example.com");
+            return person;
+        };
+
+        SqlSaleRepository sales(*m_pool);
+        const qint64 cashBefore = balanceOf(QStringLiteral("Caja Chica"));
+        const qint64 bankBefore = balanceOf(QStringLiteral("Banco"));
+
+        application::SaleRegistrationDto cashSale;
+        cashSale.vehicleFolio = cashUnit;
+        cashSale.vendorId = vendorId;
+        cashSale.saleDate = QDate::currentDate();
+        cashSale.buyer = buyer(QStringLiteral("COMPRADOR"));
+        cashSale.paymentType = domain::PaymentType::Contado;
+        cashSale.paymentMethod = domain::PaymentMethod::Efectivo;
+        cashSale.subtotal = 50000.0;
+        cashSale.totalAmount = 50000.0;
+        const auto cashResult = sales.registerSale(cashSale);
+        QVERIFY2(cashResult.status == application::SaleRegistrationResultDto::Status::Registered,
+                 qPrintable(cashResult.message));
+        QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cashBefore + 5000000);
+
+        // Una base creada antes de que Comercial dejara installment_number
+        // opcional rechaza toda venta a crédito: se recrea con
+        // `docker compose down -v`.
+        {
+            ConnectionPool::Handle handle = m_pool->acquire();
+            QSqlQuery nullable(handle.database());
+            QVERIFY(nullable.exec(QStringLiteral(
+                "SELECT is_nullable FROM information_schema.columns WHERE table_name = 'sale_payments' "
+                "AND column_name = 'installment_number'")) && nullable.next());
+            if (nullable.value(0).toString() != QStringLiteral("YES"))
+                QSKIP("La base es anterior al esquema de ventas a crédito (installment_number NOT NULL).");
+        }
+
+        application::SaleRegistrationDto creditSale = cashSale;
+        creditSale.vehicleFolio = creditUnit;
+        creditSale.buyer = buyer(QStringLiteral("ACREDITADO"));
+        creditSale.paymentType = domain::PaymentType::Credito;
+        creditSale.paymentMethod.reset();
+        creditSale.subtotal = 120000.0;
+        creditSale.totalAmount = 120000.0;
+        application::SaleFinancingDto financing;
+        financing.downPayment = 20000.0;
+        financing.downPaymentMethod = domain::PaymentMethod::Transferencia;
+        financing.amountToFinance = 100000.0;
+        financing.monthsTerm = 2;
+        financing.monthlyPayment = 50000.0;
+        financing.finalPrice = 120000.0;
+        financing.guarantor = buyer(QStringLiteral("AVAL"));
+        for (int number = 1; number <= 2; ++number)
+            financing.installments << application::SaleInstallmentDto{
+                number, QDate::currentDate().addMonths(number), 50000.0, 50000.0, 0.0, 50000.0 * (2 - number)};
+        creditSale.financing = financing;
+        const auto creditResult = sales.registerSale(creditSale);
+        QVERIFY2(creditResult.status == application::SaleRegistrationResultDto::Status::Registered,
+                 qPrintable(creditResult.message));
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), bankBefore + 2000000);
+        QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cashBefore + 5000000);
+
+        ConnectionPool::Handle handle = m_pool->acquire();
+        QSqlQuery stored(handle.database());
+        stored.prepare(QStringLiteral("SELECT down_payment_method FROM sale_financing WHERE sale_folio = :folio"));
+        stored.bindValue(QStringLiteral(":folio"), creditResult.saleFolio);
+        QVERIFY(stored.exec() && stored.next());
+        QCOMPARE(stored.value(0).toString(), QStringLiteral("Transferencia"));
+        QSqlQuery kinds(handle.database());
+        kinds.prepare(QStringLiteral("SELECT kind FROM cash_movements WHERE sale_folio = :folio"));
+        kinds.bindValue(QStringLiteral(":folio"), creditResult.saleFolio);
+        QVERIFY(kinds.exec() && kinds.next());
+        QCOMPARE(kinds.value(0).toString(), QStringLiteral("Enganche"));
     }
 
     void staleVersionsAndForeignVinsAreRejected()

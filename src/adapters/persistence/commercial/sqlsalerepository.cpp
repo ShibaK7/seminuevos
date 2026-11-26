@@ -1,6 +1,8 @@
 #include "adapters/persistence/commercial/sqlsalerepository.h"
 
 #include "adapters/persistence/connectionpool.h"
+#include "adapters/persistence/finance/cashledgerwriter.h"
+#include "domain/finance/rules/cashflowrules.h"
 
 #include <QSqlDatabase>
 #include <QSqlError>
@@ -337,14 +339,18 @@ application::SaleRegistrationResultDto SqlSaleRepository::registerSale(
             if (failure.isEmpty() && sale.paymentType == domain::PaymentType::Credito && sale.financing) {
                 QSqlQuery financing(db);
                 financing.prepare(QStringLiteral(
-                    "INSERT INTO sale_financing (sale_folio, down_payment, amount_to_finance, "
-                    "interest_rate, months_term, monthly_payment, final_calculated_price, "
-                    "aval_id, status) VALUES (:sale_folio, :down_payment, :amount_to_finance, "
-                    ":interest_rate, :months_term, :monthly_payment, :final_calculated_price, "
-                    ":aval_id, :status)"));
+                    "INSERT INTO sale_financing (sale_folio, down_payment, down_payment_method, "
+                    "amount_to_finance, interest_rate, months_term, monthly_payment, "
+                    "final_calculated_price, aval_id, status) VALUES (:sale_folio, :down_payment, "
+                    ":down_payment_method, :amount_to_finance, :interest_rate, :months_term, "
+                    ":monthly_payment, :final_calculated_price, :aval_id, :status)"));
                 const auto &financingData = *sale.financing;
                 financing.bindValue(QStringLiteral(":sale_folio"), saleFolio);
                 financing.bindValue(QStringLiteral(":down_payment"), financingData.downPayment);
+                financing.bindValue(QStringLiteral(":down_payment_method"),
+                                    financingData.downPaymentMethod
+                                        ? QVariant(domain::toDbString(*financingData.downPaymentMethod))
+                                        : QVariant(QMetaType(QMetaType::QString)));
                 financing.bindValue(QStringLiteral(":amount_to_finance"), financingData.amountToFinance);
                 financing.bindValue(QStringLiteral(":interest_rate"), financingData.interestRatePercent);
                 financing.bindValue(QStringLiteral(":months_term"), financingData.monthsTerm);
@@ -375,6 +381,29 @@ application::SaleRegistrationResultDto SqlSaleRepository::registerSale(
                     if (!payment.exec())
                         failure = payment.lastError().text();
                 }
+            }
+
+            // El dinero que entra con la venta: el total de contado o el
+            // enganche del crédito, a Caja Chica o a Banco según su método.
+            if (failure.isEmpty()) {
+                const QString concept = QStringLiteral("Venta %1, unidad %2").arg(saleFolio).arg(sale.vehicleFolio);
+                QList<domain::CashMovement> cash;
+                if (sale.paymentType == domain::PaymentType::Contado && sale.paymentMethod)
+                    cash = domain::CashFlowRules::forCashSale(*sale.paymentMethod,
+                                                              domain::toHundredths(sale.totalAmount),
+                                                              concept, sale.saleDate);
+                else if (sale.financing && sale.financing->downPaymentMethod)
+                    cash = domain::CashFlowRules::forCreditSale(
+                        *sale.financing->downPaymentMethod, domain::toHundredths(sale.financing->downPayment),
+                        concept, sale.saleDate);
+                cashledger::References references;
+                references.saleFolio = saleFolio;
+                references.vehicleFolio = sale.vehicleFolio;
+                const cashledger::ApplyOutcome received = cashledger::applyMovements(db, cash, references);
+                if (received.status != cashledger::ApplyOutcome::Status::Applied)
+                    failure = received.status == cashledger::ApplyOutcome::Status::Insufficient
+                                  ? QStringLiteral("No hay saldo para registrar el movimiento de la venta.")
+                                  : received.errorMessage;
             }
 
             if (failure.isEmpty() && !db.commit())

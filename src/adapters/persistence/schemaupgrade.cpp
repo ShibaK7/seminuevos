@@ -105,25 +105,35 @@ Result run(QSqlDatabase &db)
 {
     Result result;
 
-    // Columnas de users que el código usa y una base vieja puede no tener:
-    // - last_login: la anota el login y la muestra Configuraciones. Llegó
-    //   con el flujo de ventas, y las bases creadas antes no la tienen.
-    // - active (US-07.1): las cuentas se desactivan en vez de borrarse.
-    const QList<std::pair<QString, QString>> columns = {
-        {QStringLiteral("last_login"), QStringLiteral("TIMESTAMP")},
-        {QStringLiteral("active"), QStringLiteral("BOOLEAN NOT NULL DEFAULT TRUE")},
+    // Columnas que el código usa y una base vieja puede no tener:
+    // - users.last_login: la anota el login y la muestra Configuraciones.
+    //   Llegó con el flujo de ventas, y las bases creadas antes no la tienen.
+    // - users.active (US-07.1): las cuentas se desactivan en vez de borrarse.
+    // - sale_financing.down_payment_method: cómo se pagó el enganche, que
+    //   decide si entra a Caja Chica o a Banco.
+    struct Column
+    {
+        QString table;
+        QString name;
+        QString definition;
     };
-    for (const auto &[column, definition] : columns) {
+    const QList<Column> columns = {
+        {QStringLiteral("users"), QStringLiteral("last_login"), QStringLiteral("TIMESTAMP")},
+        {QStringLiteral("users"), QStringLiteral("active"), QStringLiteral("BOOLEAN NOT NULL DEFAULT TRUE")},
+        {QStringLiteral("sale_financing"), QStringLiteral("down_payment_method"),
+         QStringLiteral("VARCHAR(30) CHECK (down_payment_method IN ('Efectivo', 'Transferencia'))")},
+    };
+    for (const Column &column : columns) {
         QString error;
-        if (hasColumn(db, QStringLiteral("users"), column, &error))
+        if (hasColumn(db, column.table, column.name, &error))
             continue;
         if (!error.isEmpty()) {
             result.errorMessage = error;
             return result;
         }
         QSqlQuery alter(db);
-        if (!alter.exec(QStringLiteral("ALTER TABLE users ADD COLUMN IF NOT EXISTS %1 %2")
-                            .arg(column, definition))) {
+        if (!alter.exec(QStringLiteral("ALTER TABLE %1 ADD COLUMN IF NOT EXISTS %2 %3")
+                            .arg(column.table, column.name, column.definition))) {
             result.errorMessage = alter.lastError().text();
             return result;
         }
