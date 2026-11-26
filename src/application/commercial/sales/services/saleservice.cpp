@@ -262,6 +262,11 @@ domain::ValidationResult SaleService::validateSale(const SaleRegistrationDto &sa
     }
 
     if (sale.paymentType == domain::PaymentType::Credito) {
+        // El enganche entra a Caja Chica o a Banco según cómo se pagó: se
+        // marca en su combo, como los demás campos.
+        if (sale.financing && sale.financing->downPayment > 0.0 && !sale.financing->downPaymentMethod)
+            result.addError(QStringLiteral("downPaymentMethod"),
+                            QStringLiteral("Selecciona cómo se pagó el enganche."));
         if (!sale.financing || !sale.financing->guarantor) {
             result.addError(QStringLiteral("guarantor.fullName"),
                             QStringLiteral("Captura la información completa del aval."));

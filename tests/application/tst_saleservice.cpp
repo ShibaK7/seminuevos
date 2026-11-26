@@ -342,6 +342,8 @@ private slots:
         QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
         QCOMPARE(result.field, QStringLiteral("downPaymentMethod"));
         QCOMPARE(repository.registerCalls, 0);
+        // La validación del formulario también lo marca en su combo.
+        QVERIFY(service.validateSale(sale).fields().contains(QStringLiteral("downPaymentMethod")));
     }
 
     // Un enganche en efectivo también pasa por el tope de la LFPIORPI.
