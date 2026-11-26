@@ -51,9 +51,14 @@ public:
     bool confirmLeave();
 
 private:
-    void load();
+    // Una lectura que sale bien borra el error de una anterior, salvo con
+    // `keepMessage`: la que lanza un conflicto deja visible su aviso.
+    void load(bool keepMessage = false);
     void paint();
     void enterView();
+    // Lo que se acaba de guardar pasa a m_loaded, con fecha de ahora.
+    void applySaved(const QList<application::SystemParameterEditDto> &edits,
+                    const QList<domain::SystemParameter> &updated);
 
     ISystemSettingsView &m_view;
     const application::SystemSettingsService &m_service;

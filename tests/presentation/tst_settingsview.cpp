@@ -126,6 +126,36 @@ private slots:
         QVERIFY(find<QLabel>("bankUpdated")->text().contains(QStringLiteral("2026")));
     }
 
+    // Un tope con decimales (capturado a mano en la base) se ve entero en el
+    // campo; si nadie lo toca, no se reescribe al guardar otro parámetro.
+    void untouchedFieldKeepsItsStoredValue()
+    {
+        m_settings.store(SystemParameter::CashLimitUmaMultiple, 320050);
+        open();
+        QCOMPARE(find<QSpinBox>("cashLimitSpin")->value(), 3200);
+        find<QPushButton>("editButton")->click();
+        find<QDoubleSpinBox>("bankSpin")->setValue(60000.0);
+        find<QPushButton>("saveButton")->click();
+        QCOMPARE(m_settings.updates.size(), 1);
+        QCOMPARE(m_settings.updates.first().size(), 1);
+        QCOMPARE(m_settings.updates.first().first().parameter, SystemParameter::BankBalance);
+        QCOMPARE(m_settings.rows.value(SystemParameter::CashLimitUmaMultiple).hundredths,
+                 std::optional<qint64>(320050));
+    }
+
+    // Mientras guarda, los campos no aceptan nada: se perdería al volver a
+    // consulta.
+    void fieldsAreReadOnlyWhileSaving()
+    {
+        open();
+        find<QPushButton>("editButton")->click();
+        auto *widget = m_view->findChild<SystemSettingsWidget *>();
+        widget->setBusy(true);
+        QVERIFY(find<QDoubleSpinBox>("safeSpin")->isReadOnly());
+        widget->setBusy(false);
+        QVERIFY(!find<QDoubleSpinBox>("safeSpin")->isReadOnly());
+    }
+
     // En la UMA, el cero es "Sin capturar": no se guarda como cero.
     void emptyUmaIsRejected()
     {

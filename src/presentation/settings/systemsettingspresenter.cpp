@@ -33,7 +33,7 @@ void SystemSettingsPresenter::refresh()
         load();
 }
 
-void SystemSettingsPresenter::load()
+void SystemSettingsPresenter::load(bool keepMessage)
 {
     const int generation = ++m_loadGeneration;
     m_loading = true;
@@ -42,7 +42,7 @@ void SystemSettingsPresenter::load()
     const application::SessionDto actor = m_actor;
     m_runner.run(
         this, [service, actor] { return service->getSystemParameters(actor); },
-        [this, generation](const application::SystemParametersResult &result) {
+        [this, generation, keepMessage](const application::SystemParametersResult &result) {
             using Status = application::SystemParametersResult::Status;
             if (generation != m_loadGeneration)
                 return;
@@ -59,6 +59,8 @@ void SystemSettingsPresenter::load()
                 } else {
                     m_loaded = result.parameters;
                     paint();
+                    if (!keepMessage)
+                        m_view.showMessage(QString());
                 }
                 break;
             case Status::Denied:
@@ -72,6 +74,29 @@ void SystemSettingsPresenter::load()
             if (!m_session.isEditing())
                 m_view.showMode(FormMode::View, m_session.canEdit());
         });
+}
+
+void SystemSettingsPresenter::applySaved(const QList<application::SystemParameterEditDto> &edits,
+                                         const QList<domain::SystemParameter> &updated)
+{
+    const QDateTime now = QDateTime::currentDateTimeUtc();
+    for (const domain::SystemParameter parameter : updated) {
+        std::optional<qint64> value;
+        for (const application::SystemParameterEditDto &edit : edits) {
+            if (edit.parameter == parameter)
+                value = edit.edited;
+        }
+        bool found = false;
+        for (application::SystemParameterDto &loaded : m_loaded) {
+            if (loaded.parameter == parameter) {
+                loaded.hundredths = value;
+                loaded.updatedAt = now;
+                found = true;
+            }
+        }
+        if (!found)
+            m_loaded << application::SystemParameterDto{parameter, value, now};
+    }
 }
 
 void SystemSettingsPresenter::paint()
@@ -147,15 +172,21 @@ void SystemSettingsPresenter::onSave()
     const application::SessionDto actor = m_actor;
     m_runner.run(
         this, [service, edits, actor] { return service->updateSystemParameters(edits, actor); },
-        [this](const application::SystemParametersUpdateResult &result) {
+        [this, edits](const application::SystemParametersUpdateResult &result) {
             using Status = application::SystemParametersUpdateResult::Status;
             m_saving = false;
             m_view.setBusy(false);
             switch (result.status) {
             case Status::Saved:
+                // Lo guardado pasa a ser lo leído desde ya: la tarjeta no
+                // vuelve a lo de antes mientras llega la relectura (ni se
+                // queda así si falla), y el próximo guardado lo espera a
+                // él. Una relectura que llegó a media edición ya es vieja.
+                m_pending.reset();
+                applySaved(edits, result.updated);
                 enterView();
                 m_view.showNotice(QStringLiteral("Cambios guardados."));
-                // Se relee para mostrar la fecha nueva de lo que cambió.
+                // Se relee para traer la fecha que puso la base.
                 load();
                 break;
             case Status::NoChanges:
@@ -171,7 +202,7 @@ void SystemSettingsPresenter::onSave()
                 m_view.showMessage(QStringLiteral("Otro administrador cambió los parámetros mientras "
                                                   "editabas; se cargaron los vigentes. Vuelve a "
                                                   "capturar tus cambios."));
-                load();
+                load(true);
                 break;
             case Status::Denied:
                 // La cuenta pudo perder el rol con la sesión abierta: ya no

@@ -210,6 +210,46 @@ private slots:
         QCOMPARE(m_view.fields.value(SystemParameter::UmaDailyValue), std::optional<qint64>(11800));
     }
 
+    // Lo guardado se ve en cuanto se guarda, sin esperar la relectura; y si
+    // esa relectura falla, el siguiente guardado espera lo que se guardó, no
+    // lo de antes (no es un conflicto consigo mismo).
+    void savedValuesShowRightAwayAndAreTheNextExpected()
+    {
+        fakes::DeferredTaskRunner deferred;
+        auto presenter = make(deferred);
+        deferred.finish(0);
+        presenter->onEdit();
+        type(*presenter, SystemParameter::BankBalance, 6000000);
+        presenter->onSave();
+        deferred.finish(1);
+        QCOMPARE(m_view.notice, QStringLiteral("Cambios guardados."));
+        QCOMPARE(m_view.fields.value(SystemParameter::BankBalance), std::optional<qint64>(6000000));
+
+        m_settings.failure = QStringLiteral("se cayó la base");
+        deferred.finish(2); // la relectura falla
+        QCOMPARE(m_view.fields.value(SystemParameter::BankBalance), std::optional<qint64>(6000000));
+
+        m_settings.failure.clear();
+        presenter->onEdit();
+        type(*presenter, SystemParameter::BankBalance, 7000000);
+        presenter->onSave();
+        deferred.finish(3);
+        QCOMPARE(m_settings.rows.value(SystemParameter::BankBalance).hundredths,
+                 std::optional<qint64>(7000000));
+        QVERIFY(!m_view.message.contains(QStringLiteral("Otro administrador")));
+    }
+
+    // Un error de lectura se va cuando una lectura posterior sale bien.
+    void successfulReadClearsAnOldError()
+    {
+        m_settings.failure = QStringLiteral("se cayó la base");
+        auto presenter = make(m_runner);
+        QVERIFY(m_view.message.contains(QStringLiteral("se cayó la base")));
+        m_settings.failure.clear();
+        presenter->refresh();
+        QVERIFY(m_view.message.isEmpty());
+    }
+
     // Si falla la base, se queda en edición con lo capturado.
     void failedSaveKeepsTheEdits()
     {

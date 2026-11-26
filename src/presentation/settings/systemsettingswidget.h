@@ -3,7 +3,10 @@
 
 #include "presentation/settings/isystemsettingsview.h"
 
+#include <QMap>
 #include <QWidget>
+
+#include <optional>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -56,6 +59,18 @@ signals:
 private:
     QAbstractSpinBox *fieldOf(domain::SystemParameter parameter) const;
     QLabel *updatedLabelOf(domain::SystemParameter parameter) const;
+    // Lo que el campo dice ahora, en centésimos (la UMA en cero: nullopt).
+    std::optional<qint64> fieldValue(domain::SystemParameter parameter) const;
+
+    // Lo que se pintó en cada campo: el valor guardado y cómo quedó en el
+    // campo. Un campo que nadie tocó devuelve el guardado tal cual, aunque
+    // el campo lo haya redondeado (un tope de 3200.50 en un campo entero).
+    struct Painted
+    {
+        std::optional<qint64> stored;
+        std::optional<qint64> shown;
+    };
+    QMap<domain::SystemParameter, Painted> m_painted;
 
     Ui::SystemSettingsWidget *ui;
     presentation::FormMode m_mode = presentation::FormMode::View;

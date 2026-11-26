@@ -97,6 +97,7 @@ void SystemSettingsWidget::showParameters(const QList<application::SystemParamet
             formsupport::showValue(spin, static_cast<int>(hundredths.value_or(0) / 100));
         else if (auto *money = qobject_cast<QDoubleSpinBox *>(fieldOf(dto.parameter)))
             formsupport::showValue(money, static_cast<double>(hundredths.value_or(0)) / 100.0);
+        m_painted.insert(dto.parameter, {hundredths, fieldValue(dto.parameter)});
 
         // La base guarda la hora en UTC: de noche, ya sería el día siguiente.
         updatedLabelOf(dto.parameter)
@@ -112,18 +113,27 @@ QList<presentation::ISystemSettingsView::EditedValue> SystemSettingsWidget::edit
 {
     QList<EditedValue> values;
     for (const SystemParameter parameter : domain::allSystemParameters()) {
-        std::optional<qint64> hundredths;
-        if (auto *spin = qobject_cast<QSpinBox *>(fieldOf(parameter))) {
-            hundredths = qint64(spin->value()) * 100;
-        } else if (auto *money = qobject_cast<QDoubleSpinBox *>(fieldOf(parameter))) {
-            hundredths = std::llround(money->value() * 100.0);
-            // En la UMA, cero es "Sin capturar".
-            if (parameter == SystemParameter::UmaDailyValue && *hundredths == 0)
-                hundredths.reset();
-        }
+        std::optional<qint64> hundredths = fieldValue(parameter);
+        const auto painted = m_painted.constFind(parameter);
+        if (painted != m_painted.cend() && painted->shown == hundredths)
+            hundredths = painted->stored;
         values << EditedValue{parameter, hundredths};
     }
     return values;
+}
+
+std::optional<qint64> SystemSettingsWidget::fieldValue(SystemParameter parameter) const
+{
+    std::optional<qint64> hundredths;
+    if (auto *spin = qobject_cast<QSpinBox *>(fieldOf(parameter))) {
+        hundredths = qint64(spin->value()) * 100;
+    } else if (auto *money = qobject_cast<QDoubleSpinBox *>(fieldOf(parameter))) {
+        hundredths = std::llround(money->value() * 100.0);
+        // En la UMA, cero es "Sin capturar".
+        if (parameter == SystemParameter::UmaDailyValue && *hundredths == 0)
+            hundredths.reset();
+    }
+    return hundredths;
 }
 
 void SystemSettingsWidget::showMode(presentation::FormMode mode, bool canEdit)
@@ -131,7 +141,9 @@ void SystemSettingsWidget::showMode(presentation::FormMode mode, bool canEdit)
     m_mode = mode;
     m_canEdit = canEdit;
     const bool editing = mode == presentation::FormMode::Edit;
-    formsupport::setReadOnly(ui->parametersCard, !editing);
+    // Mientras guarda, tampoco: lo que se tecleara se perdería al volver a
+    // consulta.
+    formsupport::setReadOnly(ui->parametersCard, !editing || m_busy);
     ui->editButton->setVisible(!editing);
     ui->editButton->setEnabled(canEdit && !m_busy);
     ui->saveButton->setVisible(editing);
