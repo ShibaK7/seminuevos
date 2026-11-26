@@ -56,6 +56,7 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
     setField(ui->gZipCodeEdit, QStringLiteral("guarantor.postalCode"));
     setField(ui->gTelephoneEdit, QStringLiteral("guarantor.phone"));
     setField(ui->gEmailEdit, QStringLiteral("guarantor.email"));
+    setField(ui->downPaymentMethodCombo, QStringLiteral("downPaymentMethod"));
     formsupport::addFieldErrorLabels(this);
 
     for (QFrame *card : {ui->saleDetailsCard, ui->guarantorCard, ui->costCard, ui->financingCard, ui->paymentsCard}) {
@@ -111,6 +112,11 @@ SaleDetailsView::SaleDetailsView(QWidget *parent)
 
     for (domain::PaymentMethod value : domain::allPaymentMethods())
         ui->paymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+    // Cómo se pagó el enganche: decide si entra a Caja Chica o a Banco. Sin
+    // elegir hasta que el usuario lo diga.
+    for (domain::PaymentMethod value : domain::allPaymentMethods())
+        ui->downPaymentMethodCombo->addItem(domain::displayLabel(value), static_cast<int>(value));
+    ui->downPaymentMethodCombo->setCurrentIndex(-1);
 
     ui->vehicleCombo->clear();
     ui->vehicleCombo->setEditable(true);
@@ -643,6 +649,7 @@ void SaleDetailsView::resetForm()
 
     ui->paymentTypeCombo->setCurrentIndex(0);
     ui->paymentMethodCombo->setCurrentIndex(-1);
+    ui->downPaymentMethodCombo->setCurrentIndex(-1);
     ui->printButton->setEnabled(false);
     ui->observationsTextEdit->clear();
     ui->dateEdit->setDate(QDate::currentDate());
@@ -748,6 +755,10 @@ void SaleDetailsView::showSavedSale(
         const application::SaleFinancingDto &financing = *sale.financing;
         m_financingInitialized = true;
         ui->depositSpin->setValue(financing.downPayment);
+        ui->downPaymentMethodCombo->setCurrentIndex(
+            financing.downPaymentMethod
+                ? ui->downPaymentMethodCombo->findData(static_cast<int>(*financing.downPaymentMethod))
+                : -1);
         ui->financingSpin->setValue(financing.amountToFinance);
         ui->interestRateSpin->setValue(financing.interestRatePercent);
         ui->monthsSpin->setValue(financing.monthsTerm);
@@ -896,6 +907,9 @@ application::SaleRegistrationDto SaleDetailsView::registrationForm() const
     } else {
         application::SaleFinancingDto financing;
         financing.downPayment = ui->depositSpin->value();
+        if (ui->downPaymentMethodCombo->currentIndex() >= 0)
+            financing.downPaymentMethod =
+                static_cast<domain::PaymentMethod>(ui->downPaymentMethodCombo->currentData().toInt());
         financing.amountToFinance = ui->financingSpin->value();
         financing.interestRatePercent = ui->interestRateSpin->value();
         financing.monthsTerm = ui->monthsSpin->value();

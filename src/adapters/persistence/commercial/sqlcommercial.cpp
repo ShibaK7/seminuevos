@@ -104,6 +104,7 @@ enum RegistrationDetailsColumn {
     RegistrationGuarantorEmail,
     RegistrationVehicleAcquisitionType,
     RegistrationVehicleMaintenanceCost,
+    RegistrationDownPaymentMethod,
 };
 
 constexpr auto kSalesSelect = R"SQL(
@@ -212,7 +213,8 @@ SELECT s.folio, s.sale_date, s.payment_type, s.payment_method,
        guarantor.street_address, guarantor.suburb, guarantor.locality,
     guarantor.state, guarantor.postal_code, guarantor.phone, guarantor.email,
     CASE WHEN acq.vehicle_folio IS NOT NULL THEN 'Adquisición' ELSE 'Consignación' END,
-    COALESCE(acq.maintenance_cost, csg.maintenance_cost, 0)
+    COALESCE(acq.maintenance_cost, csg.maintenance_cost, 0),
+    fin.down_payment_method
   FROM sales s
   JOIN vehicles v ON v.folio = s.vehicle_folio
   JOIN users vendor ON vendor.id = s.vendor_id
@@ -506,6 +508,8 @@ application::CommercialSaleRegistrationDetailsDto SqlCommercial::saleRegistratio
                             application::SaleFinancingDto financing;
                             financing.downPayment =
                                 saleQuery.value(RegistrationDownPayment).toDouble();
+                            financing.downPaymentMethod = domain::paymentMethodFromDb(
+                                saleQuery.value(RegistrationDownPaymentMethod).toString());
                             financing.amountToFinance =
                                 saleQuery.value(RegistrationAmountToFinance).toDouble();
                             financing.interestRatePercent =
