@@ -868,3 +868,11 @@ QWidget[class="card"] {
     border-radius: 12px;
     margin-bottom: 16px;
 }
+
+/* "Actualizado el ..." junto a cada parámetro de Configuraciones (US-07.1):
+   gris claro, como en el mockup, para que no compita con el valor. */
+QLabel[class="updated-at"] {
+    font-size: 10pt;
+    font-weight: 400;
+    color: #ADB5BD;
+}

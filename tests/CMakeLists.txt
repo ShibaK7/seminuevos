@@ -258,3 +258,8 @@ seminuevos_add_test(tst_useradministrationservice
     SOURCES application/tst_useradministrationservice.cpp support/userfakes.h support/fakes.h
     LIBS seminuevos_application
 )
+
+seminuevos_add_test(tst_systemsettingspresenter
+    SOURCES presentation/tst_systemsettingspresenter.cpp support/settingsfakes.h support/fakes.h
+    LIBS seminuevos_presentation
+)

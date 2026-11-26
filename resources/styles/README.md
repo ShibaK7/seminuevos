@@ -61,6 +61,7 @@ The typography system relies on system-native font stacks to ensure crisp vector
 | **Form Labels** | `9.5pt` (12.5px) | `600` (Semi-Bold) | `0px` | `#495057` | Labels placed directly above inputs. |
 | **Placeholder Hints** | `9.5pt` (12.5px) | `400` (Regular) | `0px` | `#6C757D` | Search cues, input format hints. |
 | **Error Messages** | `8.5pt` (11px) | `600` (Semi-Bold) | `0px` | `#D90429` | Inline text under invalid inputs (`class="field-error"`; `formsupport::addFieldErrorLabels()` creates them, never the `.ui`). |
+| **Last Updated** | `10pt` (13px) | `400` (Regular) | `0px` | `#ADB5BD` | "Actualizado el ..." next to each parameter in Configuraciones (`class="updated-at"`). |
 | **Financial / Prices** | `16pt` (21px) | `800` (Extra-Bold)| `-0.5px` | `#0A25C9` | Vehicle prices, totals. |
 
 ---
