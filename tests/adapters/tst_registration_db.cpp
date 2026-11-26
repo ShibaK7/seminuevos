@@ -862,6 +862,72 @@ private slots:
         QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cash - 9000000);
     }
 
+    // Un renglón huérfano de compra en una consignación (dato corrupto) no es
+    // una compra: corregir la unidad no mueve dinero, ni una vez ni cada vez.
+    void strayPurchaseRowOfAConsignmentMovesNothing()
+    {
+        const int folio = registerUnit(registration(uniqueVin(), domain::AcquisitionType::Consignacion));
+        QVERIFY(folio > 0);
+        QVERIFY(exec(QStringLiteral("INSERT INTO vehicle_acquisitions (vehicle_folio, seller_id, invoice_type, "
+                                    "purchase_price, payment_type, payment_method, sale_price) "
+                                    "SELECT vehicle_folio, owner_id, 'Facturado', 50000, 'Contado', "
+                                    "'Transferencia', 60000 FROM vehicle_consignments WHERE vehicle_folio = :folio"),
+                     folio));
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const qint64 bank = balanceOf(QStringLiteral("Banco"));
+        for (const QString &model : {QStringLiteral("Primero"), QStringLiteral("Segundo")}) {
+            application::VehicleUpdateDto update = unchanged(records.load(folio, domain::UserRole::Admin).record);
+            update.details.model = model;
+            QCOMPARE(records.update(update, domain::UserRole::Admin).status,
+                     application::RecordUpdateResult::Status::Saved);
+        }
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), bank);
+    }
+
+    // Una compra de contado anterior a las cuentas de dinero (sin su
+    // movimiento en la bitácora) se pagó fuera de ellas: corregirla no
+    // reembolsa ni cobra nada.
+    void purchaseFromBeforeTheLedgerIsNotRefunded()
+    {
+        const int folio = registerUnit(registration(uniqueVin()));
+        QVERIFY(folio > 0);
+        QVERIFY(exec(QStringLiteral("DELETE FROM cash_movements WHERE vehicle_folio = :folio"), folio));
+        SqlVehicleRecordReader reader(*m_pool);
+        SqlVehicleRepository vehicles(*m_pool);
+        SqlReferenceDataReader reference(*m_pool);
+        LocalFileStorage files(m_storage.path());
+        const application::VehicleRecordService records(reader, vehicles, files, reference);
+        const qint64 bank = balanceOf(QStringLiteral("Banco"));
+        const qint64 cash = balanceOf(QStringLiteral("Caja Chica"));
+
+        // Corregir el método o el precio: se pagó fuera de las cuentas.
+        application::VehicleUpdateDto update = unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.paymentMethod = domain::PaymentMethod::Efectivo;
+        update.details.purchasePrice = 95000.0;
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status,
+                 application::RecordUpdateResult::Status::Saved);
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), bank);
+        QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cash);
+
+        update = unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.paymentType = domain::PaymentType::Credito;
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status,
+                 application::RecordUpdateResult::Status::Saved);
+        update = unchanged(records.load(folio, domain::UserRole::Admin).record);
+        update.details.paymentType = domain::PaymentType::Contado;
+        update.details.purchasePrice = 100000.0;
+        QCOMPARE(records.update(update, domain::UserRole::Admin).status,
+                 application::RecordUpdateResult::Status::Saved);
+        QCOMPARE(balanceOf(QStringLiteral("Banco")), bank);
+        // La pasó a crédito y luego a contado otra vez: esa segunda compra sí
+        // es nueva y se paga desde las cuentas.
+        QCOMPARE(balanceOf(QStringLiteral("Caja Chica")), cash - 10000000);
+    }
+
     // Una venta de contado en efectivo entra a Caja Chica; el enganche de un
     // crédito por transferencia, a Banco, y queda dicho cómo se pagó.
     void salesBringMoneyIntoTheirAccount()

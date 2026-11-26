@@ -52,16 +52,13 @@ QList<CashMovement> CashFlowRules::forPurchase(const PurchaseTerms &terms, const
     return movements;
 }
 
-QList<CashMovement> CashFlowRules::forPurchaseCorrection(const PurchaseTerms &before,
+QList<CashMovement> CashFlowRules::forPurchaseCorrection(const QMap<CashAccount, qint64> &alreadyMoved,
                                                          const PurchaseTerms &after,
                                                          const QString &concept, const QDate &date)
 {
-    if (before == after)
-        return {};
     // Lo que debe quedar menos lo que ya quedó, cuenta por cuenta.
     QMap<CashAccount, qint64> delta = effectOf(after);
-    const QMap<CashAccount, qint64> previous = effectOf(before);
-    for (auto it = previous.cbegin(); it != previous.cend(); ++it)
+    for (auto it = alreadyMoved.cbegin(); it != alreadyMoved.cend(); ++it)
         delta[it.key()] -= it.value();
 
     QList<CashMovement> movements;

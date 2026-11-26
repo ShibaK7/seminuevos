@@ -22,6 +22,15 @@ PurchaseTerms cashPurchase(qint64 price, PaymentMethod method = PaymentMethod::E
     return terms;
 }
 
+// Lo que la bitácora registra para una compra hecha con estos términos.
+QMap<CashAccount, qint64> takenBy(const PurchaseTerms &terms)
+{
+    QMap<CashAccount, qint64> taken;
+    for (const CashMovement &movement : CashFlowRules::forPurchase(terms, {}, kToday))
+        taken[movement.account()] += movement.hundredths();
+    return taken;
+}
+
 QStringList fieldsOf(const ValidationResult &result)
 {
     return result.fields();
@@ -76,14 +85,14 @@ private slots:
 
     void unchangedCorrectionMovesNothing()
     {
-        QVERIFY(CashFlowRules::forPurchaseCorrection(cashPurchase(100), cashPurchase(100), {}, kToday).isEmpty());
+        QVERIFY(CashFlowRules::forPurchaseCorrection(takenBy(cashPurchase(100)), cashPurchase(100), {}, kToday).isEmpty());
     }
 
     // Bajar el precio en la misma cuenta regresa solo la diferencia.
     void lowerPriceReturnsTheDifference()
     {
         const auto movements = CashFlowRules::forPurchaseCorrection(
-            cashPurchase(10000000), cashPurchase(9000000), {}, kToday);
+            takenBy(cashPurchase(10000000)), cashPurchase(9000000), {}, kToday);
         QCOMPARE(movements.size(), 1);
         QCOMPARE(movements.first().account(), CashAccount::PettyCash);
         QCOMPARE(movements.first().hundredths(), qint64(1000000));
@@ -94,7 +103,7 @@ private slots:
     void changingTheMethodMovesBetweenAccounts()
     {
         const auto movements = CashFlowRules::forPurchaseCorrection(
-            cashPurchase(500000, PaymentMethod::Efectivo),
+            takenBy(cashPurchase(500000, PaymentMethod::Efectivo)),
             cashPurchase(500000, PaymentMethod::Transferencia), {}, kToday);
         QCOMPARE(movements.size(), 2);
         QCOMPARE(movements.at(0).account(), CashAccount::PettyCash);
@@ -103,15 +112,28 @@ private slots:
         QCOMPARE(movements.at(1).hundredths(), qint64(-500000));
     }
 
+    // Se ajusta contra lo que de verdad registra la bitácora, no contra los
+    // términos guardados: lo que nunca salió no se reembolsa.
+    void correctionStartsFromWhatTheLedgerTook()
+    {
+        PurchaseTerms credit = cashPurchase(300000);
+        credit.paymentType = PaymentType::Credito;
+        QVERIFY(CashFlowRules::forPurchaseCorrection({}, credit, {}, kToday).isEmpty());
+        const auto partial =
+            CashFlowRules::forPurchaseCorrection({{CashAccount::PettyCash, -100000}}, cashPurchase(300000), {}, kToday);
+        QCOMPARE(partial.size(), 1);
+        QCOMPARE(partial.first().hundredths(), qint64(-200000));
+    }
+
     // Pasar a crédito regresa lo que había salido; pasar a contado lo saca.
     void changingThePaymentType()
     {
         PurchaseTerms credit = cashPurchase(300000);
         credit.paymentType = PaymentType::Credito;
-        const auto toCredit = CashFlowRules::forPurchaseCorrection(cashPurchase(300000), credit, {}, kToday);
+        const auto toCredit = CashFlowRules::forPurchaseCorrection(takenBy(cashPurchase(300000)), credit, {}, kToday);
         QCOMPARE(toCredit.size(), 1);
         QCOMPARE(toCredit.first().hundredths(), qint64(300000));
-        const auto toCash = CashFlowRules::forPurchaseCorrection(credit, cashPurchase(300000), {}, kToday);
+        const auto toCash = CashFlowRules::forPurchaseCorrection(takenBy(credit), cashPurchase(300000), {}, kToday);
         QCOMPARE(toCash.size(), 1);
         QCOMPARE(toCash.first().hundredths(), qint64(-300000));
     }

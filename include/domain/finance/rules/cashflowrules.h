@@ -36,11 +36,13 @@ public:
     static QList<CashMovement> forPurchase(const PurchaseTerms &terms, const QString &concept,
                                            const QDate &date);
 
-    // El expediente corrigió una compra: lo que ya salió por los términos de
-    // antes vuelve, y sale lo de los nuevos. Se neta por cuenta (bajar el
-    // precio de 100,000 a 90,000 en la misma cuenta es UNA entrada de
-    // 10,000). Si los términos no cambiaron, no hay movimiento.
-    static QList<CashMovement> forPurchaseCorrection(const PurchaseTerms &before,
+    // El expediente corrigió una compra: las cuentas quedan como deben estar
+    // con los términos nuevos, a partir de lo que la bitácora ya registra para
+    // esa compra (`alreadyMoved`, por cuenta; negativo: salió). No se parte de
+    // los términos guardados: la bitácora es lo que de verdad se movió. Se neta
+    // por cuenta (bajar el precio de 100,000 a 90,000 en la misma cuenta es
+    // UNA entrada de 10,000).
+    static QList<CashMovement> forPurchaseCorrection(const QMap<CashAccount, qint64> &alreadyMoved,
                                                      const PurchaseTerms &after,
                                                      const QString &concept, const QDate &date);
 

@@ -165,15 +165,19 @@ domain::PurchaseTerms purchaseTermsOf(const domain::Vehicle &vehicle)
 
 // Los términos de compra guardados de la unidad, con su renglón apartado (FOR
 // UPDATE) hasta el final de la transacción: nadie más los corrige mientras se
-// calcula el ajuste. Sin renglón en vehicle_acquisitions es una consignación.
+// calcula el ajuste. Solo cuenta la subtabla de su rama (un renglón huérfano
+// en vehicle_acquisitions de una consignación no es una compra); sin él, sus
+// términos no mueven dinero.
 std::optional<domain::PurchaseTerms> storedPurchaseTerms(QSqlDatabase &db, int folio,
                                                          QString &errorMessage)
 {
     QSqlQuery query(db);
     query.prepare(QStringLiteral(
-        "SELECT CAST(ROUND(purchase_price * 100) AS BIGINT), payment_type, payment_method "
-        "  FROM vehicle_acquisitions WHERE vehicle_folio = :folio FOR UPDATE"));
+        "SELECT CAST(ROUND(a.purchase_price * 100) AS BIGINT), a.payment_type, a.payment_method "
+        "  FROM vehicle_acquisitions a JOIN vehicles v ON v.folio = a.vehicle_folio "
+        " WHERE a.vehicle_folio = :folio AND v.acquisition_type = :branch FOR UPDATE OF a"));
     query.bindValue(QStringLiteral(":folio"), folio);
+    query.bindValue(QStringLiteral(":branch"), domain::toDbString(domain::AcquisitionType::Adquisicion));
     if (!query.exec()) {
         errorMessage = query.lastError().text();
         return std::nullopt;
@@ -189,6 +193,39 @@ std::optional<domain::PurchaseTerms> storedPurchaseTerms(QSqlDatabase &db, int f
     terms.paymentMethod =
         domain::paymentMethodFromDb(query.value(2).toString()).value_or(domain::PaymentMethod::Transferencia);
     return terms;
+}
+
+// Lo que la bitácora registra para la compra de la unidad, por cuenta
+// (negativo: salió), y si registra algo. Es lo que de verdad se movió: una
+// compra anterior a las cuentas de dinero no tiene renglones.
+struct LedgerPurchase
+{
+    bool recorded = false;
+    QMap<domain::CashAccount, qint64> moved;
+};
+
+std::optional<LedgerPurchase> ledgerPurchase(QSqlDatabase &db, int folio, QString &errorMessage)
+{
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "SELECT account, CAST(ROUND(SUM(amount) * 100) AS BIGINT) FROM cash_movements "
+        " WHERE vehicle_folio = :folio AND sale_folio IS NULL AND kind IN (:purchase, :correction) "
+        " GROUP BY account"));
+    query.bindValue(QStringLiteral(":folio"), folio);
+    query.bindValue(QStringLiteral(":purchase"), domain::toDbString(domain::CashMovementKind::Purchase));
+    query.bindValue(QStringLiteral(":correction"),
+                    domain::toDbString(domain::CashMovementKind::PurchaseCorrection));
+    if (!query.exec()) {
+        errorMessage = query.lastError().text();
+        return std::nullopt;
+    }
+    LedgerPurchase purchase;
+    while (query.next()) {
+        purchase.recorded = true;
+        if (const auto account = domain::cashAccountFromDb(query.value(0).toString()))
+            purchase.moved.insert(*account, query.value(1).toLongLong());
+    }
+    return purchase;
 }
 
 // El gemelo de DealInserter para corregir: reescribe la subtabla de la rama.
@@ -764,16 +801,27 @@ application::VehicleRepository::UpdateOutcome SqlVehicleRepository::rewrite(
     if (!dealUpdater.ok())
         return fail(dealUpdater.errorMessage());
 
-    // 3b. Lo que ya salió por los términos de antes vuelve y sale lo de los
-    // nuevos; sin saldo, la corrección no se guarda.
+    // 3b. Si cambiaron los términos de la compra, las cuentas quedan como
+    // deben estar con los nuevos, a partir de lo que la bitácora registra
+    // para esta compra; sin saldo, la corrección no se guarda. Una compra de
+    // contado anterior a las cuentas de dinero se pagó fuera de ellas (antes
+    // del saldo inicial): corregirla no mueve nada.
+    const domain::PurchaseTerms after = purchaseTermsOf(vehicle);
+    QList<domain::CashMovement> adjustment;
+    if (*before != after) {
+        const std::optional<LedgerPurchase> ledger = ledgerPurchase(db, folio, errorMessage);
+        if (!ledger)
+            return fail(errorMessage);
+        const bool paidBeforeTheLedger =
+            !ledger->recorded && !domain::CashFlowRules::forPurchase(*before, QString(), QDate()).isEmpty();
+        if (!paidBeforeTheLedger)
+            adjustment = domain::CashFlowRules::forPurchaseCorrection(
+                ledger->moved, after, QStringLiteral("Corrección de la compra de la unidad %1").arg(folio),
+                QDate::currentDate());
+    }
     cashledger::References cashReferences;
     cashReferences.vehicleFolio = folio;
-    const cashledger::ApplyOutcome adjusted = cashledger::applyMovements(
-        db,
-        domain::CashFlowRules::forPurchaseCorrection(
-            *before, purchaseTermsOf(vehicle),
-            QStringLiteral("Corrección de la compra de la unidad %1").arg(folio), QDate::currentDate()),
-        cashReferences);
+    const cashledger::ApplyOutcome adjusted = cashledger::applyMovements(db, adjustment, cashReferences);
     if (adjusted.status == cashledger::ApplyOutcome::Status::Insufficient) {
         result.insufficientFunds = true;
         result.fundsAccount = adjusted.account;
