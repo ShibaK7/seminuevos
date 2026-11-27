@@ -67,7 +67,7 @@ SystemParametersUpdateResult SystemSettingsService::updateSystemParameters(
                                                "vacío."));
             continue;
         }
-        domain::SystemParameterPolicy::check(edit.parameter, *edit.edited, validation);
+        domain::SystemParameterPolicy::check(edit.parameter, *edit.edited, edit.loaded, validation);
         changes << SettingsRepository::Change{edit.parameter, edit.loaded, *edit.edited};
     }
 

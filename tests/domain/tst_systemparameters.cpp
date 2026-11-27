@@ -15,10 +15,11 @@ using domain::SystemParameterPolicy;
 
 namespace {
 
-QStringList errorsFor(SystemParameter parameter, qint64 hundredths)
+QStringList errorsFor(SystemParameter parameter, qint64 hundredths,
+                      std::optional<qint64> current = std::nullopt)
 {
     domain::ValidationResult result;
-    SystemParameterPolicy::check(parameter, hundredths, result);
+    SystemParameterPolicy::check(parameter, hundredths, current, result);
     return result.fields();
 }
 
@@ -56,14 +57,43 @@ private slots:
         QCOMPARE(errorsFor(SystemParameter::UmaDailyValue, 0), QStringList{QStringLiteral("umaDailyValue")});
     }
 
-    // Un punto decimal fuera de lugar multiplicaría el tope de efectivo.
-    void umaHasAPlausibleCeiling()
+    // Un punto decimal fuera de lugar multiplicaría (o dividiría) el tope de
+    // efectivo: la UMA nueva queda entre la mitad y el doble de la vigente.
+    void umaCannotJumpFromTheCurrentOne_data()
     {
-        QVERIFY(errorsFor(SystemParameter::UmaDailyValue, 100000).isEmpty());
-        QCOMPARE(errorsFor(SystemParameter::UmaDailyValue, 100001),
-                 QStringList{QStringLiteral("umaDailyValue")});
-        QCOMPARE(errorsFor(SystemParameter::UmaDailyValue, 1173100),
-                 QStringList{QStringLiteral("umaDailyValue")});
+        QTest::addColumn<qint64>("current");
+        QTest::addColumn<qint64>("hundredths");
+        QTest::addColumn<bool>("valid");
+        QTest::newRow("el aumento de un año") << qint64(11731) << qint64(12200) << true;
+        QTest::newRow("justo el doble") << qint64(11731) << qint64(23462) << true;
+        QTest::newRow("más del doble") << qint64(11731) << qint64(23463) << false;
+        QTest::newRow("punto olvidado") << qint64(11731) << qint64(1173100) << false;
+        QTest::newRow("justo la mitad") << qint64(11730) << qint64(5865) << true;
+        QTest::newRow("menos de la mitad") << qint64(11731) << qint64(5865) << false;
+        QTest::newRow("punto corrido") << qint64(11731) << qint64(1173) << false;
+        // Con la UMA en miles de pesos (dentro de un siglo) sigue sirviendo.
+        QTest::newRow("dentro de un siglo") << qint64(1500000) << qint64(1560000) << true;
+    }
+
+    void umaCannotJumpFromTheCurrentOne()
+    {
+        QFETCH(qint64, current);
+        QFETCH(qint64, hundredths);
+        QFETCH(bool, valid);
+        QCOMPARE(errorsFor(SystemParameter::UmaDailyValue, hundredths, current).isEmpty(), valid);
+    }
+
+    void umaJumpErrorNamesTheCurrentValue()
+    {
+        domain::ValidationResult result;
+        SystemParameterPolicy::check(SystemParameter::UmaDailyValue, 1173100, 11731, result);
+        QVERIFY(result.firstMessage().contains(QStringLiteral("$117.31")));
+    }
+
+    // Sin una vigente no hay contra qué comparar: basta con que sea positiva.
+    void firstUmaOnlyNeedsToBePositive()
+    {
+        QVERIFY(errorsFor(SystemParameter::UmaDailyValue, 1173100).isEmpty());
     }
 
     // Más estricto que la ley sí; mayor, fraccionario o cero, no.

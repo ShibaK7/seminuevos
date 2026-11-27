@@ -137,7 +137,7 @@ private slots:
     void invalidValuesAreRejectedWithoutSaving()
     {
         QList<SystemParameterEditDto> edits = untouched();
-        edit(edits, SystemParameter::UmaDailyValue).edited = 100001;         // más de $1,000
+        edit(edits, SystemParameter::UmaDailyValue).edited = 100001;         // más del doble de 117.31
         edit(edits, SystemParameter::CashLimitUmaMultiple).edited = 500000; // 5,000 UMA
 
         const auto result = service().updateSystemParameters(edits, admin());
