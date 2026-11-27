@@ -268,11 +268,12 @@ VehicleBuilder &VehicleBuilder::setInvoiceFilePath(const QString &value)
     return *this;
 }
 
-VehicleBuilder &VehicleBuilder::setUmaDailyValue(double value)
+VehicleBuilder &VehicleBuilder::setCashLimit(const CashLimitTerms &terms)
 {
-    if (m_acquired && !m_acquired->setUmaDailyValue(value)) {
+    if (m_acquired && !m_acquired->setCashLimit(terms)) {
         noteRejected(QStringLiteral("umaDailyValue"),
-                     QStringLiteral("El valor de la UMA no puede ser negativo."));
+                     QStringLiteral("La UMA no puede ser negativa y el tope en UMA debe ser "
+                                    "positivo."));
     }
     return *this;
 }

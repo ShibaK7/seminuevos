@@ -10,6 +10,7 @@
 #include "presentation/inventory/record/vehiclerecordview.h"
 #include "presentation/inventory/registration/vehiclewizardview.h"
 #include "presentation/commercial/registration/salewizardview.h"
+#include "presentation/settings/settingsview.h"
 
 #include <QCloseEvent>
 #include <QPushButton>
@@ -33,7 +34,8 @@ MainWindow::MainWindow(QWidget *parent)
     // "Agregar Vehículo". Es también lo que deja el foco inicial en el filtro
     // de estado.
     QList<QWidget *> focusChain = ui->inventoryPage->leadingFocusWidgets();
-    focusChain << ui->inventoryItem << ui->commercialItem << ui->financeItem << ui->reportItem;
+    focusChain << ui->inventoryItem << ui->commercialItem << ui->financeItem << ui->reportItem
+               << ui->settingsItem;
     focusChain << ui->inventoryPage->trailingFocusWidgets();
     for (qsizetype i = 0; i + 1 < focusChain.size(); ++i)
         QWidget::setTabOrder(focusChain.at(i), focusChain.at(i + 1));
@@ -73,6 +75,25 @@ MainWindow::MainWindow(QWidget *parent)
             [this] { showModulePending(QStringLiteral("Finanzas")); });
     connect(ui->reportItem, &QPushButton::clicked, this,
             [this] { showModulePending(QStringLiteral("Reportes")); });
+
+    // Configuraciones solo aparece si la raíz de composición entrega su página
+    // (setSettingsPage), es decir, para el Administrador.
+    ui->settingsItem->setVisible(false);
+}
+
+void MainWindow::setSettingsPage(SettingsView *page)
+{
+    m_settingsPage = page;
+    ui->mainContentStack->addWidget(page);
+    ui->settingsItem->setVisible(true);
+    connect(ui->settingsItem, &QPushButton::clicked, this, [this] {
+        if (!m_settingsPage)
+            return;
+        ui->settingsItem->setChecked(true);
+        ui->mainContentStack->setCurrentWidget(m_settingsPage);
+        // Otro administrador pudo cambiar algo mientras tanto.
+        m_settingsPage->refresh();
+    });
 }
 
 MainWindow::~MainWindow()
@@ -345,6 +366,12 @@ void MainWindow::closeEvent(QCloseEvent *event)
     // muestra para que siga donde iba.
     if (m_record && !m_record->confirmLeave()) {
         ui->mainContentStack->setCurrentWidget(m_record);
+        event->ignore();
+        return;
+    }
+    if (m_settingsPage && !m_settingsPage->confirmLeave()) {
+        ui->settingsItem->setChecked(true);
+        ui->mainContentStack->setCurrentWidget(m_settingsPage);
         event->ignore();
         return;
     }

@@ -55,7 +55,7 @@ inline domain::VehicleBuilder validAcquisition(double uma = kUma2026)
         .setSalePrice(180000.0)
         .setPaymentType(domain::PaymentType::Contado)
         .setPaymentMethod(domain::PaymentMethod::Transferencia)
-        .setUmaDailyValue(uma);
+        .setCashLimit(domain::CashLimitTerms{uma});
     return builder;
 }
 

@@ -34,8 +34,14 @@ void VehicleDetailsPresenter::start()
 
 void VehicleDetailsPresenter::setLookups(const application::RegistrationLookupsDto &lookups)
 {
-    m_umaDailyValue = lookups.umaDailyValue;
+    m_cashLimit = lookups.cashLimit;
+    m_cashAvailable = lookups.cashAvailable;
     m_view.setLookups(lookups);
+}
+
+void VehicleDetailsPresenter::setCashAvailable(const QMap<domain::CashAccount, qint64> &available)
+{
+    m_cashAvailable = available;
 }
 
 application::VehicleDetailsDto VehicleDetailsPresenter::dto() const
@@ -60,7 +66,7 @@ void VehicleDetailsPresenter::showMaintenanceCost(double cost)
 
 domain::ValidationResult VehicleDetailsPresenter::collectErrors() const
 {
-    return m_service.validateDetails(dto(), m_umaDailyValue);
+    return m_service.validateDetails(dto(), m_cashLimit, m_cashAvailable);
 }
 
 bool VehicleDetailsPresenter::isAutofacturaSelected() const

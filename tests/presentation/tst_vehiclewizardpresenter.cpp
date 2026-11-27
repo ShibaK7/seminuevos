@@ -88,6 +88,26 @@ private slots:
         QVERIFY(m_filesView.imageFormats.extensions.contains(QStringLiteral("png")));
     }
 
+    // Una compra de contado no pasa de lo que hay en la cuenta de su método.
+    // Ese saldo pudo cambiar mientras el asistente estaba oculto (se
+    // capturaron los saldos iniciales, entró una venta): al volver se relee, y
+    // un saldo viejo ya no bloquea una compra que sí se puede pagar.
+    void staleCashIsRefreshedWhenTheWizardReturns()
+    {
+        m_reference.cash = {{domain::CashAccount::PettyCash, 0}, {domain::CashAccount::Bank, 0}};
+        startPresenter();
+        captureValidSteps();
+        m_presenter->onPrimaryAction();
+        QCOMPARE(m_wizard.shownStep, 0);
+        QVERIFY(m_details.markedFields().contains(QStringLiteral("purchasePrice")));
+
+        m_reference.cash[domain::CashAccount::Bank] = 100000000;
+        m_presenter->refreshCash();
+        QVERIFY(!m_details.markedFields().contains(QStringLiteral("purchasePrice")));
+        m_presenter->onPrimaryAction();
+        QCOMPARE(m_wizard.shownStep, 1);
+    }
+
     void nextWithInvalidDetailsStaysAndExplains()
     {
         startPresenter();

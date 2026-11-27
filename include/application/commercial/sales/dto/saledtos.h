@@ -65,6 +65,9 @@ struct SaleInstallmentDto
 struct SaleFinancingDto
 {
     double downPayment = 0.0;
+    // How the down payment was paid: cash goes into Caja Chica, a transfer
+    // into Banco. Required when there is a down payment.
+    std::optional<domain::PaymentMethod> downPaymentMethod;
     double amountToFinance = 0.0;
     double interestRatePercent = 0.0;
     int monthsTerm = 0;

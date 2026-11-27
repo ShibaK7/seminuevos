@@ -45,7 +45,8 @@ public:
     // transacción: la unidad (solo si su versión, xmin, sigue siendo la que
     // se leyó), la contraparte (solo si se cambió, y con su propia versión),
     // la subtabla de su rama, las condiciones y, reemplazados, la inspección,
-    // las fotos y los documentos con archivo.
+    // las fotos y los documentos con archivo. Si cambian los términos de la
+    // compra, ajusta en la misma transacción las cuentas de dinero.
     UpdateOutcome update(domain::Vehicle &vehicle, const Expected &expected) override;
 
 private:

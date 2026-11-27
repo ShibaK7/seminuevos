@@ -34,6 +34,8 @@ public:
     // Pinta el estado inicial de la factura. Se llama una vez, ya conectado.
     void start();
     void setLookups(const application::RegistrationLookupsDto &lookups);
+    // Lo que hay en cada cuenta de dinero, releído (otra sesión pudo moverlo).
+    void setCashAvailable(const QMap<domain::CashAccount, qint64> &available);
 
     // Lo capturado más la factura que cuenta como adjunta.
     application::VehicleDetailsDto dto() const;
@@ -57,9 +59,12 @@ private:
     IVehicleDetailsView &m_view;
     const application::VehicleRegistrationService &m_service;
     AcquisitionTermsPresenter m_acquisitionTerms;
-    // UMA vigente, leída con los catálogos. Sin ella no se valida el tope de
-    // efectivo y el pago en efectivo se rechaza.
-    std::optional<double> m_umaDailyValue;
+    // UMA vigente y tope de efectivo, leídos con los catálogos. Sin UMA no se
+    // valida el tope y el pago en efectivo se rechaza.
+    domain::CashLimitTerms m_cashLimit;
+    // Lo que hay en Caja Chica y Cantidad Banco: una compra de contado no
+    // puede pasar de lo que hay en la cuenta de su método. Vacío: no se revisa.
+    QMap<domain::CashAccount, qint64> m_cashAvailable;
 };
 
 } // namespace presentation

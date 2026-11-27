@@ -2,8 +2,11 @@
 #define APPLICATION_INVENTORY_REGISTRATION_DTO_CATALOGDTOS_H
 
 #include "application/common/dto/catalogoptiondto.h"
+#include "domain/common/value_objects/cashlimitterms.h"
+#include "domain/finance/value_objects/cashaccount.h"
 
 #include <QList>
+#include <QMap>
 #include <QString>
 
 #include <optional>
@@ -27,7 +30,12 @@ struct RegistrationLookupsDto
     QList<CatalogOptionDto> brands;
     QList<CatalogOptionDto> fuelTypes;
     QList<ChecklistItemDto> checklist;
-    std::optional<double> umaDailyValue;
+    // La UMA y el tope de efectivo. Sin UMA, umaDailyValue queda en 0.
+    domain::CashLimitTerms cashLimit;
+    // Lo que hay en Caja Chica y Cantidad Banco, en centésimos: una compra de
+    // contado no puede pasar de lo que hay en la cuenta de su método. Vacío si
+    // no se pudo leer (entonces lo decide el guardado).
+    QMap<domain::CashAccount, qint64> cashAvailable;
     QString errorMessage; // si algo no se pudo leer
 };
 

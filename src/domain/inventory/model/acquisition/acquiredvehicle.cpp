@@ -95,16 +95,16 @@ void AcquiredVehicle::setInvoiceFilePath(const QString &value)
     m_invoiceFilePath = value;
 }
 
-double AcquiredVehicle::umaDailyValue() const
+const CashLimitTerms &AcquiredVehicle::cashLimit() const
 {
-    return m_umaDailyValue;
+    return m_cashLimit;
 }
 
-bool AcquiredVehicle::setUmaDailyValue(double value)
+bool AcquiredVehicle::setCashLimit(const CashLimitTerms &terms)
 {
-    if (value < 0.0)
+    if (terms.umaDailyValue < 0.0 || terms.umaMultiple <= 0)
         return false;
-    m_umaDailyValue = value;
+    m_cashLimit = terms;
     return true;
 }
 
@@ -161,7 +161,7 @@ void AcquiredVehicle::collectSpecificErrors(ValidationResult &result) const
     // El tope legal es sobre el MÉTODO de pago (efectivo), no sobre el tipo
     // (contado/crédito): un contado por transferencia es legal a cualquier
     // monto. Lo que la agencia liquida es el precio de compra.
-    CashPaymentLimit(m_umaDailyValue).check(m_paymentMethod, m_purchasePrice, result);
+    CashPaymentLimit(m_cashLimit).check(m_paymentMethod, m_purchasePrice, result);
 }
 
 } // namespace domain

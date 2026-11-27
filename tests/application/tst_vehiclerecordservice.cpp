@@ -182,6 +182,21 @@ private slots:
         QCOMPARE(m_vehicles.updates, 0);
     }
 
+    // El tope de efectivo que fijó el Administrador también manda al corregir.
+    void configuredCashLimitIsUsedOnUpdate()
+    {
+        m_reference.umaMultiple = 1000;
+        application::VehicleUpdateDto update = editedRecord();
+        update.details.paymentMethod = domain::PaymentMethod::Efectivo;
+        update.details.purchasePrice = 150000.0;
+
+        const auto result = service().update(update, UserRole::Admin);
+        QCOMPARE(result.status, UpdateStatus::Rejected);
+        QVERIFY2(result.validation.joinedMessages().contains(QStringLiteral("1,000 UMA")),
+                 qPrintable(result.validation.joinedMessages()));
+        QCOMPARE(m_vehicles.updates, 0);
+    }
+
     // Si otro usuario la cambió desde que se leyó, no se copia nada.
     void staleVersionConflictsBeforeCopying()
     {
@@ -343,6 +358,8 @@ private slots:
                              << QStringLiteral("serialNumber");
         QTest::newRow("identificación") << 4 << static_cast<int>(UpdateStatus::Rejected)
                                         << QStringLiteral("counterparty.nationalId");
+        QTest::newRow("sin saldo") << 5 << static_cast<int>(UpdateStatus::Rejected)
+                                   << QStringLiteral("purchasePrice");
     }
 
     void failedSaveRemovesOnlyTheCopies()
@@ -357,6 +374,11 @@ private slots:
         failure.duplicateSerialNumber = outcome == 3;
         if (outcome == 4)
             failure.takenNationalIdOwner = QStringLiteral("Ana Prueba");
+        if (outcome == 5) {
+            failure.insufficientFunds = true;
+            failure.fundsAccount = domain::CashAccount::PettyCash;
+            failure.availableHundredths = 150000;
+        }
         m_vehicles.updateOutcome = failure;
 
         application::VehicleUpdateDto update = editedRecord();
@@ -369,6 +391,9 @@ private slots:
             QVERIFY(result.validation.fields().contains(field));
         if (outcome == 4)
             QVERIFY(result.validation.joinedMessages().contains(QStringLiteral("Ana Prueba")));
+        if (outcome == 5)
+            QCOMPARE(result.validation.firstMessage(),
+                     QStringLiteral("Caja Chica solo tiene $1,500.00 disponibles."));
         QCOMPARE(m_files.stored.size(), 1);
         QCOMPARE(m_files.removed, m_files.stored);
     }

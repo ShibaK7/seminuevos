@@ -28,6 +28,7 @@ class SaleDetailsView;
 class VehicleRecordView;
 class VehicleWizardView;
 class SaleWizardView;
+class SettingsView;
 
 // Ventana principal: la cáscara. Barra lateral de módulos, barra superior con
 // el rol y, dentro del área de contenido, una pila que alterna entre la página
@@ -72,9 +73,15 @@ public:
     void bindInventory(presentation::InventoryPresenter &presenter);
     void bindCommercial(presentation::CommercialPresenter &presenter);
 
+    // La página Configuraciones (US-07.1). La raíz de composición la arma
+    // solo si el rol la puede ver; sin ella, el menú no muestra el módulo.
+    // Con ella, la ventana la toma (pasa a ser su página) y muestra el menú.
+    void setSettingsPage(SettingsView *page);
+
 protected:
     // Cerrar la ventana también pregunta por los cambios sin guardar del
-    // expediente (y espera si se están guardando).
+    // expediente y de los parámetros de Configuraciones (y espera si se están
+    // guardando).
     void closeEvent(QCloseEvent *event) override;
 
 private:
@@ -134,5 +141,8 @@ private:
 
     // El presenter de la rejilla. Su dueño es esta ventana (es su hijo).
     QPointer<presentation::InventoryPresenter> m_inventory;
+    // Configuraciones, si el rol la puede ver. Cambiar de módulo no la cierra:
+    // queda viva con lo capturado, como el expediente.
+    QPointer<SettingsView> m_settingsPage;
 };
 #endif // PRESENTATION_SHELL_MAINWINDOW_H

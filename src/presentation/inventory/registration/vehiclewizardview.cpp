@@ -91,6 +91,15 @@ VehicleFilesView &VehicleWizardView::filesView()
     return *ui->filesPage;
 }
 
+void VehicleWizardView::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    // El presenter ignora la primera vez (todavía no llegan los catálogos,
+    // que ya traen las cuentas).
+    if (m_presenter)
+        m_presenter->refreshCash();
+}
+
 void VehicleWizardView::bind(presentation::VehicleWizardPresenter &presenter)
 {
     using presentation::VehicleWizardPresenter;

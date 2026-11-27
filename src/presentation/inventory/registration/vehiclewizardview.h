@@ -75,6 +75,11 @@ signals:
     // el inventario de atrás ya esté actualizado cuando se vuelva a ver.
     void vehicleRegistered(int folio);
 
+protected:
+    // Al volver a mostrarse (el usuario fue a otra página y regresó con
+    // "Agregar Vehículo"), el presenter relee lo que hay en las cuentas.
+    void showEvent(QShowEvent *event) override;
+
 private:
     bool eventFilter(QObject *watched, QEvent *event) override;
 

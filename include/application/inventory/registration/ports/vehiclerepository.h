@@ -1,6 +1,8 @@
 #ifndef APPLICATION_INVENTORY_REGISTRATION_PORTS_VEHICLEREPOSITORY_H
 #define APPLICATION_INVENTORY_REGISTRATION_PORTS_VEHICLEREPOSITORY_H
 
+#include "domain/finance/value_objects/cashaccount.h"
+
 #include <QString>
 
 namespace domain {
@@ -22,6 +24,12 @@ public:
         int folio = -1;
         // El VIN ya existía (lo rechazó la restricción UNIQUE de la base).
         bool duplicateSerialNumber = false;
+        // Una compra de contado y su cuenta (Caja Chica o Cantidad Banco) no
+        // tiene con qué pagarla: no se guardó nada. Lo que tiene, en
+        // centésimos.
+        bool insufficientFunds = false;
+        domain::CashAccount fundsAccount = domain::CashAccount::PettyCash;
+        qint64 availableHundredths = 0;
         QString errorMessage;
     };
 
@@ -56,6 +64,11 @@ public:
         // La identificación capturada ya es de otra persona, con otro nombre:
         // el suyo. No se liga sin que el usuario lo revise.
         QString takenNationalIdOwner;
+        // Corregir la compra (precio, tipo o método) saca más de lo que hay
+        // en su cuenta: no se guardó nada.
+        bool insufficientFunds = false;
+        domain::CashAccount fundsAccount = domain::CashAccount::PettyCash;
+        qint64 availableHundredths = 0;
         QString errorMessage;
     };
 
@@ -69,12 +82,16 @@ public:
     virtual bool serialNumberExistsElsewhere(const QString &serialNumber, int folio,
                                              QString *error) = 0;
 
-    // Guarda todo o nada y asigna el folio a la unidad.
+    // Guarda todo o nada y asigna el folio a la unidad. Una compra de contado
+    // saca su precio de Caja Chica o Cantidad Banco (CashFlowRules) en la
+    // misma transacción; sin saldo no se guarda.
     virtual SaveOutcome add(domain::Vehicle &vehicle) = 0;
 
     // Corrige la unidad ya guardada con el folio de `vehicle`, todo o nada, y
     // solo si sigue como se leyó (`expected`). Nunca cambia su rama, su estado
-    // ni el costo de mantenimientos: ese lo acumula el historial.
+    // ni el costo de mantenimientos: ese lo acumula el historial. Si cambian
+    // el precio, el tipo o el método de la compra, ajusta las cuentas de
+    // dinero en la misma transacción; sin saldo no se guarda.
     virtual UpdateOutcome update(domain::Vehicle &vehicle, const Expected &expected) = 0;
 
 protected:

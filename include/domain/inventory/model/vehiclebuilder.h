@@ -81,9 +81,9 @@ public:
     VehicleBuilder &setPaymentType(PaymentType value);
     VehicleBuilder &setPaymentMethod(PaymentMethod value);
     VehicleBuilder &setInvoiceFilePath(const QString &value);
-    // UMA vigente, leída de la configuración por la capa de aplicación. Sin
-    // ella la regla del pago en efectivo no se puede evaluar.
-    VehicleBuilder &setUmaDailyValue(double value);
+    // UMA vigente y tope en UMA, leídos de la configuración por la capa de
+    // aplicación. Sin la UMA la regla del pago en efectivo no se puede evaluar.
+    VehicleBuilder &setCashLimit(const CashLimitTerms &terms);
 
     // --- Paso 1: solo consignación ----------------------------------------
     VehicleBuilder &setBasePrice(double value);

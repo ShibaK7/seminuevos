@@ -8,6 +8,7 @@
 // Funciones libres y no una clase "Mapper": no tienen estado ni invariantes.
 
 #include "application/inventory/registration/dto/registrationdtos.h"
+#include "domain/common/value_objects/cashlimitterms.h"
 
 namespace domain {
 class VehicleBuilder;
@@ -19,7 +20,7 @@ namespace application::mapping {
 // cuenta (los de la contraparte), para que no se pierdan en silencio.
 domain::ValidationResult applyDetails(domain::VehicleBuilder &builder,
                                       const VehicleDetailsDto &details,
-                                      std::optional<double> umaDailyValue);
+                                      const domain::CashLimitTerms &cashLimit);
 
 domain::ValidationResult applyConditions(domain::VehicleBuilder &builder,
                                          const VehicleConditionsDto &conditions);

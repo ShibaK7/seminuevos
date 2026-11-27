@@ -20,9 +20,9 @@ seminuevos/
 │   └── ESTRUCTURA.md                Este archivo
 │
 ├── init-db/                         Scripts que Docker corre al crear la base (en orden por su número)
-│   ├── 00_schema.sql                Tablas, llaves y CHECKs
+│   ├── 00_schema.sql                Tablas, llaves y CHECKs (también las cuentas de dinero y su bitácora)
 │   ├── 10…14_*_cat.sql              Catálogos: marcas, combustibles, tipos/subtipos, checklist, mantenimientos
-│   └── 90_global_configurations.sql Parámetros globales (UMA vigente)
+│   └── 90_global_configurations.sql Parámetros globales: UMA y tope de efectivo (valores iniciales)
 │
 ├── resources/                       Todo lo que se compila dentro del ejecutable (Resources.qrc)
 │   ├── Resources.qrc                Índice de recursos (:/icons, :/styles, :/templates, :/resources/images)
@@ -42,9 +42,19 @@ seminuevos/
 │   │
 │   ├── domain/                      NÚCLEO: reglas del negocio. Solo QtCore; no conoce a nadie
 │   │   ├── common/                  Lo que usan varios módulos
-│   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts
+│   │   │   ├── value_objects/       enums, CatalogRef, ValidationResult, FileFacts, CashLimitTerms (UMA y tope)
 │   │   │   └── rules/
-│   │   │       └── cashpaymentlimit  Tope LFPIORPI: 3,210 UMA en pagos en efectivo
+│   │   │       └── cashpaymentlimit  Tope de pago en efectivo: el que fija el Administrador, nunca más de 3,210 UMA (LFPIORPI)
+│   │   ├── finance/                 Dónde está el dinero: Caja Chica (efectivo), Cantidad Banco (transferencia)
+│   │   │   │                        y Caja Fuerte
+│   │   │   ├── value_objects/       cashaccount (las tres cuentas), cashmovement (entrada o salida, con signo)
+│   │   │   └── rules/               cashflowrules (qué mueve cada operación: compra, corrección, venta, enganche,
+│   │   │                            mantenimiento, gasto), cashmovementpolicy (saldos iniciales, ingreso y retiro
+│   │   │                            de Caja Fuerte: nada saca más de lo que hay)
+│   │   ├── settings/                Configuraciones (US-07.1)
+│   │   │   ├── value_objects/       systemparameter: los parámetros del negocio (UMA y tope de efectivo)
+│   │   │   └── rules/               systemparameterpolicy (qué valor acepta cada uno), settingsaccess (solo el
+│   │   │                            Administrador), useraccountpolicy (usuario, contraseña, propio rol y cuenta)
 │   │   └── inventory/               Módulo Inventario
 │   │       ├── model/               Entidades con sus invariantes
 │   │       │   ├── vehicle           Vehicle (abstracta): datos comunes, validate() como Template Method, contrato
@@ -73,6 +83,16 @@ seminuevos/
 │   │   │   ├── dto/                 authdtos
 │   │   │   ├── ports/               userdirectory, passwordhasher
 │   │   │   └── services/            authenticationservice
+│   │   ├── finance/                 Las cuentas de dinero
+│   │   │   ├── dto/                 cashdtos (saldos, movimientos, apertura, ingreso y retiro)
+│   │   │   ├── ports/               cashledger (lo que el Administrador mueve a mano)
+│   │   │   └── services/            cashledgerservice (saldos y bitácora; saldos iniciales una vez; Caja Fuerte)
+│   │   ├── settings/                Configuraciones (US-07.1): parámetros del negocio y cuentas de usuario
+│   │   │   ├── dto/                 settingsdtos (parámetros, en centésimos), useraccountdtos (cuentas)
+│   │   │   ├── ports/               settingsrepository (#83, #84), useraccountrepository
+│   │   │   └── services/            systemsettingsservice (solo guarda lo que cambió, con conflicto si otro
+│   │   │                            lo cambió), useradministrationservice (alta, nombre y rol, contraseña,
+│   │   │                            activar y desactivar)
 │   │   └── inventory/               Módulo Inventario
 │   │       ├── dto/                 inventorydtos: filtro y tarjeta de la rejilla
 │   │       ├── ports/               inventoryreader
@@ -95,9 +115,17 @@ seminuevos/
 │   │   │   ├── connectionpool        Una conexión por hilo; en Debug prohíbe SQL en el hilo de la interfaz
 │   │   │   ├── auth/                sqluserdirectory (usuarios), devseeder (usuarios de prueba, solo desarrollo)
 │   │   │   ├── common/              sqlcounterpartydirectory (búsqueda y actualización de personas compartidas)
+│   │   │   ├── schemaupgrade         Pone al día una base creada con un init-db/ anterior (users.active, last_login,
+│   │   │   │                        cuentas de dinero, método del enganche)
+│   │   │   ├── finance/             cashledgerwriter (aplica movimientos dentro de la transacción de quien llama,
+│   │   │   │                        solo si hay saldo), sqlcashledger (el puerto cashledger)
+│   │   │   ├── settings/            settingskeys (llaves de global_configurations), activeadministrator (quien
+│   │   │   │                        escribe sigue siendo Administrador activo), sqlsettingsrepository
+│   │   │   │                        (parámetros, todo o nada, con el valor esperado en el WHERE),
+│   │   │   │                        sqluseraccountrepository (cuentas: candado, quién actúa y último Administrador)
 │   │   │   └── inventory/           sqlvehiclerepository (alta y corrección transaccionales, con versión),
 │   │   │                            sqlcounterpartyrepository (contraparte: buscar, crear, corregir o religar),
-│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos y UMA),
+│   │   │                            sqlinventoryreader (rejilla), sqlreferencedatareader (catálogos, UMA y tope),
 │   │   │                            sqlvehiclerecordreader (el expediente de un folio, en una sola lectura)
 │   │   ├── storage/                 Disco local (localfilestorage): almacén por VIN, miniaturas, temporales
 │   │   ├── contract/                PDF del contrato: pdfcontractgenerator, datos de la agencia, número a letras
@@ -107,7 +135,7 @@ seminuevos/
 │   │   │                            pantalla viven juntos en su carpeta (MVP: el presenter decide, la
 │   │   │                            vista solo pinta y avisa; ninguna vista toca base ni disco)
 │   │   ├── shell/                   mainwindow (.ui/.h/.cpp): la cáscara (menú lateral, barra superior, pila de páginas:
-│   │   │                            inventario, asistente de alta y expediente)
+│   │   │                            inventario, asistente de alta, expediente y Configuraciones)
 │   │   ├── login/                   loginwindow (.ui/.h/.cpp), loginpresenter, iloginview.h
 │   │   ├── common/                  Lo que usan todos los módulos
 │   │   │   ├── components/          Componentes promovibles en Designer: sidebarmenuitem, navtabitem,
@@ -117,6 +145,15 @@ seminuevos/
 │   │   │   ├── navigation/          wizardnavigator: qué paso se ve, cuáles son válidos, palomitas y bloqueos;
 │   │   │   │                        editsession: consulta o edición (FormMode) y si hay cambios sin guardar
 │   │   │   └── tasks/               taskrunner y pooledtaskrunner: trabajo fuera del hilo de la interfaz
+│   │   ├── settings/                Menú Configuraciones (solo Administrador, US-07.1)
+│   │   │   ├── settingsview (.ui/.h/.cpp)   La página: parámetros, saldos y usuarios
+│   │   │   ├── systemsettingswidget (.ui/.h/.cpp), systemsettingspresenter, isystemsettingsview.h
+│   │   │   │                        Los parámetros (#82): solo lectura hasta Editar, Guardar / Cancelar
+│   │   │   ├── cashbalanceswidget (.ui/.h/.cpp), cashmovementdialog (.ui/.h/.cpp),
+│   │   │   │                        cashbalancespresenter, icashbalancesview.h   Los saldos: Caja Chica,
+│   │   │   │                        Cantidad Banco y Caja Fuerte, saldos iniciales, ingreso, retiro y movimientos
+│   │   │   └── usermanagementwidget (.ui/.h/.cpp), useraccountdialog (.ui/.h/.cpp),
+│   │   │                            usermanagementpresenter, iusermanagementview.h   Los usuarios
 │   │   └── inventory/               Menú Inventario
 │   │       ├── inventoryview (.ui/.h/.cpp), inventorypresenter, iinventoryview.h
 │   │       │                        La página: pestañas, filtros y rejilla

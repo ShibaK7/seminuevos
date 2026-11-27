@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsView</class>
+ <widget class="QWidget" name="SettingsView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="settingsLayout" stretch="0,1">
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="text">
+      <string>Configuraciones</string>
+     </property>
+     <property name="class" stdset="0">
+      <string notr="true">h1</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QScrollArea" name="settingsScrollArea">
+     <property name="frameShape">
+      <enum>QFrame::Shape::NoFrame</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="settingsContent">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>1080</width>
+        <height>740</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="settingsContentLayout" stretch="0,0,0,1">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="SystemSettingsWidget" name="systemSettings" native="true"/>
+       </item>
+       <item>
+        <widget class="CashBalancesWidget" name="cashBalances" native="true"/>
+       </item>
+       <item>
+        <widget class="UserManagementWidget" name="userManagement" native="true"/>
+       </item>
+       <item>
+        <spacer name="settingsBottomSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>SystemSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>presentation/settings/systemsettingswidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CashBalancesWidget</class>
+   <extends>QWidget</extends>
+   <header>presentation/settings/cashbalanceswidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>UserManagementWidget</class>
+   <extends>QWidget</extends>
+   <header>presentation/settings/usermanagementwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

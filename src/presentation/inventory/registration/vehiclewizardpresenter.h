@@ -64,6 +64,11 @@ public:
     void onPrimaryAction();
     void onCancel();
     void onPrintContract();
+    // Vuelve a leer lo que hay en Caja Chica y Cantidad Banco y revalida el
+    // paso Detalles: el asistente se queda abierto mientras el usuario va a
+    // otra página, y ahí se pudieron capturar los saldos iniciales o mover las
+    // cuentas. La vista lo pide al volver a mostrarse.
+    void refreshCash();
 
 signals:
     // Se emite en cuanto la unidad queda guardada, antes de cerrar, para que
@@ -101,6 +106,8 @@ private:
     bool m_loaded = false;
     bool m_saving = false;
     bool m_registered = false;
+    // Cada relectura de las cuentas lleva un número; solo cuenta la última.
+    int m_cashGeneration = 0;
     // Lo que el contrato dice, ya decidido por el dominio al registrar.
     std::optional<domain::ContractData> m_contract;
 };

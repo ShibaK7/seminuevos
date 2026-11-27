@@ -11,6 +11,7 @@
 #include "adapters/persistence/inventory/sqlreferencedatareader.h"
 #include "adapters/persistence/inventory/sqlvehiclerecordreader.h"
 #include "adapters/persistence/inventory/sqlvehiclerepository.h"
+#include "adapters/persistence/schemaupgrade.h"
 #include "adapters/storage/localfilestorage.h"
 #include "application/auth/services/authenticationservice.h"
 #include "application/commercial/sales/services/saleservice.h"
@@ -41,6 +42,22 @@
 #include "presentation/login/loginpresenter.h"
 #include "presentation/login/loginwindow.h"
 #include "presentation/shell/mainwindow.h"
+
+// Configuraciones (US-07.1).
+#include "adapters/persistence/finance/sqlcashledger.h"
+#include "adapters/persistence/settings/sqlsettingsrepository.h"
+#include "adapters/persistence/settings/sqluseraccountrepository.h"
+#include "application/finance/services/cashledgerservice.h"
+#include "application/settings/services/systemsettingsservice.h"
+#include "application/settings/services/useradministrationservice.h"
+#include "domain/settings/rules/settingsaccess.h"
+#include "presentation/settings/cashbalancespresenter.h"
+#include "presentation/settings/cashbalanceswidget.h"
+#include "presentation/settings/settingsview.h"
+#include "presentation/settings/systemsettingspresenter.h"
+#include "presentation/settings/systemsettingswidget.h"
+#include "presentation/settings/usermanagementpresenter.h"
+#include "presentation/settings/usermanagementwidget.h"
 
 #include <QApplication>
 #include <QFile>
@@ -141,6 +158,16 @@ bool CompositionRoot::start()
             return false;
         }
 
+        // Una base creada antes de la última versión del esquema se pone al
+        // día aquí (hoy, users.active): sin esto el login fallaría.
+        const SchemaUpgrade::Result upgrade = SchemaUpgrade::run(db);
+        if (!upgrade.ok) {
+            QMessageBox::critical(nullptr, QStringLiteral("Error al actualizar la base"),
+                QStringLiteral("No se pudo poner al día el esquema de la base de datos: %1")
+                    .arg(upgrade.errorMessage));
+            return false;
+        }
+
         if (m_settings.seedTestUsers) {
             const DevSeeder::Result seed = DevSeeder::run(db, m_hasher);
             if (!seed.ok) {
@@ -176,6 +203,13 @@ bool CompositionRoot::start()
         *m_maintenanceRepository, *m_referenceData, m_receipts);
     m_commercialReader = std::make_unique<SqlCommercial>(pool);
     m_commercial = std::make_unique<application::CommercialService>(*m_commercialReader, *m_commercialReader);
+    m_settingsRepository = std::make_unique<SqlSettingsRepository>(pool);
+    m_systemSettings = std::make_unique<application::SystemSettingsService>(*m_settingsRepository);
+    m_userAccounts = std::make_unique<SqlUserAccountRepository>(pool);
+    m_userAdministration =
+        std::make_unique<application::UserAdministrationService>(*m_userAccounts, m_hasher);
+    m_cashLedger = std::make_unique<SqlCashLedger>(pool);
+    m_cashLedgerService = std::make_unique<application::CashLedgerService>(*m_cashLedger);
 
     m_login = std::make_unique<LoginWindow>();
     m_login->installEventFilter(new LoginCloseWatcher(m_login.get()));
@@ -268,6 +302,26 @@ void CompositionRoot::showMain(const application::SessionDto &session)
             maintenance->start();
             return view;
         });
+
+        // Configuraciones (US-07.1), solo para quien la puede ver: sin la
+        // página, el menú no muestra el módulo. Los presenters son hijos de
+        // la página y mueren antes que sus vistas.
+        if (domain::SettingsAccess(session.role).canOpenSettings()) {
+            auto *settingsPage = new SettingsView(mainWindow);
+            auto *parameters = new presentation::SystemSettingsPresenter(
+                settingsPage->systemSettings(), *m_systemSettings, m_runner, session,
+                settingsPage);
+            auto *balances = new presentation::CashBalancesPresenter(
+                settingsPage->cashBalances(), *m_cashLedgerService, m_runner, session, settingsPage);
+            auto *users = new presentation::UserManagementPresenter(
+                settingsPage->userManagement(), *m_userAdministration, m_runner, session,
+                settingsPage);
+            settingsPage->bind(*parameters, *balances, *users);
+            mainWindow->setSettingsPage(settingsPage);
+            parameters->start();
+            balances->start();
+            users->start();
+        }
         m_main = mainWindow;
 
         mainWindow->showMaximized();

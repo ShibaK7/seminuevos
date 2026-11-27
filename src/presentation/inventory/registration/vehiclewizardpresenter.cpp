@@ -50,7 +50,7 @@ void VehicleWizardPresenter::onLookupsLoaded(const application::RegistrationLook
     if (!lookups.errorMessage.isEmpty()) {
         m_wizard.showMessage(QStringLiteral("No se pudieron leer todos los catálogos:\n")
                              + lookups.errorMessage);
-    } else if (!lookups.umaDailyValue) {
+    } else if (!lookups.cashLimit.hasUma()) {
         m_wizard.showMessage(QStringLiteral(
             "No hay UMA configurada: no se podrá registrar una compra pagada en efectivo."));
     }
@@ -64,6 +64,32 @@ void VehicleWizardPresenter::onLookupsLoaded(const application::RegistrationLook
     for (int step = 0; step < kStepCount; ++step)
         m_nav.setValid(step, m_steps[step]->validate().isValid());
     refreshStepper();
+}
+
+void VehicleWizardPresenter::refreshCash()
+{
+    // Antes de los catálogos no hay qué refrescar (llegan con ellos), y ya
+    // registrada la unidad no importa.
+    if (!m_loaded || m_registered)
+        return;
+    const int generation = ++m_cashGeneration;
+    const application::VehicleRegistrationService *service = &m_service;
+    m_runner.run(
+        this,
+        [service] {
+            QString error;
+            QMap<domain::CashAccount, qint64> available = service->loadCashAvailable(&error);
+            return error.isEmpty() ? std::optional<QMap<domain::CashAccount, qint64>>(available)
+                                   : std::nullopt;
+        },
+        [this, generation](const std::optional<QMap<domain::CashAccount, qint64>> &available) {
+            // Si no se pudo leer, se queda lo que había: el guardado decide.
+            if (generation != m_cashGeneration || !available || m_registered)
+                return;
+            m_details->setCashAvailable(*available);
+            onStepEdited(0);
+            revalidateEditedSteps();
+        });
 }
 
 void VehicleWizardPresenter::onStepClicked(int step)
@@ -141,6 +167,10 @@ void VehicleWizardPresenter::onRegistrationFinished(const application::Registrat
         m_nav.setValid(step, false);
         markStepFields(step, result.validation);
         showInvalidStep(step, result.validation);
+        // Si fue por falta de saldo, lo que se sabía de las cuentas ya es
+        // viejo: se relee para que la validación en vivo diga lo vigente.
+        if (result.validation.fields().contains(QStringLiteral("purchasePrice")))
+            refreshCash();
         return;
     }
     case application::RegistrationResult::Status::Failed:

@@ -159,8 +159,11 @@ private slots:
         auto *list = window.findChild<QListWidget *>(QStringLiteral("vehicleList"));
         auto *inventoryItem = window.findChild<QWidget *>(QStringLiteral("inventoryItem"));
         auto *reportItem = window.findChild<QWidget *>(QStringLiteral("reportItem"));
+        // Configuraciones va al final del menú (solo se ve para el
+        // Administrador; oculto, Tab se lo salta).
+        auto *settingsItem = window.findChild<QWidget *>(QStringLiteral("settingsItem"));
         auto *acquisitionTab = window.findChild<QWidget *>(QStringLiteral("acquisitionTab"));
-        QVERIFY(list && inventoryItem && reportItem && acquisitionTab);
+        QVERIFY(list && inventoryItem && reportItem && settingsItem && acquisitionTab);
         // El siguiente que de verdad recibe Tab (la cadena también pasa por
         // widgets internos, como el viewport de la lista).
         const auto nextTabStop = [](QWidget *from) {
@@ -170,7 +173,8 @@ private slots:
             return next;
         };
         QCOMPARE(nextTabStop(list), inventoryItem);
-        QCOMPARE(nextTabStop(reportItem), acquisitionTab);
+        QCOMPARE(nextTabStop(reportItem), settingsItem);
+        QCOMPARE(nextTabStop(settingsItem), acquisitionTab);
     }
 
     // Responsivo: en una ventana angosta, "Agregar Vehículo" sube a la fila de

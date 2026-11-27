@@ -214,3 +214,102 @@ if(SEMINUEVOS_DB_TESTS)
     target_compile_definitions(tst_registration_db PRIVATE
         SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 endif()
+
+# --- Configuraciones (US-07.1) ----------------------------------------------------
+# Van en su propia sección, al final, para no chocar con las de otros módulos.
+seminuevos_add_test(tst_systemparameters
+    SOURCES domain/tst_systemparameters.cpp
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_systemsettingsservice
+    SOURCES application/tst_systemsettingsservice.cpp support/settingsfakes.h
+    LIBS seminuevos_application
+)
+
+# Parámetros de Configuraciones contra PostgreSQL (opcional, como la de arriba).
+if(SEMINUEVOS_DB_TESTS)
+    seminuevos_add_test(tst_settings_db
+        SOURCES adapters/tst_settings_db.cpp
+        LIBS seminuevos_application seminuevos_persistence
+    )
+    set_tests_properties(tst_settings_db PROPERTIES LABELS "db")
+    target_compile_definitions(tst_settings_db PRIVATE
+        SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+endif()
+
+# Cuentas de usuario contra PostgreSQL (opcional, como la de arriba).
+if(SEMINUEVOS_DB_TESTS)
+    seminuevos_add_test(tst_users_db
+        SOURCES adapters/tst_users_db.cpp
+        LIBS seminuevos_application seminuevos_persistence
+    )
+    set_tests_properties(tst_users_db PROPERTIES LABELS "db")
+    target_compile_definitions(tst_users_db PRIVATE
+        SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+endif()
+
+seminuevos_add_test(tst_useraccountpolicy
+    SOURCES domain/tst_useraccountpolicy.cpp
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_useradministrationservice
+    SOURCES application/tst_useradministrationservice.cpp support/userfakes.h support/fakes.h
+    LIBS seminuevos_application
+)
+
+seminuevos_add_test(tst_systemsettingspresenter
+    SOURCES presentation/tst_systemsettingspresenter.cpp support/settingsfakes.h support/fakes.h
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_usermanagementpresenter
+    SOURCES presentation/tst_usermanagementpresenter.cpp support/userfakes.h support/fakes.h
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_useraccountdialog
+    SOURCES presentation/tst_useraccountdialog.cpp
+    LIBS seminuevos_views
+)
+
+# La página completa con widgets reales y su lugar en el menú. Enlaza los
+# recursos por los íconos del menú.
+seminuevos_add_test(tst_settingsview
+    SOURCES presentation/tst_settingsview.cpp support/settingsfakes.h support/userfakes.h support/fakes.h
+            "${PROJECT_SOURCE_DIR}/resources/Resources.qrc"
+    LIBS seminuevos_views
+)
+
+# --- Saldos: Caja Chica, Cantidad Banco y Caja Fuerte ---------------------------
+seminuevos_add_test(tst_cashflow
+    SOURCES domain/tst_cashflow.cpp
+    LIBS seminuevos_domain
+)
+
+seminuevos_add_test(tst_cashledgerservice
+    SOURCES application/tst_cashledgerservice.cpp support/cashfakes.h
+    LIBS seminuevos_application
+)
+
+# Las cuentas de dinero contra PostgreSQL (opcional, como las de arriba).
+if(SEMINUEVOS_DB_TESTS)
+    seminuevos_add_test(tst_cash_db
+        SOURCES adapters/tst_cash_db.cpp
+        LIBS seminuevos_application seminuevos_persistence
+    )
+    set_tests_properties(tst_cash_db PROPERTIES LABELS "db")
+    target_compile_definitions(tst_cash_db PRIVATE
+        SEMINUEVOS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+endif()
+
+seminuevos_add_test(tst_cashbalancespresenter
+    SOURCES presentation/tst_cashbalancespresenter.cpp support/cashfakes.h support/fakes.h
+    LIBS seminuevos_presentation
+)
+
+seminuevos_add_test(tst_cashmovementdialog
+    SOURCES presentation/tst_cashmovementdialog.cpp
+    LIBS seminuevos_views
+)

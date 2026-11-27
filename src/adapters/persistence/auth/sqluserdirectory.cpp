@@ -46,16 +46,24 @@ std::optional<application::UserRecordDto> SqlUserDirectory::findByUsername(const
             failure = QStringLiteral("no hay conexión con la base de datos (%1)").arg(db.lastError().text());
         } else {
             QSqlQuery query(db);
+            // Sin distinguir mayúsculas: los usuarios nuevos se guardan en
+            // minúsculas, y "Admin" no debe fallar por una tecla. Si una base
+            // vieja tuviera dos que solo difieren en eso, gana el exacto.
             query.prepare(QStringLiteral(
-                "SELECT password_hash, display_name, role, id FROM users WHERE username = :username"));
+                "SELECT password_hash, display_name, role, id, active, username FROM users "
+                "WHERE lower(username) = lower(:username) "
+                "ORDER BY (username = :exact) DESC, id LIMIT 1"));
             query.bindValue(QStringLiteral(":username"), username);
+            query.bindValue(QStringLiteral(":exact"), username);
             if (!query.exec()) {
                 failure = query.lastError().text();
             } else if (query.next()) {
                 record = application::UserRecordDto{query.value(0).toString(),
                                                     query.value(1).toString(),
                                                     query.value(2).toString(),
-                                                    query.value(3).toInt()};
+                                                    query.value(3).toInt(),
+                                                    query.value(4).toBool(),
+                                                    query.value(5).toString()};
             }
         }
     }

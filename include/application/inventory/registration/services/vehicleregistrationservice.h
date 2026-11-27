@@ -28,8 +28,17 @@ public:
     // la interfaz.
     RegistrationLookupsDto loadLookups() const;
 
+    // Solo lo que hay en cada cuenta de dinero, para refrescarlo sin releer
+    // los catálogos (otra sesión pudo mover las cuentas).
+    QMap<domain::CashAccount, qint64> loadCashAvailable(QString *error) const;
+
+    // `cashAvailable`: lo que hay en cada cuenta de dinero (de los catálogos).
+    // Una compra de contado que pide más de lo que hay en la cuenta de su
+    // método se marca en el precio. Vacío: no se revisa (lo decide el
+    // guardado, como en el expediente, donde la compra ya tomó su parte).
     domain::ValidationResult validateDetails(const VehicleDetailsDto &details,
-                                             std::optional<double> umaDailyValue) const;
+                                             const domain::CashLimitTerms &cashLimit,
+                                             const QMap<domain::CashAccount, qint64> &cashAvailable = {}) const;
     domain::ValidationResult validateConditions(const VehicleConditionsDto &conditions) const;
 
     // Valida todo, revisa que el VIN no exista, copia los archivos al almacén

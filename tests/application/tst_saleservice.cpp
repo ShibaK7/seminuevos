@@ -96,13 +96,14 @@ public:
         clearError(error);
         return {};
     }
-    std::optional<double> umaDailyValue(QString *error) override
+    domain::CashLimitTerms cashLimitTerms(QString *error) override
     {
         ++umaReads;
         if (error)
             *error = readError;
-        return umaValue;
+        return {umaValue.value_or(0.0), umaMultiple};
     }
+    QMap<domain::CashAccount, qint64> cashAvailable(QString *) override { return {}; }
     QList<application::CatalogOptionDto> maintenanceTypes(QString *error) override
     {
         clearError(error);
@@ -110,6 +111,7 @@ public:
     }
 
     std::optional<double> umaValue = 117.31;
+    int umaMultiple = domain::CashLimitTerms::kLegalUmaMultiple;
     QString readError;
     int umaReads = 0;
 
@@ -141,6 +143,43 @@ application::SaleRegistrationDto validCashSale()
     sale.iva = 16000.0;
     sale.totalAmount = 116000.0;
     sale.observations = QStringLiteral("Venta de prueba");
+    return sale;
+}
+
+// Una venta a crédito completa: enganche por transferencia y dos cuotas sin
+// interés que cuadran con el precio.
+application::SaleRegistrationDto validCreditSale(double total = 116000.0, double downPayment = 16000.0)
+{
+    application::SaleRegistrationDto sale = validCashSale();
+    sale.paymentType = domain::PaymentType::Credito;
+    sale.paymentMethod.reset();
+    sale.subtotal = total;
+    sale.iva = 0.0;
+    sale.totalAmount = total;
+    sale.buyer.nationalId = QStringLiteral("BUYER-CREDIT");
+    application::SaleBuyerDto guarantor = sale.buyer;
+    guarantor.fullName = QStringLiteral("Aval Ejemplo");
+    guarantor.nationalId = QStringLiteral("AVAL-CREDIT");
+
+    application::SaleFinancingDto financing;
+    financing.downPayment = downPayment;
+    financing.downPaymentMethod = domain::PaymentMethod::Transferencia;
+    financing.amountToFinance = total - downPayment;
+    financing.interestRatePercent = 0.0;
+    financing.monthsTerm = 2;
+    financing.monthlyPayment = (total - downPayment) / 2.0;
+    financing.finalPrice = total;
+    financing.guarantor = guarantor;
+    for (int number = 1; number <= 2; ++number) {
+        application::SaleInstallmentDto installment;
+        installment.number = number;
+        installment.dueDate = sale.saleDate.addMonths(number);
+        installment.expectedAmount = financing.monthlyPayment;
+        installment.capitalAllocation = financing.monthlyPayment;
+        installment.remainingBalance = financing.monthlyPayment * (2 - number);
+        financing.installments << installment;
+    }
+    sale.financing = financing;
     return sale;
 }
 
@@ -249,6 +288,80 @@ private slots:
         QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
         QCOMPARE(result.field, QStringLiteral("paymentMethod"));
         QVERIFY(result.message.contains(QStringLiteral("3,210 UMA")));
+        QCOMPARE(repository.registerCalls, 0);
+    }
+
+    // El tope que fijó el Administrador en Configuraciones manda: con 1,000
+    // UMA, una venta en efectivo por ese monto ya no pasa.
+    void cashSaleUsesTheConfiguredMultiple()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        referenceData.umaMultiple = 1000;
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCashSale();
+        sale.buyer.nationalId = QStringLiteral("BUYER-UMA");
+        sale.paymentMethod = domain::PaymentMethod::Efectivo;
+        sale.totalAmount = 1000.0 * *referenceData.umaValue;
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
+        QCOMPARE(result.field, QStringLiteral("paymentMethod"));
+        QVERIFY2(result.message.contains(QStringLiteral("1,000 UMA")), qPrintable(result.message));
+        QCOMPARE(repository.registerCalls, 0);
+    }
+
+    // El enganche dice cómo se pagó: así entra a Caja Chica o a Banco.
+    void creditSaleCarriesTheDownPaymentMethod()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        application::SaleService service(repository, counterparties, &referenceData);
+
+        const auto result = service.registerSale(validCreditSale());
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Registered);
+        QCOMPARE(repository.lastSale.financing->downPaymentMethod,
+                 std::optional<domain::PaymentMethod>(domain::PaymentMethod::Transferencia));
+    }
+
+    void creditSaleNeedsTheDownPaymentMethod()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCreditSale();
+        sale.financing->downPaymentMethod.reset();
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
+        QCOMPARE(result.field, QStringLiteral("downPaymentMethod"));
+        QCOMPARE(repository.registerCalls, 0);
+        // La validación del formulario también lo marca en su combo.
+        QVERIFY(service.validateSale(sale).fields().contains(QStringLiteral("downPaymentMethod")));
+    }
+
+    // Un enganche en efectivo también pasa por el tope de la LFPIORPI.
+    void cashDownPaymentUsesTheConfiguredLimit()
+    {
+        FakeSaleRepository repository;
+        FakeCounterpartyDirectory counterparties;
+        FakeReferenceDataReader referenceData;
+        referenceData.umaMultiple = 1000;
+        application::SaleService service(repository, counterparties, &referenceData);
+        application::SaleRegistrationDto sale = validCreditSale(200000.0, 1000.0 * *referenceData.umaValue);
+        sale.financing->downPaymentMethod = domain::PaymentMethod::Efectivo;
+
+        const auto result = service.registerSale(sale);
+
+        QCOMPARE(result.status, application::SaleRegistrationResultDto::Status::Rejected);
+        QCOMPARE(result.field, QStringLiteral("downPaymentMethod"));
+        QVERIFY2(result.message.contains(QStringLiteral("1,000 UMA")), qPrintable(result.message));
         QCOMPARE(repository.registerCalls, 0);
     }
 

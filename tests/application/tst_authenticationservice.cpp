@@ -47,6 +47,38 @@ private slots:
         QCOMPARE(result.session.role, domain::UserRole::Admin);
     }
 
+    // Una cuenta desactivada no entra. Solo se dice con la contraseña
+    // correcta: con una equivocada se ve igual que cualquier otra cuenta.
+    void deactivatedAccountCannotLogIn()
+    {
+        m_users.users.insert(QStringLiteral("beto"),
+                             {m_hasher.hash(QStringLiteral("clave")), QStringLiteral("Beto"),
+                              QStringLiteral("Vendedor"), 7, false, QStringLiteral("beto")});
+        const application::AuthenticationService auth(m_users, m_hasher);
+
+        const auto denied = auth.login(QStringLiteral("beto"), QStringLiteral("clave"));
+        QVERIFY(!denied.ok);
+        QVERIFY2(denied.errorMessage.contains(QStringLiteral("desactivada")),
+                 qPrintable(denied.errorMessage));
+        QCOMPARE(m_users.successfulLogins, 0);
+
+        const auto wrong = auth.login(QStringLiteral("beto"), QStringLiteral("otra"));
+        const auto unknown = auth.login(QStringLiteral("nadie"), QStringLiteral("otra"));
+        QCOMPARE(wrong.errorMessage, unknown.errorMessage);
+    }
+
+    // La sesión lleva el usuario como está guardado, no como se tecleó.
+    void sessionCarriesTheStoredUsername()
+    {
+        m_users.users.insert(QStringLiteral("ANA.LOPEZ"),
+                             {m_hasher.hash(QStringLiteral("clave")), QStringLiteral("Ana"),
+                              QStringLiteral("Vendedor"), 8, true, QStringLiteral("ana.lopez")});
+        const application::AuthenticationService auth(m_users, m_hasher);
+        const auto result = auth.login(QStringLiteral("ANA.LOPEZ"), QStringLiteral("clave"));
+        QVERIFY(result.ok);
+        QCOMPARE(result.session.username, QStringLiteral("ana.lopez"));
+    }
+
     // Un rol que la aplicación no conoce no entra: no se le adivinan permisos.
     void unknownRoleIsRejected()
     {

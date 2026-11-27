@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CashBalancesWidget</class>
+ <widget class="QWidget" name="CashBalancesWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="cashBalancesLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="balancesCard">
+     <property name="class" stdset="0">
+      <string notr="true">card</string>
+     </property>
+     <layout class="QVBoxLayout" name="balancesCardLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="balancesHeaderLayout">
+        <item>
+         <widget class="QLabel" name="balancesTitle">
+          <property name="text">
+           <string>Saldos</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">h3</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="balancesHeaderSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="openingButton">
+          <property name="text">
+           <string>Capturar saldos iniciales</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">primary</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="depositButton">
+          <property name="text">
+           <string>Ingresar a Caja Fuerte</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="withdrawButton">
+          <property name="text">
+           <string>Retirar de Caja Fuerte</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="balancesGrid" columnstretch="0,0,0,1">
+        <property name="horizontalSpacing">
+         <number>16</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>10</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="pettyCashLabel">
+          <property name="text">
+           <string>Caja Chica</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="pettyCashAmount">
+          <property name="minimumSize">
+           <size>
+            <width>180</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignVCenter</set>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">currency-display</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="pettyCashUnit">
+          <property name="text">
+           <string>Pesos MXN</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QLabel" name="pettyCashUpdated">
+          <property name="class" stdset="0">
+           <string notr="true">updated-at</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="bankLabel">
+          <property name="text">
+           <string>Cantidad Banco</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="bankAmount">
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignVCenter</set>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">currency-display</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="bankUnit">
+          <property name="text">
+           <string>Pesos MXN</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QLabel" name="bankUpdated">
+          <property name="class" stdset="0">
+           <string notr="true">updated-at</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="safeLabel">
+          <property name="text">
+           <string>Caja Fuerte</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="safeAmount">
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignVCenter</set>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">currency-display</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QLabel" name="safeUnit">
+          <property name="text">
+           <string>Pesos MXN</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="3">
+         <widget class="QLabel" name="safeUpdated">
+          <property name="class" stdset="0">
+           <string notr="true">updated-at</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="movementsHeaderLayout">
+        <item>
+         <widget class="QLabel" name="movementsTitle">
+          <property name="text">
+           <string>Movimientos</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">h4</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="movementsHeaderSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="filterLabel">
+          <property name="text">
+           <string>Cuenta:</string>
+          </property>
+          <property name="buddy">
+           <cstring>filterCombo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="filterCombo"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QTableWidget" name="movementsTable">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>200</height>
+         </size>
+        </property>
+        <property name="editTriggers">
+         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+        </property>
+        <property name="tabKeyNavigation">
+         <bool>false</bool>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">data-table</string>
+        </property>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Fecha</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Cuenta</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Concepto</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Entrada</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Salida</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Usuario</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="messageLabel">
+        <property name="textFormat">
+         <enum>Qt::TextFormat::PlainText</enum>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">error-text</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="noticeLabel">
+        <property name="textFormat">
+         <enum>Qt::TextFormat::PlainText</enum>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">form-label</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>openingButton</tabstop>
+  <tabstop>depositButton</tabstop>
+  <tabstop>withdrawButton</tabstop>
+  <tabstop>filterCombo</tabstop>
+  <tabstop>movementsTable</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

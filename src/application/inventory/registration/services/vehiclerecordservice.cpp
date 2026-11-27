@@ -1,5 +1,6 @@
 #include "application/inventory/registration/services/vehiclerecordservice.h"
 
+#include "domain/finance/rules/cashmovementpolicy.h"
 #include "domain/inventory/model/vehicle.h"
 #include "domain/inventory/model/vehiclebuilder.h"
 #include "domain/inventory/rules/vehiclerecordaccess.h"
@@ -236,16 +237,17 @@ RecordUpdateResult VehicleRecordService::update(const VehicleUpdateDto &update,
     if (!accessFor(role).canEdit)
         return failed(QStringLiteral("Tu rol no permite corregir el expediente."));
 
-    // La UMA se lee al guardar, como en el alta: no se confía en la que tenía
-    // la pantalla.
+    // La UMA y el tope se leen al guardar, como en el alta: no se confía en
+    // los que tenía la pantalla.
     QString umaError;
-    const std::optional<double> uma = m_referenceData.umaDailyValue(&umaError);
+    const domain::CashLimitTerms cashLimit = m_referenceData.cashLimitTerms(&umaError);
     if (!umaError.isEmpty())
         return failed(QStringLiteral("No se pudo leer la UMA: %1").arg(umaError));
 
     // 1. Las reglas del dominio, sin tocar disco ni base.
     domain::VehicleBuilder builder;
-    domain::ValidationResult mappingErrors = mapping::applyDetails(builder, update.details, uma);
+    domain::ValidationResult mappingErrors =
+        mapping::applyDetails(builder, update.details, cashLimit);
     mappingErrors.merge(mapping::applyConditions(builder, update.conditions));
     mapping::applyFiles(builder, update.files);
 
@@ -337,6 +339,11 @@ RecordUpdateResult VehicleRecordService::update(const VehicleUpdateDto &update,
             return withStatus(RecordUpdateResult::Status::Conflict);
         if (outcome.duplicateSerialNumber)
             return duplicateSerialNumber();
+        if (outcome.insufficientFunds) {
+            return rejected(QStringLiteral("purchasePrice"),
+                            domain::CashMovementPolicy::insufficientFundsMessage(
+                                outcome.fundsAccount, outcome.availableHundredths));
+        }
         if (!outcome.takenNationalIdOwner.isEmpty()) {
             return rejected(QStringLiteral("counterparty.nationalId"),
                             QStringLiteral("Esa identificación ya es de «%1». Revisa el nombre o "

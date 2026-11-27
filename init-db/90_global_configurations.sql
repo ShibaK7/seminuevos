@@ -1,25 +1,34 @@
 -- ===========================================================================
--- CONFIGURACIÓN GLOBAL: valor diario de la UMA
+-- CONFIGURACIÓN GLOBAL: parámetros del negocio (Configuraciones, US-07.1)
 -- ===========================================================================
--- La app lee UMA_DIARIA para el tope de la LFPIORPI (art. 32, fr. II): un
--- vehículo de 3,210 UMA o más no se puede pagar en efectivo. Sin esta fila
--- la app no conoce la UMA vigente.
+-- Valores con que arranca una base nueva. Desde la US-07.1 el Administrador
+-- los cambia en la pantalla Configuraciones, y cada uno guarda la fecha de su
+-- último cambio en updated_at.
 --
--- UMA diaria 2026 = $117.31 (INEGI, publicada en el DOF el 9-ene-2026,
--- vigente desde el 1-feb-2026). El tope de efectivo para vehículos queda en
--- 3,210 x 117.31 = $376,565.10.
+-- UMA_DIARIA: la UMA vigente, para el tope de pago en efectivo de la
+-- LFPIORPI (art. 32, fr. II). Sin esta fila la app no conoce la UMA y
+-- rechaza los pagos en efectivo.
+--   UMA diaria 2026 = $117.31 (INEGI, publicada en el DOF el 9-ene-2026,
+--   vigente desde el 1-feb-2026). Cambia CADA AÑO: el INEGI publica la nueva
+--   en enero y rige desde el 1 de febrero. Se actualiza en Configuraciones.
 --
--- Se actualiza CADA AÑO: el INEGI publica la UMA nueva en enero y rige desde
--- el 1 de febrero. Docker solo corre init-db/ cuando el volumen está vacío,
--- así que en una base que ya existe este archivo se corre a mano (Docker ya
--- lo tiene montado dentro del contenedor; usuario y base son los de .env, y
--- en Git Bash hay que anteponer MSYS_NO_PATHCONV=1 para que no reescriba la
--- ruta):
+-- TOPE_EFECTIVO_UMA: cuántas UMA son el tope de pago en efectivo. La ley dice
+--   3,210 (3,210 x 117.31 = $376,565.10). El Administrador puede fijar uno más
+--   estricto, nunca uno mayor: la app rechaza un valor arriba de 3,210 y, si
+--   lo encontrara aquí, usaría el legal.
+--
+-- Los saldos de Caja Chica, Cantidad Banco y Caja Fuerte no van aquí: viven
+--   en cash_accounts, con su bitácora en cash_movements (00_schema.sql).
+--
+-- Docker solo corre init-db/ cuando el volumen está vacío. En una base que ya
+-- existe se puede correr a mano para agregar las llaves que falten (usuario y
+-- base son los de .env; en Git Bash, anteponer MSYS_NO_PATHCONV=1):
 --
 --   docker exec seminuevos_postgres psql -U seminuevos_app -d seminuevos -f /docker-entrypoint-initdb.d/90_global_configurations.sql
 --
--- Por eso es un upsert: al crear la base la tabla está vacía y el ON CONFLICT
--- no hace nada, pero al correrlo a mano reemplaza el valor del año anterior.
+-- Es ON CONFLICT DO NOTHING a propósito: correrlo de nuevo nunca pisa lo que
+-- el Administrador capturó. Antes de la US-07.1 la UMA se actualizaba
+-- corriendo este archivo; ahora eso desharía su cambio.
 --
 -- Ojo: una sola llave guarda solo la UMA vigente. La ley toma la del día del
 -- pago, así que una operación anterior al cambio de febrero se evaluaría con
@@ -28,7 +37,6 @@
 -- ===========================================================================
 
 INSERT INTO global_configurations (key_param, value_param)
-VALUES ('UMA_DIARIA', 117.31)
-ON CONFLICT (key_param) DO UPDATE
-    SET value_param = EXCLUDED.value_param,
-        updated_at = CURRENT_TIMESTAMP;
+VALUES ('UMA_DIARIA', 117.31),
+       ('TOPE_EFECTIVO_UMA', 3210)
+ON CONFLICT (key_param) DO NOTHING;

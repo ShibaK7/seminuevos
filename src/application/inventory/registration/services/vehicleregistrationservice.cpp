@@ -1,5 +1,7 @@
 #include "application/inventory/registration/services/vehicleregistrationservice.h"
 
+#include "domain/finance/rules/cashflowrules.h"
+#include "domain/finance/rules/cashmovementpolicy.h"
 #include "domain/inventory/model/vehicle.h"
 #include "domain/inventory/model/vehiclebuilder.h"
 #include "domain/inventory/rules/uploadformatpolicy.h"
@@ -31,6 +33,16 @@ RegistrationResult failed(const QString &message)
     result.status = RegistrationResult::Status::Failed;
     result.errorMessage = message;
     return result;
+}
+
+// La compra de contado pide más de lo que hay en la cuenta de su método. Se
+// marca en el precio: es lo que el usuario puede cambiar (o el método).
+domain::ValidationResult insufficientFunds(domain::CashAccount account, qint64 available)
+{
+    domain::ValidationResult validation;
+    validation.addError(QStringLiteral("purchasePrice"),
+                        domain::CashMovementPolicy::insufficientFundsMessage(account, available));
+    return validation;
 }
 
 RegistrationResult duplicateSerialNumber()
@@ -85,7 +97,12 @@ RegistrationLookupsDto VehicleRegistrationService::loadLookups() const
         errors << error;
 
     error.clear();
-    lookups.umaDailyValue = m_referenceData.umaDailyValue(&error);
+    lookups.cashLimit = m_referenceData.cashLimitTerms(&error);
+    if (!error.isEmpty())
+        errors << error;
+
+    error.clear();
+    lookups.cashAvailable = m_referenceData.cashAvailable(&error);
     if (!error.isEmpty())
         errors << error;
 
@@ -93,12 +110,34 @@ RegistrationLookupsDto VehicleRegistrationService::loadLookups() const
     return lookups;
 }
 
+QMap<domain::CashAccount, qint64> VehicleRegistrationService::loadCashAvailable(QString *error) const
+{
+    return m_referenceData.cashAvailable(error);
+}
+
 domain::ValidationResult VehicleRegistrationService::validateDetails(
-    const VehicleDetailsDto &details, std::optional<double> umaDailyValue) const
+    const VehicleDetailsDto &details, const domain::CashLimitTerms &cashLimit,
+    const QMap<domain::CashAccount, qint64> &cashAvailable) const
 {
     domain::VehicleBuilder builder;
-    domain::ValidationResult result = mapping::applyDetails(builder, details, umaDailyValue);
+    domain::ValidationResult result = mapping::applyDetails(builder, details, cashLimit);
     result.merge(builder.validateVehicleData());
+
+    // Lo que hay en la cuenta que pagaría la compra. Solo si el precio no
+    // tiene ya otro error: uno a la vez se lee mejor.
+    domain::PurchaseTerms terms;
+    terms.acquisitionType = details.acquisitionType;
+    terms.paymentType = details.paymentType;
+    terms.paymentMethod = details.paymentMethod;
+    terms.priceHundredths = domain::toHundredths(details.purchasePrice);
+    if (!result.fields().contains(QStringLiteral("purchasePrice"))) {
+        for (const domain::CashMovement &movement :
+             domain::CashFlowRules::forPurchase(terms, QString(), QDate())) {
+            const auto available = cashAvailable.constFind(movement.account());
+            if (available != cashAvailable.cend() && -movement.hundredths() > *available)
+                result.merge(insufficientFunds(movement.account(), *available));
+        }
+    }
     return result;
 }
 
@@ -114,15 +153,17 @@ domain::ValidationResult VehicleRegistrationService::validateConditions(
 RegistrationResult VehicleRegistrationService::registerVehicle(
     const VehicleRegistrationDto &registration) const
 {
-    // La UMA se lee al guardar, no se confía en la que tenía la pantalla.
+    // La UMA y el tope se leen al guardar, no se confía en los que tenía la
+    // pantalla.
     QString umaError;
-    const std::optional<double> uma = m_referenceData.umaDailyValue(&umaError);
+    const domain::CashLimitTerms cashLimit = m_referenceData.cashLimitTerms(&umaError);
     if (!umaError.isEmpty())
         return failed(QStringLiteral("No se pudo leer la UMA: %1").arg(umaError));
 
     // 1. Validar sin tocar disco ni base.
     domain::VehicleBuilder builder;
-    domain::ValidationResult mappingErrors = mapping::applyDetails(builder, registration.details, uma);
+    domain::ValidationResult mappingErrors =
+        mapping::applyDetails(builder, registration.details, cashLimit);
     mappingErrors.merge(mapping::applyConditions(builder, registration.conditions));
     mapping::applyFiles(builder, registration.files);
 
@@ -185,6 +226,8 @@ RegistrationResult VehicleRegistrationService::registerVehicle(
         rollbackFiles();
         if (outcome.duplicateSerialNumber)
             return duplicateSerialNumber();
+        if (outcome.insufficientFunds)
+            return rejected(insufficientFunds(outcome.fundsAccount, outcome.availableHundredths));
         return failed(outcome.errorMessage);
     }
 

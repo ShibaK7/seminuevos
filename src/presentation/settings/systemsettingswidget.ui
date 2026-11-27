@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SystemSettingsWidget</class>
+ <widget class="QWidget" name="SystemSettingsWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>420</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="systemSettingsLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="parametersCard">
+     <property name="class" stdset="0">
+      <string notr="true">card</string>
+     </property>
+     <layout class="QVBoxLayout" name="parametersCardLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>16</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>16</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="parametersHeaderLayout">
+        <item>
+         <widget class="QLabel" name="parametersTitle">
+          <property name="text">
+           <string>Parámetros del sistema</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">h3</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="parametersHeaderSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="cancelButton">
+          <property name="text">
+           <string>Cancelar</string>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="editButton">
+          <property name="text">
+           <string>Editar</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../resources/Resources.qrc">
+            <normaloff>:/icons/edit.svg</normaloff>:/icons/edit.svg</iconset>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">secondary</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="saveButton">
+          <property name="text">
+           <string>Guardar</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../resources/Resources.qrc">
+            <normaloff>:/icons/save.png</normaloff>:/icons/save.png</iconset>
+          </property>
+          <property name="class" stdset="0">
+           <string notr="true">primary</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="parametersGrid" columnstretch="0,0,0,1">
+        <property name="horizontalSpacing">
+         <number>16</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>10</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="umaLabel">
+          <property name="text">
+           <string>Valor 1 UMA</string>
+          </property>
+          <property name="buddy">
+           <cstring>umaSpin</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="umaSpin">
+          <property name="minimumSize">
+           <size>
+            <width>180</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="specialValueText">
+           <string>Sin capturar</string>
+          </property>
+          <property name="prefix">
+           <string notr="true">$</string>
+          </property>
+          <property name="maximum">
+           <double>9999999999.989999771118164</double>
+          </property>
+          <property name="groupSeparatorShown">
+           <bool>true</bool>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">umaDailyValue</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="umaUnit">
+          <property name="text">
+           <string>Pesos MXN</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QLabel" name="umaUpdated">
+          <property name="class" stdset="0">
+           <string notr="true">updated-at</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="cashLimitLabel">
+          <property name="text">
+           <string>Máximo valor pagos en efectivo</string>
+          </property>
+          <property name="buddy">
+           <cstring>cashLimitSpin</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="cashLimitSpin">
+          <property name="minimumSize">
+           <size>
+            <width>180</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>La ley (LFPIORPI) no permite un tope mayor de 3,210 UMA; sí uno más estricto.</string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>3210</number>
+          </property>
+          <property name="value">
+           <number>3210</number>
+          </property>
+          <property name="groupSeparatorShown">
+           <bool>true</bool>
+          </property>
+          <property name="field" stdset="0">
+           <string notr="true">cashLimitUmaMultiple</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="cashLimitUnit">
+          <property name="text">
+           <string>UMA</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QLabel" name="cashLimitUpdated">
+          <property name="class" stdset="0">
+           <string notr="true">updated-at</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="messageLabel">
+        <property name="textFormat">
+         <enum>Qt::TextFormat::PlainText</enum>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">error-text</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="noticeLabel">
+        <property name="textFormat">
+         <enum>Qt::TextFormat::PlainText</enum>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="class" stdset="0">
+         <string notr="true">form-label</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>editButton</tabstop>
+  <tabstop>umaSpin</tabstop>
+  <tabstop>cashLimitSpin</tabstop>
+  <tabstop>cancelButton</tabstop>
+  <tabstop>saveButton</tabstop>
+ </tabstops>
+ <resources>
+  <include location="../../../resources/Resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
